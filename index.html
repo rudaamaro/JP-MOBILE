@@ -11,8 +11,7 @@
     color-scheme: dark;
     --bg:#0b0f14; --card:#111827; --muted:#9fb3c8; --text:#e7eef7;
     --accent:#43b6ff; --accent2:#7cffad; --danger:#ff6b6b; --warn:#ffd166; --stroke:#223047;
-    --duoGreen:#58CC02; --duoGreen-ink:#0b2a00; --duoRed:#EA2B2B; --duoGold:#FFD166;
-    --radius:18px; --maxw:860px;
+    --radius:16px; --maxw:860px;
   }
   *{box-sizing:border-box}
   html,body{height:100%; margin:0; background:var(--bg); font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
@@ -21,54 +20,37 @@
     padding:env(safe-area-inset-top) 12px calc(12px + env(safe-area-inset-bottom)) 12px}
   header,.card,.tabs,.section{width:100%; max-width:var(--maxw)}
   header{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px}
-  .brand{font-weight:900; color:var(--text); font-size:18px; letter-spacing:.2px}
+  .brand{font-weight:800; color:var(--text); font-size:18px}
 
   /* Tabs */
   .tabs{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
-  .tab{
-    padding:10px 12px; text-align:center; background:#0f1422; color:var(--text);
-    border-radius:999px; border:1px solid rgba(255,255,255,.06); font-weight:800
-  }
-  .tab.active{background:var(--duoGreen); color:var(--duoGreen-ink); border-color:rgba(88,204,2,.45)}
+  .tab{padding:10px 12px; text-align:center; background:#0f1422; color:var(--text);
+    border-radius:12px; border:1px solid rgba(255,255,255,.06); font-weight:700; cursor:pointer}
+  .tab.active{background:#27c23a; color:#04120a; border-color:#28a43a}
 
   /* Cards e UI */
-  .card{
-    background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:var(--radius);
-    padding:20px; display:flex; flex-direction:column; gap:16px; box-shadow:0 12px 34px rgba(0,0,0,.28)
-  }
+  .card{background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:var(--radius);
+    padding:18px; display:flex; flex-direction:column; gap:16px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
   .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between}
   .seg{display:inline-flex; padding:4px; gap:4px; border-radius:14px; background:#0f1422; border:1px solid rgba(255,255,255,.06)}
   .seg input{display:none}
-  .seg label{
-    padding:8px 12px; border-radius:999px; font-weight:900; color:var(--text); cursor:pointer; letter-spacing:.2px
-  }
-  .seg input:checked + label{background:var(--duoGold); color:#2a1b00}
-
-  .prompt{text-align:center; color:var(--muted); font-weight:800; letter-spacing:.3px}
-  .question{text-align:center; color:var(--text); font-weight:900; font-size:clamp(22px,7vw,42px); word-break:break-word}
+  .seg label{padding:8px 12px; border-radius:10px; font-weight:800; color:var(--text); cursor:pointer}
+  .seg input:checked + label{background:var(--accent); color:#05121d}
+  .prompt{text-align:center; color:var(--muted); font-weight:700; letter-spacing:.3px}
+  .question{text-align:center; color:var(--text); font-weight:900; font-size:clamp(20px,6.5vw,40px); word-break:break-word}
   .qRow{display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap}
-  .audioBtn{
-    height:40px; min-width:40px; padding:0 12px; border-radius:12px; background:#0f1422; color:var(--text);
-    border:2px solid var(--stroke); font-weight:900; transition:transform .06s ease
-  }
-  .audioBtn:active{transform:scale(.97)}
-
+  .audioBtn{height:38px; min-width:38px; padding:0 12px; border-radius:12px; background:#0f1422; color:var(--text);
+    border:1px solid rgba(255,255,255,.08); font-weight:800; cursor:pointer}
   .inputRow{display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center}
-  input.answer{
-    flex:1 1 320px; max-width:560px; height:54px; background:#0f1422; border:2px solid var(--stroke);
-    border-radius:16px; padding:0 14px; color:#e7eef7; font-size:18px; font-weight:800; outline:none
-  }
+  input.answer{flex:1 1 320px; max-width:560px; height:52px; background:#0f1422; border:2px solid var(--stroke);
+    border-radius:14px; padding:0 14px; color:#e7eef7; font-size:18px; font-weight:700; outline:none}
   input.answer:focus{border-color:var(--accent)}
-  input.answer.correct{border-color:var(--duoGreen); box-shadow:0 0 0 3px rgba(88,204,2,.18)}
-  input.answer.wrong{border-color:var(--duoRed); box-shadow:0 0 0 3px rgba(234,43,43,.18)}
-
-  select.select{height:44px; padding:0 12px; border-radius:12px; background:#0f1422; color:#e7eef7; border:2px solid var(--stroke); font-weight:800}
-  .btn{
-    height:54px; padding:0 18px; border-radius:16px; font-weight:900; border:2px solid var(--stroke);
-    background:var(--duoGreen); color:var(--duoGreen-ink); cursor:pointer; letter-spacing:.2px
-  }
+  input.answer.correct{border-color:var(--accent2); box-shadow:0 0 0 3px rgba(124,255,173,.15)}
+  input.answer.wrong{border-color:var(--danger); box-shadow:0 0 0 3px rgba(255,107,107,.15)}
+  select.select{height:44px; padding:0 12px; border-radius:12px; background:#0f1422; color:#e7eef7; border:2px solid var(--stroke); font-weight:700}
+  .btn{height:52px; padding:0 16px; border-radius:14px; font-weight:800; border:1px solid rgba(255,255,255,.08); background:#27c23a; color:#04120a; cursor:pointer}
   .btn.secondary{background:#1f2937; color:#e7eef7}
-  .btn:disabled{opacity:.55; cursor:not-allowed}
+  .btn:disabled{opacity:.5; cursor:not-allowed}
   .btn:focus, .choice:focus, .audioBtn:focus {outline:3px solid rgba(67,182,255,.6); outline-offset:2px}
   .center{display:flex; justify-content:center; gap:10px; flex-wrap:wrap}
   .helper{color:var(--muted); text-align:center; font-size:13px}
@@ -77,21 +59,21 @@
   textarea.bulk{width:100%; min-height:200px; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.08);
     background:#0f1422; color:#e7eef7; font:500 14px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 
-  /* feedback */
-  .flash{padding:10px 12px; border-radius:12px; font-weight:900; text-align:center}
-  .flash.ok{background:rgba(88,204,2,.14); color:#d7ffd0; border:1px solid rgba(88,204,2,.35)}
-  .flash.err{background:rgba(234,43,43,.12); color:#ffd4d4; border:1px solid rgba(234,43,43,.35)}
+  /* feedback banner */
+  .flash{padding:8px 12px; border-radius:10px; font-weight:800; text-align:center}
+  .flash.ok{background:#0f3f2e; color:#c6ffde; border:1px solid #1f7a57}
+  .flash.err{background:#3a1515; color:#ffc6c6; border:1px solid #7a2e2e}
 
-  /* bloco “correto / traduções” com cor */
-  .result{padding:10px 12px; border-radius:12px; font-weight:800}
-  .result.ok{background:rgba(88,204,2,.12); color:#d7ffd0; border:1px solid rgba(88,204,2,.25)}
-  .result.err{background:rgba(234,43,43,.12); color:#ffd4d4; border:1px solid rgba(234,43,43,.25)}
+  /* Destaque verde nas palavras corretas/aceitas */
+  .accepted { color: var(--muted); }
+  .accepted b { color: #7cffad; }
+  .accepted small { color: #b5ffd2; }
 
-  /* lista */
+  /* === LISTA === */
   .tableWrap{max-width:100%; overflow:auto; border-radius:12px; overscroll-behavior:contain}
   table.list{width:100%; border-collapse:separate; border-spacing:0 6px; table-layout:fixed}
   table.list th,table.list td{padding:10px 12px; text-align:left; font-size:14px; word-break:break-word; white-space:normal}
-  table.list th{color:var(--muted); font-weight:900}
+  table.list th{color:var(--muted); font-weight:800}
   table.list tr{background:#0f1422; border:1px solid rgba(255,255,255,.08)}
   table.list tr td:first-child{border-radius:12px 0 0 12px}
   table.list tr td:last-child{border-radius:0 12px 12px 0}
@@ -102,23 +84,19 @@
   .col-cat{width:12%}
   .col-ok,.col-err{width:48px; text-align:right}
 
-  /* quiz */
+  /* === QUIZ === */
   .choices{display:grid; grid-template-columns:repeat(2,minmax(160px,1fr)); gap:10px}
-  .choice{
-    padding:14px; border-radius:16px; border:2px solid var(--stroke);
-    background:#0f1422; color:var(--text); font-weight:900; cursor:pointer; transition:transform .06s ease, border-color .2s ease
-  }
-  .choice:hover{border-color:var(--accent)}
-  .choice:active{transform:scale(.98)}
-  .choice.correct{border-color:var(--duoGreen); box-shadow:0 0 0 3px rgba(88,204,2,.18) inset}
-  .choice.wrong{border-color:var(--duoRed); box-shadow:0 0 0 3px rgba(234,43,43,.18) inset}
+  .choice{padding:12px; border-radius:12px; border:2px solid var(--stroke); background:#0f1422; color:var(--text); font-weight:800; cursor:pointer}
+  .choice:hover{border-color:#27c23a}
+  .choice.correct{border-color:var(--accent2)}
+  .choice.wrong{border-color:var(--danger)}
   .quizActions{display:flex; gap:10px; justify-content:center; margin-top:4px}
 
   /* MOBILE */
   @media (max-width:600px){
     .brand{font-size:16px}
     .tab{padding:8px 10px}
-    .card{padding:16px}
+    .card{padding:14px}
     table.list th,table.list td{font-size:12px; padding:8px 10px}
     .col-idx,.col-kana{display:none}
     .col-romaji{width:36%}
@@ -174,7 +152,7 @@
         <button class="btn secondary" id="btnSkip">Pular</button>
       </div>
 
-      <div class="center" id="accepted" style="display:none" aria-live="polite"></div>
+      <div class="center helper accepted" id="accepted" style="display:none" aria-live="polite"></div>
     </div>
   </section>
 
@@ -242,6 +220,7 @@
     </div>
   </section>
 
+  <div class="kudos">JP-PT</div>
   <div class="msg" id="msg" style="display:none"></div>
 </div>
 
@@ -265,63 +244,69 @@
   function saveDeck(){localStorage.setItem(LS_DECK, JSON.stringify(deck));}
   function toast(t,ms=1400){const el=document.querySelector('#msg'); el.textContent=t; el.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>el.style.display='none',ms);}
 
-  // banner
+  // banner no topo da carta
   function flash(msg, ok=true){
-    const card = document.querySelector('.section.active .card');
+    const card = document.querySelector('#study .card');
     const n = document.createElement('div');
     n.className = 'flash ' + (ok?'ok':'err');
     n.textContent = msg;
     card.prepend(n);
-    setTimeout(()=>n.remove(), 1100);
+    setTimeout(()=>n.remove(), 1200);
   }
 
-  // ===== ÁUDIO =====
-  let voices=[];
-  function loadVoices(){ voices = (window.speechSynthesis?.getVoices?.()||[]).slice(); selectPreferredVoices(); }
-  if('speechSynthesis' in window){ speechSynthesis.onvoiceschanged = loadVoices; loadVoices(); }
+  // ===== ÁUDIO (robusto p/ mobile) =====
+  let voices = [];
+  let voicesReady = false;
 
-  let bestJA=null, bestPT=null;
-
-  function pickVoice(priorities=[], langStarts=''){
-    const v = voices.find(v => priorities.some(p => (v.name||'').toLowerCase().includes(p))) ||
-              voices.find(v => (v.lang||'').toLowerCase().startsWith(langStarts));
-    return v||null;
+  function loadVoices() {
+    try {
+      voices = window.speechSynthesis ? speechSynthesis.getVoices() || [] : [];
+      voicesReady = voices.length > 0;
+    } catch { voices = []; voicesReady = false; }
+  }
+  if ('speechSynthesis' in window) {
+    speechSynthesis.onvoiceschanged = () => { loadVoices(); };
+    loadVoices();
+    setTimeout(loadVoices, 600);
   }
 
-  function selectPreferredVoices(){
-    // nomes em lower-case pra comparar
-    const jaPrefs = ['google 日本語','google japanese','kyoko','otoya','siri (japanese','microsoft haruka','microsoft nanami'];
-    const ptbrPrefs = ['google português do brasil','português (brasil','luciana','isabela','vitória','maria (brazil','microsoft maria','microsoft francisca','brazil'];
-    bestJA = pickVoice(jaPrefs,'ja');
-    // tenta lang pt-BR primeiro; se não, pt-PT só como fallback
-    bestPT = voices.find(v => (v.lang||'').toLowerCase().startsWith('pt-br')) ||
-             pickVoice(ptbrPrefs,'pt-br') ||
-             null;
-  }
-
-  function speak(text, lang='ja'){
-    if(!('speechSynthesis' in window) || !text) return;
-    try{ speechSynthesis.cancel(); }catch(_){}
-    const u = new SpeechSynthesisUtterance(text);
-    if(lang==='ja'){
-      u.lang='ja-JP'; u.rate=0.95; u.pitch=1.05; u.volume=1.0;
-      if(bestJA) u.voice = bestJA;
-    }else{
-      u.lang='pt-BR'; u.rate=1.0; u.pitch=1.0; u.volume=1.0;
-      if(bestPT) u.voice = bestPT;
+  function pickVoice(langStartsWith, prefers = []) {
+    if (!voicesReady) loadVoices();
+    const list = voices.filter(v => (v.lang || '').toLowerCase().startsWith(langStartsWith));
+    for (const pref of prefers) {
+      const found = list.find(v => (v.name || '').toLowerCase().includes(pref));
+      if (found) return found;
     }
-    clearTimeout(speak._t); speak._t = setTimeout(()=>speechSynthesis.speak(u), 120);
+    return list[0] || null;
+  }
+
+  function speak(text, opts) {
+    if (!('speechSynthesis' in window)) return;
+    if (!text) return;
+    const u = new SpeechSynthesisUtterance(text);
+    if (opts?.lang) u.lang = opts.lang;
+    if (opts?.rate) u.rate = opts.rate;
+    if (opts?.pitch) u.pitch = opts.pitch;
+    if (opts?.voice) u.voice = opts.voice;
+    try { speechSynthesis.cancel(); } catch {}
+    clearTimeout(speak._t);
+    speak._t = setTimeout(() => speechSynthesis.speak(u), 120);
   }
 
   function romajiToHiragana(input){
     if(!input) return '';
-    let s=input.toLowerCase().trim().replace(/[^a-z0-9 ?!.,-]/g,' ').replace(/\s+/g,' ').trim().replace(/nn/g,'n').replace(/n'(?=[^aeiouy])/g,'n');
+    let s=input.toLowerCase().trim()
+      .replace(/[^a-z0-9 ?!.,-]/g,' ')
+      .replace(/\s+/g,' ')
+      .trim()
+      .replace(/nn/g,'n')
+      .replace(/n'(?=[^aeiouy])/g,'n');
     const yo={'kya':'きゃ','kyu':'きゅ','kyo':'きょ','gya':'ぎゃ','gyu':'ぎゅ','gyo':'ぎょ','sha':'しゃ','shu':'しゅ','sho':'しょ','ja':'じゃ','ju':'じゅ','jo':'じょ','jya':'じゃ','jyu':'じゅ','jyo':'じょ','cha':'ちゃ','chu':'ちゅ','cho':'ちょ','nya':'にゃ','nyu':'にゅ','nyo':'にょ','hya':'ひゃ','hyu':'ひゅ','hyo':'ひょ','bya':'びゃ','byu':'びゅ','byo':'びょ','pya':'ぴゃ','pyu':'ぴゅ','pyo':'ぴょ','mya':'みゃ','myu':'みゅ','myo':'みょ','rya':'りゃ','ryu':'りゅ','ryo':'りょ'};
     const mp={'a':'あ','i':'い','u':'う','e':'え','o':'お','ka':'か','ki':'き','ku':'く','ke':'け','ko':'こ','ga':'が','gi':'ぎ','gu':'ぐ','ge':'げ','go':'ご','sa':'さ','shi':'し','si':'し','su':'す','se':'せ','so':'そ','za':'ざ','ji':'じ','zi':'じ','zu':'ず','ze':'ぜ','zo':'ぞ','ta':'た','chi':'ち','ti':'ち','tsu':'つ','tu':'つ','te':'て','to':'と','da':'だ','di':'ぢ','du':'づ','de':'で','do':'ど','na':'な','ni':'に','nu':'ぬ','ne':'ね','no':'の','ha':'は','hi':'ひ','fu':'ふ','hu':'ふ','he':'へ','ho':'ほ','ba':'ば','bi':'び','bu':'ぶ','be':'べ','bo':'ぼ','pa':'ぱ','pi':'ぴ','pu':'ぷ','pe':'ぺ','po':'ぽ','ma':'ま','mi':'み','mu':'む','me':'め','mo':'も','ya':'や','yu':'ゆ','yo':'よ','ra':'ら','ri':'り','ru':'る','re':'れ','ro':'ろ','wa':'わ','wo':'を','che':'ちぇ','she':'しぇ','je':'じぇ'};
     let out='',i=0; const vow=c=>/[aeiou]/.test(c), cons=c=>/[bcdfghjklmnpqrstvwxyz]/.test(c);
     while(i<s.length){
       if(/\s/.test(s[i])){out+=' '; i++; continue;}
-      if(/[?!.,-]/.test(s[i])){out+=s[i]; i++; continue;}
+      if(/[?!.,-]/.test(s[i])){out+=s[i]); i++; continue;}
       if(i+1<s.length && s[i]===s[i+1] && cons(s[i]) && s[i]!=='n'){out+='っ'; i++; continue;}
       if(s[i]==='n'){const nx=s[i+1]||''; if(!nx||(!vow(nx)&&nx!=='y')){out+='ん'; i++; continue;}}
       const tri=s.slice(i,i+3); if(yo[tri]){out+=yo[tri]; i+=3; continue;}
@@ -333,14 +318,17 @@
     return out.replace(/\s{2,}/g,' ').trim();
   }
 
-  // atalhos de fala
-  function speakJPFromCard(card){
-    const text = (card.kana && isKana(card.kana)) ? card.kana : romajiToHiragana(card.romaji);
-    speak(text,'ja');
+  function speakJP(text){
+    const kana = /[\u3040-\u30ff]/.test(text||'') ? text : romajiToHiragana(text||'');
+    if(!kana) return;
+    const v = pickVoice('ja', ['japanese','ja']);
+    speak(kana, { lang:'ja-JP', rate:0.95, pitch:1.0, voice:v });
   }
-  function speakPTFromCard(card){
-    const txt=(parsePT(card.pt)[0]||card.pt);
-    speak(txt,'pt');
+  function speakPT(text){
+    if(!text) return;
+    const v = pickVoice('pt', ['brazil','brasil','pt-br']);
+    const lang = (v?.lang || '').toLowerCase().startsWith('pt') ? v.lang : 'pt-BR';
+    speak(text, { lang, rate:1.0, pitch:1.0, voice:v });
   }
 
   // ===== STATE =====
@@ -354,7 +342,7 @@
     const cats=new Set(deck.map(c=>c.cat||'geral')); cats.add('todas');
     const sels=[el('#catFilter'), el('#qCat')];
     sels.forEach(sel=>{
-      const cur=sel?.value||'todas'; sel.innerHTML='';
+      const cur=sel.value; sel.innerHTML='';
       [...cats].sort().forEach(c=>{const o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o);});
       sel.value=cats.has(cur)?cur:'todas';
     });
@@ -378,15 +366,13 @@
     const dir = State.direction;
     answer().setAttribute('inputmode', (dir==='PT2ROMAJI') ? 'latin' : 'text');
   }
-
   function renderQuestion(){
     const c=State.current; if(!c){ el('#qMain').textContent='Sem cartas nesta categoria.'; return; }
     const dir=State.direction;
     if(dir==='PT2ROMAJI'){ el('#promptLbl').textContent='Tradução (PT-BR)'; el('#helperLbl').innerHTML='Digite o <b>romaji</b> e pressione Verificar'; el('#qMain').textContent=(parsePT(c.pt)[0]||c.pt);}
     if(dir==='ROMAJI2PT'){ el('#promptLbl').textContent='Romaji'; el('#helperLbl').innerHTML='Digite uma tradução em <b>PT-BR</b> que sirva'; el('#qMain').textContent=c.romaji;}
     if(dir==='HIRA2PT'){ el('#promptLbl').textContent='Hiragana'; el('#helperLbl').innerHTML='Digite uma tradução em <b>PT-BR</b> que sirva'; el('#qMain').textContent=c.kana||romajiToHiragana(c.romaji);}
-    answer().value=''; answer().classList.remove('correct','wrong');
-    const acc=el('#accepted'); acc.style.display='none'; acc.className='center';
+    answer().value=''; answer().classList.remove('correct','wrong'); el('#accepted').style.display='none';
     btnSkip().textContent='Pular'; State.lastCorrect=false;
     adjustInputMode(); setLocked(false);
   }
@@ -413,23 +399,20 @@
   // estados do botão verificar
   answer().addEventListener('input', ()=> btnCheck().disabled = !answer().value.trim());
 
-  // verificar + pular/próximo
   function checkAnswer(){
     const c=State.current; if(!c) return;
-    const user=normBasic(answer().value); let ok=false, html='';
+    const user=normBasic(answer().value); let ok=false, feedback='';
     if(State.direction==='PT2ROMAJI'){
       ok = !!user && user===normBasic(c.romaji);
-      html = `Correto: <b>${c.romaji}</b><br><small>Traduções: ${parsePT(c.pt).join(' / ')}</small>`;
+      feedback = `Romaji correto: <b>${c.romaji}</b> • <small>Traduções: ${parsePT(c.pt).join(' / ')}</small>`;
     } else {
-      const acc=new Set(parsePT(c.pt));
-      ok = !!user && acc.has(user);
-      html = `Romaji: <b>${c.romaji}</b><br><small>Traduções aceitas: ${[...acc].join(' / ')}</small>`;
+      const acc=new Set(parsePT(c.pt)); ok = !!user && acc.has(user);
+      feedback = `Aceitas: <small>${[...acc].join(' / ')}</small>`;
     }
     answer().classList.remove('correct','wrong'); answer().classList.add(ok?'correct':'wrong');
-    const acc=el('#accepted');
-    acc.innerHTML=html; acc.style.display='block'; acc.className='center result ' + (ok?'ok':'err');
+    el('#accepted').innerHTML=feedback; el('#accepted').style.display='block';
     toast(ok?'✔ Correto!':'✘ Quase!'); flash(ok?'Correto!':'Quase...', ok);
-    if(ok){ c.ok++; State.lastCorrect=true; btnSkip().textContent='Próximo'; setLocked(true); speakJPFromCard(c); } else { c.err++; State.lastCorrect=false; btnSkip().textContent='Pular'; }
+    if(ok){ c.ok++; State.lastCorrect=true; btnSkip().textContent='Próximo'; setLocked(true); } else { c.err++; State.lastCorrect=false; btnSkip().textContent='Pular'; }
     saveDeck();
   }
   btnCheck().addEventListener('click', checkAnswer);
@@ -442,12 +425,11 @@
       else checkAnswer();
     }
   });
-
   btnSkip().addEventListener('click', pickNext);
 
   // áudio study
-  el('#speakJP').addEventListener('click', ()=>{ const c=State.current; if(!c) return; speakJPFromCard(c); });
-  el('#speakPT').addEventListener('click', ()=>{ const c=State.current; if(!c) return; speakPTFromCard(c); });
+  el('#speakJP').addEventListener('click', ()=>{ const c=State.current; if(!c) return; const text=c.kana && isKana(c.kana) ? c.kana : c.romaji; speakJP(text); });
+  el('#speakPT').addEventListener('click', ()=>{ const c=State.current; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
 
   // ===== QUIZ =====
   function buildChoices(card, dir, cat){
@@ -477,9 +459,10 @@
       const b=document.createElement('button'); b.className='choice'; b.textContent=text; b.setAttribute('tabindex','0');
       b.addEventListener('click', ()=>{
         if(b.disabled) return;
-        // toca áudio da alternativa clicada
-        if(dir==='PT2ROMAJI'){ speak( (isKana(text)? text : romajiToHiragana(text)) ,'ja'); }
-        else { speak(text,'pt'); }
+
+        // Toca áudio da alternativa clicada (Duolingo vibe)
+        if (Quiz.direction === 'PT2ROMAJI') speakJP(text);
+        else speakPT(text);
 
         const isCorrect = text===correct;
         b.classList.add(isCorrect?'correct':'wrong');
@@ -507,6 +490,10 @@
       if(btn && !btn.disabled) btn.click();
     }
   });
+
+  // áudio quiz (botões dedicados)
+  el('#qSpeakJP').addEventListener('click', ()=>{ const c=Quiz.current; if(!c) return; const text=c.kana&&isKana(c.kana)?c.kana:c.romaji; speakJP(text); });
+  el('#qSpeakPT').addEventListener('click', ()=>{ const c=Quiz.current; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
 
   // ===== ADD / BULK =====
   function parseBulk(text){
