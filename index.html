@@ -11,26 +11,30 @@
       color-scheme: dark;
       --bg:#0b0f14; --card:#111827; --muted:#9fb3c8; --text:#e7eef7;
       --accent:#43b6ff; --accent2:#7cffad; --danger:#ff6b6b; --warn:#ffd166; --stroke:#223047;
-      --radius:16px; --maxw:880px;
+      --radius:16px; --maxw:860px;
     }
     *{box-sizing:border-box}
     html,body{height:100%; margin:0; background:var(--bg); font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;}
     body{min-height:100svh; -webkit-text-size-adjust:100%;}
     .app{ min-height:100svh; display:flex; flex-direction:column; align-items:center;
       padding: env(safe-area-inset-top) 12px calc(12px + env(safe-area-inset-bottom)) 12px; gap:12px; }
-    header, .card, .toolbar, .section { width:100%; max-width:var(--maxw); }
+    header, .card, .tabs, .section { width:100%; max-width:var(--maxw); }
     header{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px; }
     .brand{font-weight:800; color:var(--text); font-size:18px}
     .progress{height:8px; background:#0f1422; border-radius:999px; overflow:hidden; flex:1; margin:0 10px; border:1px solid rgba(255,255,255,.06)}
     .progress > i{display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2))}
     .streak{color:var(--muted); font-weight:600; font-size:12px; white-space:nowrap}
-    nav.tabs{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-    .tab{ padding:12px; text-align:center; background:#0f1422; color:var(--text);
+    .tabs{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .tab{ padding:10px 12px; text-align:center; background:#0f1422; color:var(--text);
       border-radius:12px; border:1px solid rgba(255,255,255,.06); font-weight:700; }
     .tab.active{ background:var(--accent); color:#05121d; border-color:rgba(67,182,255,.5) }
     .card{ background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:var(--radius);
       padding:18px; display:flex; flex-direction:column; gap:16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
-    .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center }
+    .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between }
+    .seg{ display:inline-flex; padding:4px; gap:4px; border-radius:14px; background:#0f1422; border:1px solid rgba(255,255,255,.06) }
+    .seg input{display:none}
+    .seg label{ padding:8px 12px; border-radius:10px; font-weight:800; color:var(--text); cursor:pointer; }
+    .seg input:checked + label{ background:var(--accent); color:#05121d; }
     .prompt{ text-align:center; color:var(--muted); font-weight:700; letter-spacing:.3px; }
     .question{ text-align:center; color:var(--text); font-weight:900; font-size: clamp(20px, 6.5vw, 40px); word-break:break-word; }
     .inputRow{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center; }
@@ -39,26 +43,19 @@
       border-radius:14px; padding:0 14px; color:var(--text); font-size:18px; font-weight:700; outline:none;
     }
     input.answer:focus{ border-color:var(--accent) }
-    select.select{ height:52px; padding:0 12px; border-radius:14px; background:#0f1422; color:var(--text);
-      border:2px solid var(--stroke); font-weight:700 }
     .btn{ height:52px; padding:0 16px; border-radius:14px; font-weight:800; border:1px solid rgba(255,255,255,.08);
       background:var(--accent); color:#05121d; }
-    .btn.secondary{ background:#1f2937; color:var(--text) }
+    .btn.secondary{ background:#1f2937; color:#e7eef7 }
     .btn.warn{ background:var(--warn); color:#2a1b00 }
     .btn.good{ background:var(--accent2); color:#04210f }
     .btn.danger{ background:var(--danger); color:#2a0000 }
     .center{display:flex; justify-content:center; gap:10px; flex-wrap:wrap}
     .helper{ color:var(--muted); text-align:center; font-size:13px }
-    .pillRow{display:flex; gap:8px; flex-wrap:wrap; justify-content:center}
-    .pill{ padding:8px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.08); background:#0f1422; color:var(--text); font-weight:700; font-size:13px }
-    .pill.active{ background:var(--accent); color:#05121d; border-color:rgba(67,182,255,.5)}
-    .toolbar{ display:flex; gap:8px; flex-wrap:wrap; justify-content:space-between; align-items:center; color:var(--muted); font-weight:600; font-size:12px; }
-    .toolbar .left, .toolbar .right{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
     .section{display:none}
     .section.active{display:block}
     textarea.bulk{
       width:100%; min-height:200px; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.08);
-      background:#0f1422; color:var(--text); font: 500 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background:#0f1422; color:#e7eef7; font: 500 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
     table.list{width:100%; border-collapse:separate; border-spacing:0 6px}
     table.list th, table.list td{padding:10px 12px; text-align:left; font-size:14px}
@@ -69,11 +66,11 @@
     .kudos{ color:var(--muted); text-align:center; font-size:12px; padding:8px }
     .msg{
       position:fixed; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom));
-      background:rgba(0,0,0,.55); color:var(--text); border:1px solid rgba(255,255,255,.15);
+      background:rgba(0,0,0,.55); color:#e7eef7; border:1px solid rgba(255,255,255,.15);
       border-radius:12px; padding:10px 12px; font-weight:700; text-align:center;
       max-width:var(--maxw); margin:0 auto;
     }
-    button, input, textarea, select { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+    button, input, textarea { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   </style>
 </head>
 <body>
@@ -84,28 +81,21 @@
       <div class="streak" id="streak">Streak: 0</div>
     </header>
 
-    <nav class="tabs" id="tabs">
+    <div class="tabs">
       <button class="tab active" data-tab="study">Estudar</button>
-      <button class="tab" data-tab="quiz">Quiz</button>
       <button class="tab" data-tab="add">Adicionar</button>
       <button class="tab" data-tab="list">Lista</button>
-    </nav>
+    </div>
 
-    <!-- CONTROLES GERAIS -->
+    <!-- STUDY -->
     <section class="section active" id="study">
       <div class="card">
-        <div class="row" style="justify-content:space-between">
-          <div class="row">
-            <label class="helper" for="direction">Direção:&nbsp;</label>
-            <select id="direction" class="select">
-              <option value="PT2ROMAJI">PT → Romaji</option>
-              <option value="ROMAJI2PT">Romaji → PT</option>
-            </select>
+        <div class="row">
+          <div class="seg" role="tablist" aria-label="Direção">
+            <input id="d1" type="radio" name="dir" value="PT2ROMAJI" checked><label for="d1">PT → Romaji</label>
+            <input id="d2" type="radio" name="dir" value="ROMAJI2PT"><label for="d2">Romaji → PT</label>
           </div>
-          <div class="row">
-            <input id="dictUrl" class="answer" style="height:44px" placeholder="URL do dicionário (JSON)">
-            <button class="btn secondary" id="btnLoadUrl" style="height:44px">Carregar via URL</button>
-          </div>
+          <span class="helper">Meta diária: <b id="goal">20</b></span>
         </div>
 
         <div class="prompt" id="promptLbl">Tradução (PT-BR)</div>
@@ -127,29 +117,6 @@
 
         <div class="center helper" id="accepted" style="display:none"></div>
       </div>
-
-      <div class="toolbar">
-        <div class="left">
-          <span>Meta diária: <b id="goal">20</b></span>
-          <button class="btn secondary" id="btnSkip">Pular</button>
-        </div>
-        <div class="right">
-          <button class="btn secondary" id="btnSeed">Carregar dicionário base (local)</button>
-          <button class="btn secondary" id="btnReset">Zerar progresso</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- QUIZ -->
-    <section class="section" id="quiz">
-      <div class="card">
-        <div class="prompt" id="quizLbl">Escolha a resposta correta</div>
-        <div class="question" id="qQuiz">—</div>
-        <div class="center" id="quizGrid"></div>
-        <div class="center">
-          <button class="btn secondary" id="btnNextQuiz">Próximo ▶</button>
-        </div>
-      </div>
     </section>
 
     <!-- ADD -->
@@ -158,14 +125,14 @@
         <div class="prompt">Adicionar novo card</div>
         <div class="inputRow">
           <input id="inRomaji" class="answer" placeholder="romaji (ex.: arigatou)" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false">
-          <input id="inPT" class="answer" placeholder="traduções (ex.: obrigado; obrigada)">
+          <input id="inPT" class="answer" placeholder="traduções PT (ex.: obrigado; obrigada)">
           <button class="btn" id="btnAdd">Adicionar</button>
         </div>
-        <div class="helper">Dica: separe sinônimos em PT por ponto e vírgula <b>;</b></div>
+        <div class="helper">Dica: separe sinônimos em PT por <b>;</b></div>
       </div>
       <div class="card">
         <div class="prompt">Importar em massa (colar lista)</div>
-        <div class="helper">Formato por linha: <code>romaji ; tradução1 ; tradução2...</code></div>
+        <div class="helper">Formato: <code>romaji ; tradução1 ; tradução2...</code></div>
         <textarea class="bulk" id="bulk" placeholder="konnichiwa ; olá ; boa tarde&#10;arigatou ; obrigado ; obrigada"></textarea>
         <div class="center">
           <button class="btn secondary" id="btnParse">Pré-visualizar</button>
@@ -178,19 +145,24 @@
     <!-- LIST -->
     <section class="section" id="list">
       <div class="card">
-        <div class="prompt">Cartas (toque para remover)</div>
+        <div class="prompt">Cartas (toque para remover) • Importar/Exportar JSON</div>
+        <div class="center" style="gap:8px">
+          <input type="file" id="fileIn" accept=".json" style="display:none">
+          <button class="btn secondary" id="btnImportFile">Importar JSON</button>
+          <button class="btn secondary" id="btnExport">Exportar JSON</button>
+        </div>
         <table class="list" id="table"></table>
       </div>
     </section>
 
-    <div class="kudos">Feito para iOS/Safari • Salva no navegador • Direção PT↔Romaji • Dicionário via URL</div>
+    <div class="kudos">Feito para iOS/Safari • Salva no navegador • Direção PT↔Romaji • Carrega <code>anime_romaji.json</code> automaticamente</div>
     <div class="msg" id="msg" style="display:none"></div>
   </div>
 
   <script>
   // ======= STORAGE & HELPERS =======
-  const LS_DECK = 'romajiDeck_v2';
-  const LS_STATS = 'romajiStats_v2';
+  const LS_DECK = 'romajiDeck_v3';
+  const LS_STATS = 'romajiStats_v3';
 
   const defaultDeck = [
     ["konnichiwa","olá; boa tarde"],
@@ -213,7 +185,7 @@
       .replace(/[\p{P}\p{S}]/gu,' ')
       .replace(/\s+/g,' ').trim();
 
-  function parsePT(pt){ return (pt||'').split(/[|;,\n]/).map(normBasic).filter(Boolean); }
+  const parsePT = pt => (pt||'').split(/[|;,\n]/).map(normBasic).filter(Boolean);
 
   // ======= DECK LOAD/SAVE =======
   function seed(list){
@@ -235,13 +207,9 @@
       ivl: c.ivl||0, reps: c.reps||0, ok:c.ok||0, err:c.err||0, cat:(['dificil','medio','facil'].includes(c.cat)?c.cat:'none')
     }));
   }
-
-  function loadDeck(){
-    try{
-      const raw = JSON.parse(localStorage.getItem(LS_DECK));
-      if(Array.isArray(raw)) return migrate(raw);
-    }catch(e){}
-    return seed(defaultDeck.slice());
+  function loadDeckLS(){
+    try{ const raw = JSON.parse(localStorage.getItem(LS_DECK)); if(Array.isArray(raw)) return migrate(raw); }catch(e){}
+    return null;
   }
   function saveDeck(){ localStorage.setItem(LS_DECK, JSON.stringify(deck)); }
 
@@ -270,20 +238,19 @@
     card.reps++; card.due = addDays(toISO(), card.ivl);
   }
 
-  // ======= STATE & UI =======
-  let deck = loadDeck();
+  // ======= STATE =======
+  let deck = loadDeckLS();
   let stats = loadStats();
   rollover();
 
   const State = {
     mode: 'study',
-    direction: 'PT2ROMAJI', // PT→Romaji | ROMAJI2PT
+    direction: 'PT2ROMAJI', // PT→Romaji | ROMAJI→PT
     current: null,
-    input: '',
-    showAnswer: false,
-    quiz: {current:null, options:[], correctIndex:-1, selectedIndex:-1}
+    showAnswer: false
   };
 
+  // ======= UI =======
   const el = s => document.querySelector(s);
   const els = s => [...document.querySelectorAll(s)];
   const toastEl = el('#msg');
@@ -302,32 +269,29 @@
       els('.section').forEach(s=>s.classList.remove('active'));
       el('#'+tab).classList.add('active');
       State.mode = tab;
-      if(tab==='study'){ pickNext(); }
-      if(tab==='quiz'){ startQuizQuestion(); }
-      if(tab==='list'){ renderTable(); }
+      if(tab==='study') pickNext();
+      if(tab==='list') renderTable();
     });
   });
 
   // Direção
-  el('#direction').addEventListener('change', ()=>{
-    State.direction = el('#direction').value;
-    applyDirectionLabels();
-    if(State.mode==='study') pickNext();
-    if(State.mode==='quiz') startQuizQuestion();
+  els('input[name="dir"]').forEach(r=>{
+    r.addEventListener('change', ()=>{
+      State.direction = r.value;
+      applyDirectionLabels();
+      if(State.mode==='study') pickNext();
+    });
   });
 
   function applyDirectionLabels(){
-    const dir = State.direction;
-    if(dir==='PT2ROMAJI'){
+    if(State.direction==='PT2ROMAJI'){
       el('#promptLbl').textContent = 'Tradução (PT-BR)';
       el('#helperLbl').innerHTML = 'Digite o <b>romaji</b> e pressione Verificar';
       el('#answer').placeholder = 'ex.: konnichiwa';
-      el('#quizLbl').textContent = 'Escolha o romaji correto';
-    }else{
+    } else {
       el('#promptLbl').textContent = 'Romaji';
       el('#helperLbl').innerHTML = 'Digite uma tradução em <b>PT-BR</b> que sirva';
       el('#answer').placeholder = 'ex.: olá';
-      el('#quizLbl').textContent = 'Escolha a tradução (PT) correta';
     }
   }
 
@@ -339,14 +303,13 @@
     el('#goal').textContent = String(stats.dailyGoal||20);
   }
 
-  // ======= STUDY (com direção) =======
-  function toISOtoday(){ return toISO(); }
-  function dueCards(){ const t=toISOtoday(); return deck.filter(c => (c.due||t) <= t); }
+  // ======= STUDY =======
+  function dueCards(){ const t=toISO(); return deck.filter(c => (c.due||t) <= t); }
 
   function pickNext(){
     const d = dueCards();
     State.current = d.length ? d[Math.floor(Math.random()*d.length)] : null;
-    State.showAnswer=false; State.input=''; el('#answer').value='';
+    State.showAnswer=false; el('#answer').value='';
     if(State.current){
       if(State.direction==='PT2ROMAJI'){
         const opts = parsePT(State.current.pt);
@@ -357,7 +320,7 @@
       el('#accepted').style.display='none';
       el('#afterCheck').style.display='none';
     } else {
-      el('#qMain').textContent = 'Nenhum card devido. Use Quiz, adicione cartas ou volte depois.';
+      el('#qMain').textContent = 'Nenhum card devido. Adicione cartas na aba “Adicionar”.';
     }
     renderHeader();
   }
@@ -367,29 +330,25 @@
     const user = normBasic(el('#answer').value);
     let ok=false, feedback='';
     if(State.direction==='PT2ROMAJI'){
-      ok = user && (user === normBasic(State.current.romaji));
+      ok = !!user && (user === normBasic(State.current.romaji));
       feedback = `Correto: <b>${State.current.romaji}</b><br><small>Traduções: ${parsePT(State.current.pt).join(' / ')}</small>`;
     }else{
-      const acc = parsePT(State.current.pt);
-      ok = user && acc.includes(user);
-      feedback = `Romaji: <b>${State.current.romaji}</b><br><small>Traduções aceitas: ${acc.join(' / ')}</small>`;
+      const acc = new Set(parsePT(State.current.pt));
+      ok = !!user && acc.has(user);
+      feedback = `Romaji: <b>${State.current.romaji}</b><br><small>Traduções aceitas: ${[...acc].join(' / ')}</small>`;
     }
     State.showAnswer = true;
     el('#accepted').innerHTML = feedback; el('#accepted').style.display='block'; el('#afterCheck').style.display='flex';
     toast(ok? '✔ Correto! Agora marque a dificuldade.' : '✘ Quase! Confirme e marque a dificuldade.');
+    // salva flag de acerto/erro para a nota
+    el('#afterCheck').dataset.ok = ok ? '1' : '0';
   }
 
   function grade(level){
     if(!State.current) return;
     State.current.cat = (level===0?'dificil':level===1?'medio':'facil');
-    const user = normBasic(el('#answer').value);
-    let isCorrect=false;
-    if(State.direction==='PT2ROMAJI'){
-      isCorrect = user === normBasic(State.current.romaji);
-    }else{
-      isCorrect = parsePT(State.current.pt).includes(user);
-    }
-    if(isCorrect) State.current.ok++; else State.current.err++;
+    const wasOk = el('#afterCheck').dataset.ok === '1';
+    if(wasOk) State.current.ok++; else State.current.err++;
     schedule(State.current, level);
     saveDeck();
     stats.studiedToday=(stats.studiedToday||0)+1; stats.lastStudy=toISO(); if(!stats.streak) stats.streak=1; saveStats();
@@ -401,70 +360,6 @@
   el('#bHard').addEventListener('click', ()=>grade(0));
   el('#bMed').addEventListener('click',  ()=>grade(1));
   el('#bEasy').addEventListener('click', ()=>grade(2));
-  el('#btnSkip').addEventListener('click', pickNext);
-
-  // ======= QUIZ (espelha a direção) =======
-  function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} }
-
-  function startQuizQuestion(){
-    if(deck.length<1){ el('#qQuiz').textContent='Sem cartas. Adicione algumas em “Adicionar”.'; el('#quizGrid').innerHTML=''; return; }
-    const idx = Math.floor(Math.random()*deck.length);
-    const card = deck[idx];
-
-    let shown, options=[], correct='';
-
-    if(State.direction==='PT2ROMAJI'){
-      const accPT = parsePT(card.pt);
-      shown = accPT[Math.floor(Math.random()*Math.max(1,accPT.length))] || card.pt;
-      correct = card.romaji;
-      const others = deck.filter((_,i)=>i!==idx); shuffle(others);
-      const used=new Set([normBasic(correct)]);
-      options=[correct];
-      for(const c of others){ const r=c.romaji, n=normBasic(r); if(!used.has(n)){ used.add(n); options.push(r); } if(options.length>=4) break; }
-    } else {
-      shown = card.romaji;
-      const accPT = parsePT(card.pt);
-      correct = accPT[0] || card.pt;
-      const others = deck.filter((_,i)=>i!==idx); shuffle(others);
-      const used = new Set([normBasic(correct)]);
-      options=[correct];
-      for(const c of others){
-        const list = parsePT(c.pt);
-        if(list.length){
-          const cand = list[0];
-          const n = normBasic(cand);
-          if(!used.has(n)){ used.add(n); options.push(cand); }
-        }
-        if(options.length>=4) break;
-      }
-    }
-
-    while(options.length<4) options.push('—');
-    const order=[0,1,2,3]; shuffle(order);
-    const correctIndex = order.indexOf(0);
-    const shuffled = order.map(i=>options[i]);
-
-    el('#qQuiz').textContent = shown;
-    State.quiz = {current:card, options:shuffled, correctIndex, selectedIndex:-1};
-    renderQuizOptions();
-  }
-
-  function renderQuizOptions(){
-    const grid = el('#quizGrid'); grid.innerHTML='';
-    State.quiz.options.forEach((opt,i)=>{
-      const b = document.createElement('button');
-      b.className='btn secondary'; b.style.minWidth='140px'; b.textContent = opt;
-      b.addEventListener('click', ()=>{
-        if(State.quiz.selectedIndex!==-1) return;
-        State.quiz.selectedIndex=i;
-        const ok = i===State.quiz.correctIndex;
-        b.className = 'btn ' + (ok?'good':'danger');
-        toast(ok?'✔ Correto!':'✘ Erro.');
-      });
-      grid.appendChild(b);
-    });
-  }
-  el('#btnNextQuiz').addEventListener('click', startQuizQuestion);
 
   // ======= ADD / BULK =======
   function parseBulk(text){
@@ -477,7 +372,6 @@
     });
     return out;
   }
-
   el('#btnAdd').addEventListener('click', ()=>{
     const r = normBasic(el('#inRomaji').value);
     const p = normBasic(el('#inPT').value);
@@ -488,30 +382,26 @@
     saveDeck(); el('#inRomaji').value=''; el('#inPT').value='';
     toast('Card adicionado!');
   });
-
   el('#btnParse').addEventListener('click', ()=>{
     const arr = parseBulk(el('#bulk').value);
     el('#preview').innerHTML = arr.length ? `Pronto para importar: <b>${arr.length}</b> linha(s).` : 'Nada válido encontrado.';
   });
-
   el('#btnImport').addEventListener('click', ()=>{
     const arr = parseBulk(el('#bulk').value);
     if(!arr.length){ toast('Nada válido para importar'); return; }
     let added=0, skipped=0;
     const have = new Set(deck.map(c=>normBasic(c.romaji)));
-    const seen = new Set();
     for(const it of arr){
-      const key = normBasic(it.romaji);
-      if(!key || !it.pt){ skipped++; continue; }
-      if(have.has(key) || seen.has(key)){ skipped++; continue; }
-      deck.push({id:String(Date.now()+Math.random()*9999), romaji:key, pt:normBasic(it.pt), due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'});
-      have.add(key); seen.add(key); added++;
+      const r = normBasic(it.romaji), p = normBasic(it.pt);
+      if(!r || !p || have.has(r)){ skipped++; continue; }
+      deck.push({id:String(Date.now()+Math.random()*9999), romaji:r, pt:p, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'});
+      have.add(r); added++;
     }
     saveDeck(); toast(`Importados: ${added}. Ignorados: ${skipped}.`);
     el('#bulk').value=''; el('#preview').textContent='';
   });
 
-  // ======= LIST =======
+  // ======= LISTA + IMPORT/EXPORT JSON LOCAL =======
   function renderTable(){
     const t = el('#table'); t.innerHTML='';
     const head = `<tr><th>#</th><th>Romaji</th><th>Traduções</th><th>Cat</th><th>Próx.</th><th>✓</th><th>✗</th></tr>`;
@@ -519,66 +409,70 @@
     deck.slice().sort((a,b)=> (a.romaji>b.romaji?1:-1)).forEach((c,i)=>{
       const tr = document.createElement('tr');
       tr.innerHTML = `<td>${i+1}</td><td>${c.romaji}</td><td>${c.pt}</td><td>${c.cat||'none'}</td><td>${c.due||''}</td><td>${c.ok||0}</td><td>${c.err||0}</td>`;
-      tr.addEventListener('click', ()=>{
-        deck = deck.filter(x=>x.id!==c.id); saveDeck(); renderTable(); toast('Removido.');
-      });
+      tr.addEventListener('click', ()=>{ deck = deck.filter(x=>x.id!==c.id); saveDeck(); renderTable(); toast('Removido.'); });
       t.appendChild(tr);
     });
   }
 
-  // ======= DICIONÁRIO VIA URL =======
-  async function loadFromUrl(url){
+  // Import JSON (arquivo local)
+  el('#btnImportFile').addEventListener('click', ()=> el('#fileIn').click());
+  el('#fileIn').addEventListener('change', async (ev)=>{
+    const f = ev.target.files?.[0]; if(!f) return;
     try{
-      const res = await fetch(url, {cache:'no-store'});
-      if(!res.ok) throw new Error('HTTP '+res.status);
-      const data = await res.json();
-      if(!Array.isArray(data)) throw new Error('JSON precisa ser um array');
+      const text = await f.text();
+      const data = JSON.parse(text);
+      if(!Array.isArray(data)) throw new Error('JSON precisa ser um array de objetos {romaji, pt}');
       let added=0, have = new Set(deck.map(c=>normBasic(c.romaji)));
-      data.forEach((obj,i)=>{
-        const r = normBasic(obj.romaji);
-        const p = normBasic(obj.pt);
-        if(!r || !p) return;
-        if(have.has(r)) return;
-        deck.push({id:String(Date.now()+i), romaji:r, pt:p, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'});
+      for(const obj of data){
+        const r = normBasic(obj.romaji), p = normBasic(obj.pt);
+        if(!r || !p || have.has(r)) continue;
+        deck.push({id:String(Date.now()+Math.random()*9999), romaji:r, pt:p, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'});
         have.add(r); added++;
-      });
-      saveDeck(); toast(`Carregado da URL: ${added} itens.`);
-      if(State.mode==='list') renderTable();
-      if(State.mode==='study') pickNext();
-    }catch(err){
-      console.error(err);
-      toast('Falha ao carregar URL (CORS/JSON?)');
-    }
+      }
+      saveDeck(); toast(`Importados do arquivo: ${added}.`); renderTable();
+    }catch(e){ console.error(e); toast('Falha ao importar JSON'); }
+  });
+
+  // Export JSON (baixa arquivo)
+  el('#btnExport').addEventListener('click', ()=>{
+    const data = deck.map(({romaji,pt})=>({romaji,pt}));
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'anime_romaji.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  // ======= LOAD ORDER =======
+  async function hydrateFromJson(){
+    // 1) tenta carregar do arquivo local da mesma pasta
+    try{
+      const res = await fetch('./anime_romaji.json', {cache:'no-store'});
+      if(res.ok){
+        const data = await res.json();
+        if(Array.isArray(data)){
+          let added=0, have = new Set(deck.map(c=>normBasic(c.romaji)));
+          data.forEach((obj,i)=>{
+            const r = normBasic(obj.romaji), p = normBasic(obj.pt);
+            if(!r || !p || have.has(r)) return;
+            deck.push({id:String(Date.now()+i), romaji:r, pt:p, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'});
+            have.add(r); added++;
+          });
+          if(added) saveDeck();
+        }
+      }
+    }catch(e){ /* ignorar: pode estar rodando em file:// */ }
   }
-  el('#btnLoadUrl').addEventListener('click', ()=>{
-    const url = el('#dictUrl').value.trim();
-    if(!url){ toast('Cole uma URL de JSON primeiro'); return; }
-    loadFromUrl(url);
-  });
-
-  // Seed/reset locais
-  el('#btnSeed').addEventListener('click', ()=>{
-    if(!confirm('Carregar dicionário base local? Isto adiciona entradas sem remover as atuais.')) return;
-    const base = seed(defaultDeck);
-    const have = new Set(deck.map(c=>normBasic(c.romaji)));
-    let added=0;
-    base.forEach(b=>{ if(!have.has(normBasic(b.romaji))){ deck.push(b); added++; }});
-    saveDeck(); toast(`Adicionados do dicionário base local: ${added}.`);
-  });
-
-  el('#btnReset').addEventListener('click', ()=>{
-    if(!confirm('Zerar progresso (manter cartas)?')) return;
-    const today = toISO();
-    deck.forEach(c=>{ c.due=today; c.ef=2.5; c.ivl=0; c.reps=0; c.ok=0; c.err=0; c.cat='none'; });
-    saveDeck();
-    stats = {...{streak:0,lastStudy:null,studiedToday:0,dailyGoal:20}, lastStudy:toISO()}; saveStats();
-    renderHeader(); pickNext(); toast('Progresso zerado.');
-  });
 
   // ======= INIT =======
-  applyDirectionLabels();
-  renderHeader();
-  pickNext();
+  (async function init(){
+    if(!deck) deck = seed(defaultDeck);
+    await hydrateFromJson();
+    applyDirectionLabels();
+    renderHeader();
+    pickNext();
+  })();
   </script>
 </body>
 </html>
