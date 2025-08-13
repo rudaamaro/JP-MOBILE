@@ -21,10 +21,14 @@
   header,.card,.tabs,.section{width:100%; max-width:var(--maxw)}
   header{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px}
   .brand{font-weight:800; color:var(--text); font-size:18px}
-  .tabs{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
+
+  /* Tabs */
+  .tabs{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
   .tab{padding:10px 12px; text-align:center; background:#0f1422; color:var(--text);
     border-radius:12px; border:1px solid rgba(255,255,255,.06); font-weight:700}
   .tab.active{background:var(--accent); color:#05121d; border-color:rgba(67,182,255,.5)}
+
+  /* Cards e UI */
   .card{background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:var(--radius);
     padding:18px; display:flex; flex-direction:column; gap:16px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
   .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between}
@@ -61,8 +65,6 @@
   table.list tr{background:#0f1422; border:1px solid rgba(255,255,255,.08)}
   table.list tr td:first-child{border-radius:12px 0 0 12px}
   table.list tr td:last-child{border-radius:0 12px 12px 0}
-
-  /* col classes */
   .col-idx{width:48px}
   .col-romaji{width:28%}
   .col-kana{width:22%}
@@ -70,18 +72,26 @@
   .col-cat{width:12%}
   .col-ok,.col-err{width:48px; text-align:right}
 
-  /* MOBILE: enxuga colunas e reduz fontes/padding */
+  /* === QUIZ === */
+  .choices{display:grid; grid-template-columns:repeat(2,minmax(160px,1fr)); gap:10px}
+  .choice{padding:12px; border-radius:12px; border:2px solid var(--stroke); background:#0f1422; color:var(--text); font-weight:800; cursor:pointer}
+  .choice:hover{border-color:var(--accent)}
+  .choice.correct{border-color:var(--accent2)}
+  .choice.wrong{border-color:var(--danger)}
+  .quizActions{display:flex; gap:10px; justify-content:center; margin-top:4px}
+
+  /* MOBILE */
   @media (max-width:600px){
     .brand{font-size:16px}
     .tab{padding:8px 10px}
     .card{padding:14px}
     table.list th,table.list td{font-size:12px; padding:8px 10px}
-    /* esconder # e Hiragana; manter só Romaji / Traduções / Cat / ✓ / ✗ */
     .col-idx,.col-kana{display:none}
     .col-romaji{width:36%}
     .col-pt{width:42%}
     .col-cat{width:14%}
     .col-ok,.col-err{width:40px}
+    .choices{grid-template-columns:1fr}
   }
 </style>
 </head>
@@ -94,7 +104,8 @@
 
   <div class="tabs">
     <button class="tab active" data-tab="study">Estudar</button>
-    <button class="tab" data-tab="add">Adicionar</button>
+    <button class="tab" data-tab="quiz">Quiz</button>
+    <button class="tab" data-tab="add">+</button>
     <button class="tab" data-tab="list">Lista</button>
   </div>
 
@@ -133,6 +144,36 @@
     </div>
   </section>
 
+  <!-- QUIZ -->
+  <section class="section" id="quiz">
+    <div class="card">
+      <div class="row">
+        <div class="seg" aria-label="Direção quiz">
+          <input id="q1" type="radio" name="qdir" value="PT2ROMAJI" checked><label for="q1">PT → Romaji</label>
+          <input id="q2" type="radio" name="qdir" value="ROMAJI2PT"><label for="q2">Romaji → PT</label>
+          <input id="q3" type="radio" name="qdir" value="HIRA2PT"><label for="q3">Hiragana → PT</label>
+        </div>
+        <div class="row" style="gap:6px">
+          <label class="helper" for="qCat">Categoria:&nbsp;</label>
+          <select id="qCat" class="select"><option value="todas">todas</option></select>
+        </div>
+      </div>
+
+      <div class="prompt" id="qPrompt">Pergunta</div>
+      <div class="qRow">
+        <button title="Ouvir Japonês" class="audioBtn" id="qSpeakJP">🔊 JP</button>
+        <div class="question" id="qQuestion">—</div>
+        <button title="Ouvir Português" class="audioBtn" id="qSpeakPT">🔊 PT</button>
+      </div>
+
+      <div class="choices" id="choices"></div>
+      <div class="quizActions">
+        <button class="btn secondary" id="qNext">Próximo</button>
+      </div>
+      <div class="center helper" id="qFeedback" style="display:none"></div>
+    </div>
+  </section>
+
   <!-- ADD -->
   <section class="section" id="add">
     <div class="card">
@@ -167,7 +208,7 @@
     </div>
   </section>
 
-  <div class="kudos">Feito para iOS/Safari • Salva no navegador • Direções PT↔Romaji e Hiragana→PT • Áudio em hiragana • Filtro por categoria • Treino</div>
+  <div class="kudos">Feito para iOS/Safari • Salva no navegador • Direções PT↔Romaji e Hiragana→PT • Áudio em hiragana • Filtro por categoria • Treino + Quiz</div>
   <div class="msg" id="msg" style="display:none"></div>
 </div>
 
@@ -176,7 +217,7 @@
   const DATA_URL = './anime_romaji.json';
 
   // ===== HELPERS / STORAGE =====
-  const LS_DECK = 'romajiDeck_v7';
+  const LS_DECK = 'romajiDeck_v8';
   const defaultDeck = [
     ["konnichiwa","olá; boa tarde","geral","こんにちは"],
     ["ohayou","bom dia","geral","おはよう"],
@@ -235,18 +276,24 @@
 
   // ===== STATE =====
   let deck = loadDeckLS() || seed(defaultDeck);
-  const State = { modeTab:'study', direction:'PT2ROMAJI', catFilter:'todas', current:null };
+  const State = { modeTab:'study', direction:'PT2ROMAJI', catFilter:'todas', current:null, lastCorrect:false };
+  const Quiz = { direction:'PT2ROMAJI', cat:'todas', current:null, choices:[] };
 
-  // ===== UI =====
+  // ===== UI helpers =====
   const el=s=>document.querySelector(s), els=s=>[...document.querySelectorAll(s)];
   function refreshCategoriesUI(){
-    const sel=el('#catFilter'); const cats=new Set(deck.map(c=>c.cat||'geral')); cats.add('todas');
-    const cur=sel.value; sel.innerHTML=''; [...cats].sort().forEach(c=>{const o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o);});
-    sel.value=cats.has(cur)?cur:'todas';
+    const cats=new Set(deck.map(c=>c.cat||'geral')); cats.add('todas');
+    const sels=[el('#catFilter'), el('#qCat')];
+    sels.forEach(sel=>{
+      const cur=sel.value; sel.innerHTML='';
+      [...cats].sort().forEach(c=>{const o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o);});
+      sel.value=cats.has(cur)?cur:'todas';
+    });
   }
-  function filteredByCategory(list){ if(State.catFilter==='todas') return list; return list.filter(c=>(c.cat||'geral')===State.catFilter); }
-  function randomCard(){ const arr=filteredByCategory(deck); return arr.length? arr[Math.floor(Math.random()*arr.length)] : null; }
+  function filteredByCategory(list, cat){ const k = cat || State.catFilter; if(k==='todas') return list; return list.filter(c=>(c.cat||'geral')===k); }
+  function randomCard(cat){ const arr=filteredByCategory(deck,cat); return arr.length? arr[Math.floor(Math.random()*arr.length)] : null; }
 
+  // ===== STUDY =====
   function renderQuestion(){
     const c=State.current; if(!c){ el('#qMain').textContent='Sem cartas nesta categoria.'; return; }
     const dir=State.direction;
@@ -254,6 +301,8 @@
     if(dir==='ROMAJI2PT'){ el('#promptLbl').textContent='Romaji'; el('#helperLbl').innerHTML='Digite uma tradução em <b>PT-BR</b> que sirva'; el('#qMain').textContent=c.romaji;}
     if(dir==='HIRA2PT'){ el('#promptLbl').textContent='Hiragana'; el('#helperLbl').innerHTML='Digite uma tradução em <b>PT-BR</b> que sirva'; el('#qMain').textContent=c.kana||romajiToHiragana(c.romaji);}
     el('#answer').value=''; el('#answer').classList.remove('correct','wrong'); el('#accepted').style.display='none';
+    // botão volta a "Pular"
+    const sk=el('#btnSkip'); sk.textContent='Pular'; State.lastCorrect=false;
   }
   function pickNext(){ State.current = randomCard(); renderQuestion(); }
 
@@ -262,41 +311,106 @@
     b.addEventListener('click',()=>{
       els('.tab').forEach(x=>x.classList.remove('active')); b.classList.add('active');
       const tab=b.dataset.tab; els('.section').forEach(s=>s.classList.remove('active')); el('#'+tab).classList.add('active');
-      State.modeTab=tab; if(tab==='study'){ if(!State.current) pickNext(); else renderQuestion(); } if(tab==='list') renderTable();
+      State.modeTab=tab;
+      if(tab==='study'){ if(!State.current) pickNext(); else renderQuestion(); }
+      if(tab==='quiz'){ startQuizRound(); }
+      if(tab==='list') renderTable();
     });
   });
 
-  // direção (não sorteia nova carta; só muda a visualização)
+  // direção (study) — não troca a carta
   els('input[name="dir"]').forEach(r=>{ r.addEventListener('change',()=>{ State.direction=r.value; renderQuestion(); }); });
 
-  // categoria
+  // categoria (study)
   el('#catFilter').addEventListener('change',()=>{ State.catFilter = el('#catFilter').value; pickNext(); });
 
-  // verificar
+  // verificar + pular/próximo
   function checkAnswer(){
     const c=State.current; if(!c) return;
     const user=normBasic(el('#answer').value); let ok=false, feedback='';
     if(State.direction==='PT2ROMAJI'){
       ok = !!user && user===normBasic(c.romaji);
       feedback = `Romaji correto: <b>${c.romaji}</b> • <small>Traduções: ${parsePT(c.pt).join(' / ')}</small>`;
-    } else { // ROMAJI2PT ou HIRA2PT -> responder PT
+    } else { // ROMAJI2PT ou HIRA2PT
       const acc=new Set(parsePT(c.pt)); ok = !!user && acc.has(user);
       feedback = `Aceitas: <small>${[...acc].join(' / ')}</small>`;
     }
     const ans=el('#answer'); ans.classList.remove('correct','wrong'); ans.classList.add(ok?'correct':'wrong');
     el('#accepted').innerHTML=feedback; el('#accepted').style.display='block';
     toast(ok?'✔ Correto!':'✘ Quase!');
-    if(ok) c.ok++; else c.err++; saveDeck();
+    if(ok){ c.ok++; State.lastCorrect=true; el('#btnSkip').textContent='Próximo'; } else { c.err++; State.lastCorrect=false; el('#btnSkip').textContent='Pular'; }
+    saveDeck();
   }
   el('#btnCheck').addEventListener('click', checkAnswer);
   el('#answer').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); checkAnswer(); }});
-  el('#btnSkip').addEventListener('click', pickNext);
-
-  // áudio
+  el('#btnSkip').addEventListener('click', ()=>{ pickNext(); });
+  // áudio study
   el('#speakJP').addEventListener('click', ()=>{ const c=State.current; if(!c) return; const text=c.kana && isKana(c.kana) ? c.kana : c.romaji; speakJP(text); });
   el('#speakPT').addEventListener('click', ()=>{ const c=State.current; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
 
-  // ADD / BULK
+  // ===== QUIZ =====
+  function buildChoices(card, dir, cat){
+    // cria 3 erradas + 1 correta, sem repetir
+    const pool=filteredByCategory(deck,cat).filter(c=>c.id!==card.id);
+    function pickWrong(n){
+      const arr=[]; const used=new Set();
+      while(arr.length<n && pool.length){
+        const it=pool[Math.floor(Math.random()*pool.length)];
+        const key = dir==='PT2ROMAJI' ? it.romaji : parsePT(it.pt)[0]||it.pt;
+        if(used.has(key)) continue;
+        used.add(key); arr.push(key);
+      }
+      return arr;
+    }
+    const correct = dir==='PT2ROMAJI' ? card.romaji : (parsePT(card.pt)[0]||card.pt);
+    const wrong = pickWrong(3);
+    const all = wrong.concat(correct);
+    // embaralha
+    for(let i=all.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [all[i],all[j]]=[all[j],all[i]];}
+    return {options:all, correct};
+  }
+  function renderQuiz(){
+    const c=Quiz.current; if(!c){ el('#qQuestion').textContent='Sem cartas nesta categoria.'; el('#choices').innerHTML=''; return;}
+    const dir=Quiz.direction, cat=Quiz.cat;
+    // pergunta
+    if(dir==='PT2ROMAJI'){ el('#qPrompt').textContent='Tradução (PT-BR)'; el('#qQuestion').textContent=(parsePT(c.pt)[0]||c.pt); }
+    if(dir==='ROMAJI2PT'){ el('#qPrompt').textContent='Romaji'; el('#qQuestion').textContent=c.romaji; }
+    if(dir==='HIRA2PT'){ el('#qPrompt').textContent='Hiragana'; el('#qQuestion').textContent=c.kana||romajiToHiragana(c.romaji); }
+
+    // choices
+    const {options, correct}=buildChoices(c, dir, cat);
+    Quiz.choices = options;
+    const wrap=el('#choices'); wrap.innerHTML='';
+    options.forEach(text=>{
+      const b=document.createElement('button'); b.className='choice'; b.textContent=text;
+      b.addEventListener('click', ()=>{
+        const isCorrect = text===correct;
+        b.classList.add(isCorrect?'correct':'wrong');
+        if(isCorrect){ c.ok++; toast('✔ Correto!'); } else { c.err++; toast('✘ Quase!'); }
+        saveDeck();
+        // desabilita e revela correta
+        [...wrap.children].forEach(btn=>{
+          btn.disabled=true;
+          if(btn.textContent===correct) btn.classList.add('correct');
+        });
+      });
+      wrap.appendChild(b);
+    });
+    el('#qFeedback').style.display='none';
+  }
+  function startQuizRound(){
+    Quiz.current = randomCard(Quiz.cat);
+    renderQuiz();
+  }
+  // eventos quiz
+  els('input[name="qdir"]').forEach(r=>{ r.addEventListener('change',()=>{ Quiz.direction=r.value; renderQuiz(); }); });
+  el('#qCat').addEventListener('change',()=>{ Quiz.cat=el('#qCat').value; startQuizRound(); });
+  el('#qNext').addEventListener('click', startQuizRound);
+  // áudio quiz
+  el('#qSpeakJP').addEventListener('click', ()=>{ const c=Quiz.current; if(!c) return; const text=c.kana&&isKana(c.kana)?c.kana:c.romaji; speakJP(text); });
+  el('#qSpeakPT').addEventListener('click', ()=>{ const c=Quiz.current; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
+
+  // ===== ADD / BULK =====
   function parseBulk(text){
     const out=[]; (text||'').split(/\r?\n/).forEach(line=>{
       line=line.trim(); if(!line) return;
@@ -323,7 +437,7 @@
     saveDeck(); refreshCategoriesUI(); toast(`Importados: ${added}. Ignorados: ${skipped}.`); el('#bulk').value=''; el('#preview').textContent='';
   });
 
-  // LISTA
+  // ===== LISTA =====
   function renderTable(){
     const t=el('#table'); t.innerHTML='';
     t.insertAdjacentHTML('beforeend',
@@ -352,7 +466,7 @@
     });
   }
 
-  // JSON remoto
+  // ===== JSON remoto opcional =====
   async function hydrateFromJson(){
     try{
       const res=await fetch(DATA_URL,{cache:'no-store'}); if(!res.ok) return;
@@ -367,14 +481,15 @@
     }catch(e){/* ignore em file:// */}
   }
 
-  // INIT
+  // ===== INIT =====
   (async function init(){
     deck = migrate(deck) || seed(defaultDeck);
     await hydrateFromJson();
     refreshCategoriesUI();
-    // primeira carta
+    // primeira carta (study) e primeira pergunta (quiz)
     State.current = randomCard();
     renderQuestion();
+    Quiz.cat='todas'; startQuizRound();
   })();
 </script>
 </body>
