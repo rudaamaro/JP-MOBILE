@@ -39,41 +39,56 @@
     border:1px solid rgba(255,255,255,.08); font-weight:800}
   .inputRow{display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center}
   input.answer{flex:1 1 320px; max-width:560px; height:52px; background:#0f1422; border:2px solid var(--stroke);
-    border-radius:14px; padding:0 14px; color:var(--text); font-size:18px; font-weight:700; outline:none}
+    border-radius:14px; padding:0 14px; color:#e7eef7; font-size:18px; font-weight:700; outline:none}
   input.answer:focus{border-color:var(--accent)}
   input.answer.correct{border-color:var(--accent2); box-shadow:0 0 0 3px rgba(124,255,173,.15)}
   input.answer.wrong{border-color:var(--danger); box-shadow:0 0 0 3px rgba(255,107,107,.15)}
   select.select{height:44px; padding:0 12px; border-radius:12px; background:#0f1422; color:#e7eef7; border:2px solid var(--stroke); font-weight:700}
   .btn{height:52px; padding:0 16px; border-radius:14px; font-weight:800; border:1px solid rgba(255,255,255,.08); background:var(--accent); color:#05121d}
   .btn.secondary{background:#1f2937; color:#e7eef7}
-  .btn.warn{background:var(--warn); color:#2a1b00}
-  .btn.good{background:var(--accent2); color:#04210f}
-  .btn.danger{background:var(--danger); color:#2a0000}
   .center{display:flex; justify-content:center; gap:10px; flex-wrap:wrap}
   .helper{color:var(--muted); text-align:center; font-size:13px}
   .section{display:none}
   .section.active{display:block}
   textarea.bulk{width:100%; min-height:200px; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.08);
     background:#0f1422; color:#e7eef7; font:500 14px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+  /* === LISTA === */
   .tableWrap{max-width:100%; overflow:auto; border-radius:12px}
-  table.list{width:100%; min-width:720px; border-collapse:separate; border-spacing:0 6px}
-  table.list th,table.list td{padding:10px 12px; text-align:left; font-size:14px}
+  table.list{width:100%; border-collapse:separate; border-spacing:0 6px; table-layout:fixed}
+  table.list th,table.list td{padding:10px 12px; text-align:left; font-size:14px; word-break:break-word; white-space:normal}
   table.list th{color:var(--muted); font-weight:800}
   table.list tr{background:#0f1422; border:1px solid rgba(255,255,255,.08)}
   table.list tr td:first-child{border-radius:12px 0 0 12px}
   table.list tr td:last-child{border-radius:0 12px 12px 0}
-  .kudos{color:var(--muted); text-align:center; font-size:12px; padding:8px}
-  .msg{position:fixed; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom));
-    background:rgba(0,0,0,.55); color:#e7eef7; border:1px solid rgba(255,255,255,.15);
-    border-radius:12px; padding:10px 12px; font-weight:700; text-align:center; max-width:var(--maxw); margin:0 auto}
-  button,input,textarea,select{touch-action:manipulation; -webkit-tap-highlight-color:transparent}
+
+  /* col classes */
+  .col-idx{width:48px}
+  .col-romaji{width:28%}
+  .col-kana{width:22%}
+  .col-pt{width:32%}
+  .col-cat{width:12%}
+  .col-ok,.col-err{width:48px; text-align:right}
+
+  /* MOBILE: enxuga colunas e reduz fontes/padding */
+  @media (max-width:600px){
+    .brand{font-size:16px}
+    .tab{padding:8px 10px}
+    .card{padding:14px}
+    table.list th,table.list td{font-size:12px; padding:8px 10px}
+    /* esconder # e Hiragana; manter só Romaji / Traduções / Cat / ✓ / ✗ */
+    .col-idx,.col-kana{display:none}
+    .col-romaji{width:36%}
+    .col-pt{width:42%}
+    .col-cat{width:14%}
+    .col-ok,.col-err{width:40px}
+  }
 </style>
 </head>
 <body>
 <div class="app" id="app">
   <header>
     <div class="brand">Flashcards — Romaji ↔ PT</div>
-    <div class="helper" aria-label="modo">Treino ∞</div>
     <div class="helper" id="streak">Streak: 0</div>
   </header>
 
@@ -146,11 +161,13 @@
   <section class="section" id="list">
     <div class="card">
       <div class="prompt">Cartas (toque para remover)</div>
-      <div class="tableWrap"><table class="list" id="table"></table></div>
+      <div class="tableWrap">
+        <table class="list" id="table"></table>
+      </div>
     </div>
   </section>
 
-  <div class="kudos">Feito para iOS/Safari • Salva no navegador • Direções PT↔Romaji e Hiragana→PT • Áudio em hiragana • Filtro por categoria • Treino ∞ • Carrega <code>anime_romaji.json</code></div>
+  <div class="kudos">Feito para iOS/Safari • Salva no navegador • Direções PT↔Romaji e Hiragana→PT • Áudio em hiragana • Filtro por categoria • Treino</div>
   <div class="msg" id="msg" style="display:none"></div>
 </div>
 
@@ -159,37 +176,17 @@
   const DATA_URL = './anime_romaji.json';
 
   // ===== HELPERS / STORAGE =====
-  const LS_DECK = 'romajiDeck_v7'; // nova versão
+  const LS_DECK = 'romajiDeck_v7';
   const defaultDeck = [
     ["konnichiwa","olá; boa tarde","geral","こんにちは"],
     ["ohayou","bom dia","geral","おはよう"],
     ["konbanwa","boa noite (cumprimento)","geral","こんばんは"]
   ];
-  const toISO=(d=new Date())=>{const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`;}
   const normBasic=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\([^)]*\)/g,' ').replace(/[\p{P}\p{S}]/gu,' ').replace(/\s+/g,' ').trim();
   const parsePT=pt=>(pt||'').split(/[|;,\n]/).map(normBasic).filter(Boolean);
-  const isKana = s => /[\u3040-\u309f\u30a0-\u30ff]/.test(s||'');
-
-  function seed(list){
-    return list.map(([romaji,pt,cat='geral',kana=''],i)=>({
-      id:String(Date.now()+i),
-      romaji:String(romaji||'').toLowerCase().trim(),
-      pt:String(pt||'').toLowerCase().trim(),
-      cat:String(cat||'geral').toLowerCase().trim(),
-      kana:String(kana||'').trim(),
-      ok:0, err:0
-    }));
-  }
-  function migrate(arr){
-    return arr.map(c=>({
-      id:c.id||String(Date.now()+Math.random()),
-      romaji:String(c.romaji||'').toLowerCase().trim(),
-      pt:String(c.pt||'').toLowerCase().trim(),
-      cat:String(c.cat||'geral').toLowerCase().trim(),
-      kana:String(c.kana||c.hiragana||'').trim(),
-      ok:c.ok||0, err:c.err||0
-    }));
-  }
+  const isKana=s=>/[\u3040-\u309f\u30a0-\u30ff]/.test(s||'');
+  function seed(list){return list.map(([romaji,pt,cat='geral',kana=''],i)=>({id:String(Date.now()+i),romaji:String(romaji||'').toLowerCase().trim(),pt:String(pt||'').toLowerCase().trim(),cat:String(cat||'geral').toLowerCase().trim(),kana:String(kana||'').trim(),ok:0,err:0}));}
+  function migrate(arr){return arr.map(c=>({id:c.id||String(Date.now()+Math.random()),romaji:String(c.romaji||'').toLowerCase().trim(),pt:String(c.pt||'').toLowerCase().trim(),cat:String(c.cat||'geral').toLowerCase().trim(),kana:String(c.kana||c.hiragana||'').trim(),ok:c.ok||0,err:c.err||0}));}
   function loadDeckLS(){try{const raw=JSON.parse(localStorage.getItem(LS_DECK)); if(Array.isArray(raw)) return migrate(raw);}catch(e){} return null;}
   function saveDeck(){localStorage.setItem(LS_DECK, JSON.stringify(deck));}
   function toast(t,ms=1400){const el=document.querySelector('#msg'); el.textContent=t; el.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>el.style.display='none',ms);}
@@ -238,12 +235,7 @@
 
   // ===== STATE =====
   let deck = loadDeckLS() || seed(defaultDeck);
-  const State = {
-    modeTab:'study',
-    direction:'PT2ROMAJI', // PT→Romaji | ROMAJI→PT | HIRA2PT
-    catFilter:'todas',
-    current:null
-  };
+  const State = { modeTab:'study', direction:'PT2ROMAJI', catFilter:'todas', current:null };
 
   // ===== UI =====
   const el=s=>document.querySelector(s), els=s=>[...document.querySelectorAll(s)];
@@ -263,7 +255,6 @@
     if(dir==='HIRA2PT'){ el('#promptLbl').textContent='Hiragana'; el('#helperLbl').innerHTML='Digite uma tradução em <b>PT-BR</b> que sirva'; el('#qMain').textContent=c.kana||romajiToHiragana(c.romaji);}
     el('#answer').value=''; el('#answer').classList.remove('correct','wrong'); el('#accepted').style.display='none';
   }
-
   function pickNext(){ State.current = randomCard(); renderQuestion(); }
 
   // tabs
@@ -276,9 +267,7 @@
   });
 
   // direção (não sorteia nova carta; só muda a visualização)
-  els('input[name="dir"]').forEach(r=>{
-    r.addEventListener('change',()=>{ State.direction=r.value; renderQuestion(); });
-  });
+  els('input[name="dir"]').forEach(r=>{ r.addEventListener('change',()=>{ State.direction=r.value; renderQuestion(); }); });
 
   // categoria
   el('#catFilter').addEventListener('change',()=>{ State.catFilter = el('#catFilter').value; pickNext(); });
@@ -297,8 +286,6 @@
     const ans=el('#answer'); ans.classList.remove('correct','wrong'); ans.classList.add(ok?'correct':'wrong');
     el('#accepted').innerHTML=feedback; el('#accepted').style.display='block';
     toast(ok?'✔ Correto!':'✘ Quase!');
-
-    // conta simples (sem SRS)
     if(ok) c.ok++; else c.err++; saveDeck();
   }
   el('#btnCheck').addEventListener('click', checkAnswer);
@@ -306,23 +293,17 @@
   el('#btnSkip').addEventListener('click', pickNext);
 
   // áudio
-  el('#speakJP').addEventListener('click', ()=>{
-    const c=State.current; if(!c) return; const text = c.kana && isKana(c.kana) ? c.kana : c.romaji; speakJP(text);
-  });
-  el('#speakPT').addEventListener('click', ()=>{
-    const c=State.current; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt);
-  });
+  el('#speakJP').addEventListener('click', ()=>{ const c=State.current; if(!c) return; const text=c.kana && isKana(c.kana) ? c.kana : c.romaji; speakJP(text); });
+  el('#speakPT').addEventListener('click', ()=>{ const c=State.current; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
 
   // ADD / BULK
   function parseBulk(text){
     const out=[]; (text||'').split(/\r?\n/).forEach(line=>{
       line=line.trim(); if(!line) return;
       const parts=line.split(/\t|\s*;\s*/).map(s=>s.trim()).filter(Boolean);
-      let cat='', kana='';
-      if(parts.length && /[\u3040-\u309f]/.test(parts[parts.length-1])) kana=parts.pop();
+      let cat='', kana=''; if(parts.length && /[\u3040-\u309f]/.test(parts[parts.length-1])) kana=parts.pop();
       if(parts.length && parts[parts.length-1].startsWith('#')) cat=parts.pop().slice(1);
-      if(parts.length<2) return;
-      const [romaji,...rest]=parts; out.push({romaji,pt:rest.join(';'),cat,kana});
+      if(parts.length<2) return; const [romaji,...rest]=parts; out.push({romaji,pt:rest.join(';'),cat,kana});
     }); return out;
   }
   function addCard(r,p,cat,kana){
@@ -345,12 +326,28 @@
   // LISTA
   function renderTable(){
     const t=el('#table'); t.innerHTML='';
-    const head=`<tr><th>#</th><th>Romaji</th><th>Hiragana</th><th>Traduções</th><th>Cat</th><th>✓</th><th>✗</th></tr>`;
-    t.insertAdjacentHTML('beforeend', head);
+    t.insertAdjacentHTML('beforeend',
+      `<tr>
+        <th class="col-idx">#</th>
+        <th class="col-romaji">Romaji</th>
+        <th class="col-kana">Hiragana</th>
+        <th class="col-pt">Traduções</th>
+        <th class="col-cat">Cat</th>
+        <th class="col-ok">✓</th>
+        <th class="col-err">✗</th>
+      </tr>`);
     deck.slice().sort((a,b)=>a.romaji>b.romaji?1:-1).forEach((c,i)=>{
       const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${i+1}</td><td>${c.romaji}</td><td>${c.kana||''}</td><td>${c.pt}</td><td>${c.cat||'geral'}</td><td>${c.ok||0}</td><td>${c.err||0}</td>`;
-      tr.title='Toque para remover'; tr.addEventListener('click',()=>{ deck=deck.filter(x=>x.id!==c.id); saveDeck(); renderTable(); refreshCategoriesUI(); toast('Removido.');});
+      tr.innerHTML=
+        `<td class="col-idx">${i+1}</td>
+         <td class="col-romaji">${c.romaji}</td>
+         <td class="col-kana">${c.kana||''}</td>
+         <td class="col-pt">${c.pt}</td>
+         <td class="col-cat">${c.cat||'geral'}</td>
+         <td class="col-ok" style="text-align:right">${c.ok||0}</td>
+         <td class="col-err" style="text-align:right">${c.err||0}</td>`;
+      tr.title='Toque para remover';
+      tr.addEventListener('click',()=>{ deck=deck.filter(x=>x.id!==c.id); saveDeck(); renderTable(); refreshCategoriesUI(); toast('Removido.');});
       t.appendChild(tr);
     });
   }
@@ -364,7 +361,7 @@
       data.forEach((obj,i)=>{
         const r=normBasic(obj.romaji), p=Array.isArray(obj.pt)?obj.pt.join(';'):String(obj.pt||''), c=String(obj.cat||'geral').toLowerCase(), k=String(obj.kana||obj.hiragana||'').trim();
         if(!r||!p||have.has(r)) return;
-        deck.push({id:String(Date.now()+i), romaji:r, pt:normBasic(p), cat:c, kana:k, ok:0, err:0}); have.add(r); added++;
+        deck.push({id:String(Date.now()+i), romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k, ok:0, err:0}); have.add(r); added++;
       });
       if(added){ saveDeck(); refreshCategoriesUI(); }
     }catch(e){/* ignore em file:// */}
@@ -372,10 +369,12 @@
 
   // INIT
   (async function init(){
-    deck = migrate(deck);
+    deck = migrate(deck) || seed(defaultDeck);
     await hydrateFromJson();
     refreshCategoriesUI();
-    pickNext();
+    // primeira carta
+    State.current = randomCard();
+    renderQuestion();
   })();
 </script>
 </body>
