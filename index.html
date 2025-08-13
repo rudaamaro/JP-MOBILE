@@ -2,7 +2,6 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <!-- Mobile-first e Safari iOS -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -17,52 +16,33 @@
     *{box-sizing:border-box}
     html,body{height:100%; margin:0; background:var(--bg); font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;}
     body{min-height:100svh; -webkit-text-size-adjust:100%;}
-    .app{
-      min-height:100svh; display:flex; flex-direction:column; align-items:center;
-      padding: env(safe-area-inset-top) 12px calc(12px + env(safe-area-inset-bottom)) 12px;
-      gap:12px;
-    }
+    .app{ min-height:100svh; display:flex; flex-direction:column; align-items:center;
+      padding: env(safe-area-inset-top) 12px calc(12px + env(safe-area-inset-bottom)) 12px; gap:12px; }
     header, .card, .toolbar, .section { width:100%; max-width:var(--maxw); }
-    header{
-      display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px;
-    }
+    header{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px; }
     .brand{font-weight:800; color:var(--text); font-size:18px}
     .progress{height:8px; background:#0f1422; border-radius:999px; overflow:hidden; flex:1; margin:0 10px; border:1px solid rgba(255,255,255,.06)}
     .progress > i{display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2))}
     .streak{color:var(--muted); font-weight:600; font-size:12px; white-space:nowrap}
-    nav.tabs{
-      display:grid; grid-template-columns:repeat(4,1fr); gap:8px;
-    }
-    .tab{
-      padding:12px; text-align:center; background:#0f1422; color:var(--text);
-      border-radius:12px; border:1px solid rgba(255,255,255,.06); font-weight:700;
-    }
+    nav.tabs{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+    .tab{ padding:12px; text-align:center; background:#0f1422; color:var(--text);
+      border-radius:12px; border:1px solid rgba(255,255,255,.06); font-weight:700; }
     .tab.active{ background:var(--accent); color:#05121d; border-color:rgba(67,182,255,.5) }
-    .card{
-      background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:var(--radius);
-      padding:18px; display:flex; flex-direction:column; gap:16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.25);
-    }
-    .prompt{
-      text-align:center; color:var(--muted); font-weight:700; letter-spacing:.3px;
-    }
-    .question{
-      text-align:center; color:var(--text); font-weight:900; font-size: clamp(20px, 6.5vw, 40px);
-      word-break:break-word;
-    }
-    .inputRow{
-      display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center;
-    }
+    .card{ background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:var(--radius);
+      padding:18px; display:flex; flex-direction:column; gap:16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+    .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center }
+    .prompt{ text-align:center; color:var(--muted); font-weight:700; letter-spacing:.3px; }
+    .question{ text-align:center; color:var(--text); font-weight:900; font-size: clamp(20px, 6.5vw, 40px); word-break:break-word; }
+    .inputRow{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center; }
     input.answer{
       flex:1 1 320px; max-width:560px; height:52px; background:#0f1422; border:2px solid var(--stroke);
-      border-radius:14px; padding:0 14px; color:var(--text); font-size:18px; font-weight:700;
-      outline:none;
+      border-radius:14px; padding:0 14px; color:var(--text); font-size:18px; font-weight:700; outline:none;
     }
     input.answer:focus{ border-color:var(--accent) }
-    .btn{
-      height:52px; padding:0 16px; border-radius:14px; font-weight:800; border:1px solid rgba(255,255,255,.08);
-      background:var(--accent); color:#05121d;
-    }
+    select.select{ height:52px; padding:0 12px; border-radius:14px; background:#0f1422; color:var(--text);
+      border:2px solid var(--stroke); font-weight:700 }
+    .btn{ height:52px; padding:0 16px; border-radius:14px; font-weight:800; border:1px solid rgba(255,255,255,.08);
+      background:var(--accent); color:#05121d; }
     .btn.secondary{ background:#1f2937; color:var(--text) }
     .btn.warn{ background:var(--warn); color:#2a1b00 }
     .btn.good{ background:var(--accent2); color:#04210f }
@@ -72,10 +52,7 @@
     .pillRow{display:flex; gap:8px; flex-wrap:wrap; justify-content:center}
     .pill{ padding:8px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.08); background:#0f1422; color:var(--text); font-weight:700; font-size:13px }
     .pill.active{ background:var(--accent); color:#05121d; border-color:rgba(67,182,255,.5)}
-    .toolbar{
-      display:flex; gap:8px; flex-wrap:wrap; justify-content:space-between; align-items:center;
-      color:var(--muted); font-weight:600; font-size:12px;
-    }
+    .toolbar{ display:flex; gap:8px; flex-wrap:wrap; justify-content:space-between; align-items:center; color:var(--muted); font-weight:600; font-size:12px; }
     .toolbar .left, .toolbar .right{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
     .section{display:none}
     .section.active{display:block}
@@ -96,14 +73,13 @@
       border-radius:12px; padding:10px 12px; font-weight:700; text-align:center;
       max-width:var(--maxw); margin:0 auto;
     }
-    /* Botões grandes mais “clicáveis” no iOS */
-    button, input, textarea { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+    button, input, textarea, select { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   </style>
 </head>
 <body>
   <div class="app" id="app">
     <header>
-      <div class="brand">Flashcards — Romaji</div>
+      <div class="brand">Flashcards — Romaji ↔ PT</div>
       <div class="progress"><i id="progBar" style="width:0%"></i></div>
       <div class="streak" id="streak">Streak: 0</div>
     </header>
@@ -115,32 +91,50 @@
       <button class="tab" data-tab="list">Lista</button>
     </nav>
 
-    <!-- STUDY -->
+    <!-- CONTROLES GERAIS -->
     <section class="section active" id="study">
       <div class="card">
-        <div class="prompt">Tradução (PT-BR)</div>
-        <div class="question" id="qPT">—</div>
-        <div class="center helper">Digite o <b>romaji</b> e pressione Verificar</div>
+        <div class="row" style="justify-content:space-between">
+          <div class="row">
+            <label class="helper" for="direction">Direção:&nbsp;</label>
+            <select id="direction" class="select">
+              <option value="PT2ROMAJI">PT → Romaji</option>
+              <option value="ROMAJI2PT">Romaji → PT</option>
+            </select>
+          </div>
+          <div class="row">
+            <input id="dictUrl" class="answer" style="height:44px" placeholder="URL do dicionário (JSON)">
+            <button class="btn secondary" id="btnLoadUrl" style="height:44px">Carregar via URL</button>
+          </div>
+        </div>
+
+        <div class="prompt" id="promptLbl">Tradução (PT-BR)</div>
+        <div class="question" id="qMain">—</div>
+        <div class="center helper" id="helperLbl">Digite o <b>romaji</b> e pressione Verificar</div>
+
         <div class="inputRow">
           <input id="answer" class="answer" placeholder="ex.: konnichiwa"
             autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"
             inputmode="latin" enterkeyhint="done">
           <button class="btn" id="btnCheck">Verificar</button>
         </div>
+
         <div class="center" id="afterCheck" style="display:none">
           <button class="btn danger" id="bHard">Difícil (1)</button>
           <button class="btn warn"   id="bMed">Médio (2)</button>
           <button class="btn good"   id="bEasy">Fácil (3)</button>
         </div>
+
         <div class="center helper" id="accepted" style="display:none"></div>
       </div>
+
       <div class="toolbar">
         <div class="left">
           <span>Meta diária: <b id="goal">20</b></span>
           <button class="btn secondary" id="btnSkip">Pular</button>
         </div>
         <div class="right">
-          <button class="btn secondary" id="btnSeed">Carregar dicionário base</button>
+          <button class="btn secondary" id="btnSeed">Carregar dicionário base (local)</button>
           <button class="btn secondary" id="btnReset">Zerar progresso</button>
         </div>
       </div>
@@ -149,8 +143,8 @@
     <!-- QUIZ -->
     <section class="section" id="quiz">
       <div class="card">
-        <div class="prompt">Escolha o romaji correto</div>
-        <div class="question" id="qPTQuiz">—</div>
+        <div class="prompt" id="quizLbl">Escolha a resposta correta</div>
+        <div class="question" id="qQuiz">—</div>
         <div class="center" id="quizGrid"></div>
         <div class="center">
           <button class="btn secondary" id="btnNextQuiz">Próximo ▶</button>
@@ -189,14 +183,15 @@
       </div>
     </section>
 
-    <div class="kudos">Feito para iOS/Safari • Salva no navegador • Sem hiragana, apenas romaji</div>
+    <div class="kudos">Feito para iOS/Safari • Salva no navegador • Direção PT↔Romaji • Dicionário via URL</div>
     <div class="msg" id="msg" style="display:none"></div>
   </div>
 
   <script>
   // ======= STORAGE & HELPERS =======
-  const LS_DECK = 'romajiDeck_v1';
-  const LS_STATS = 'romajiStats_v1';
+  const LS_DECK = 'romajiDeck_v2';
+  const LS_STATS = 'romajiStats_v2';
+
   const defaultDeck = [
     ["konnichiwa","olá; boa tarde"],
     ["ohayou","bom dia"],
@@ -206,6 +201,7 @@
     ["itadakimasu","bom apetite"],
     ["sayounara","tchau; adeus"]
   ];
+
   const toISO = (d = new Date()) => {
     const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
     return `${y}-${m}-${day}`;
@@ -213,18 +209,13 @@
   const addDays = (iso,n)=>{const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return toISO(d);};
   const normBasic = s => (s||'').toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // acentos
-      .replace(/\([^)]*\)/g,' ')  // remove (observações)
-      .replace(/[\p{P}\p{S}]/gu,' ') // pontuação
+      .replace(/\([^)]*\)/g,' ')
+      .replace(/[\p{P}\p{S}]/gu,' ')
       .replace(/\s+/g,' ').trim();
 
-  function loadDeck(){
-    try{
-      const raw = JSON.parse(localStorage.getItem(LS_DECK));
-      if(Array.isArray(raw)) return migrate(raw);
-    }catch(e){}
-    return seed(defaultDeck.slice());
-  }
-  function saveDeck(){ localStorage.setItem(LS_DECK, JSON.stringify(deck)); }
+  function parsePT(pt){ return (pt||'').split(/[|;,\n]/).map(normBasic).filter(Boolean); }
+
+  // ======= DECK LOAD/SAVE =======
   function seed(list){
     const today = toISO();
     return list.map(([romaji,pt], i)=>({
@@ -234,7 +225,7 @@
       due: today, ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'
     }));
   }
-  function migrate(arr){ // garante campos
+  function migrate(arr){
     const today = toISO();
     return arr.map(c=>({
       id: c.id || String(Date.now()+Math.random()),
@@ -244,26 +235,19 @@
       ivl: c.ivl||0, reps: c.reps||0, ok:c.ok||0, err:c.err||0, cat:(['dificil','medio','facil'].includes(c.cat)?c.cat:'none')
     }));
   }
-  function parsePT(pt){ return (pt||'').split(/[|;,\n]/).map(normBasic).filter(Boolean); }
 
-  // SRS (SuperMemo-ish)
-  function schedule(card,grade){
-    const minEF=1.3;
-    if(grade===0){ // difícil
-      card.err++; card.reps=0; card.ef=Math.max(minEF,(card.ef||2.5)-0.2); card.ivl=1; card.due=addDays(toISO(),1); return;
-    }
-    card.ok++;
-    if(card.reps===0){ card.ivl = (grade===2)?3:1; }
-    else { const mult = grade===2?(card.ef*1.3):card.ef; card.ivl = Math.max(1, Math.round(card.ivl*mult)); }
-    card.ef = Math.max(minEF, (card.ef||2.5) + (grade===2?+0.10:-0.05));
-    card.reps++; card.due = addDays(toISO(), card.ivl);
+  function loadDeck(){
+    try{
+      const raw = JSON.parse(localStorage.getItem(LS_DECK));
+      if(Array.isArray(raw)) return migrate(raw);
+    }catch(e){}
+    return seed(defaultDeck.slice());
   }
+  function saveDeck(){ localStorage.setItem(LS_DECK, JSON.stringify(deck)); }
 
-  // Stats
+  // ======= STATS =======
   const defaultStats = {streak:0,lastStudy:null,studiedToday:0,dailyGoal:20};
-  function loadStats(){
-    try{ return Object.assign({}, defaultStats, JSON.parse(localStorage.getItem(LS_STATS)||'{}')); }catch(e){ return {...defaultStats};}
-  }
+  function loadStats(){ try{ return Object.assign({}, defaultStats, JSON.parse(localStorage.getItem(LS_STATS)||'{}')); }catch(e){ return {...defaultStats};} }
   function saveStats(){ localStorage.setItem(LS_STATS, JSON.stringify(stats)); }
   function rollover(){
     const t = toISO();
@@ -275,28 +259,38 @@
     }
   }
 
+  // ======= SRS =======
+  function schedule(card,grade){
+    const minEF=1.3;
+    if(grade===0){ card.err++; card.reps=0; card.ef=Math.max(minEF,(card.ef||2.5)-0.2); card.ivl=1; card.due=addDays(toISO(),1); return; }
+    card.ok++;
+    if(card.reps===0){ card.ivl = (grade===2)?3:1; }
+    else { const mult = grade===2?(card.ef*1.3):card.ef; card.ivl = Math.max(1, Math.round(card.ivl*mult)); }
+    card.ef = Math.max(minEF, (card.ef||2.5) + (grade===2?+0.10:-0.05));
+    card.reps++; card.due = addDays(toISO(), card.ivl);
+  }
+
+  // ======= STATE & UI =======
   let deck = loadDeck();
   let stats = loadStats();
   rollover();
 
-  // ======= STATE =======
   const State = {
     mode: 'study',
+    direction: 'PT2ROMAJI', // PT→Romaji | ROMAJI2PT
     current: null,
     input: '',
     showAnswer: false,
-    trainFilter: 'todas',
     quiz: {current:null, options:[], correctIndex:-1, selectedIndex:-1}
   };
 
-  // ======= UI ELEMENTS =======
   const el = s => document.querySelector(s);
   const els = s => [...document.querySelectorAll(s)];
-  const msg = el('#msg');
+  const toastEl = el('#msg');
 
   function toast(t, ms=1400){
-    msg.textContent=t; msg.style.display='block';
-    clearTimeout(toast._t); toast._t=setTimeout(()=>{msg.style.display='none'}, ms);
+    toastEl.textContent=t; toastEl.style.display='block';
+    clearTimeout(toast._t); toast._t=setTimeout(()=>{toastEl.style.display='none'}, ms);
   }
 
   // Tabs
@@ -314,7 +308,30 @@
     });
   });
 
-  // Progress
+  // Direção
+  el('#direction').addEventListener('change', ()=>{
+    State.direction = el('#direction').value;
+    applyDirectionLabels();
+    if(State.mode==='study') pickNext();
+    if(State.mode==='quiz') startQuizQuestion();
+  });
+
+  function applyDirectionLabels(){
+    const dir = State.direction;
+    if(dir==='PT2ROMAJI'){
+      el('#promptLbl').textContent = 'Tradução (PT-BR)';
+      el('#helperLbl').innerHTML = 'Digite o <b>romaji</b> e pressione Verificar';
+      el('#answer').placeholder = 'ex.: konnichiwa';
+      el('#quizLbl').textContent = 'Escolha o romaji correto';
+    }else{
+      el('#promptLbl').textContent = 'Romaji';
+      el('#helperLbl').innerHTML = 'Digite uma tradução em <b>PT-BR</b> que sirva';
+      el('#answer').placeholder = 'ex.: olá';
+      el('#quizLbl').textContent = 'Escolha a tradução (PT) correta';
+    }
+  }
+
+  // Header
   function renderHeader(){
     const pct = Math.max(0, Math.min(1, (stats.studiedToday||0)/(stats.dailyGoal||20)));
     el('#progBar').style.width = (pct*100).toFixed(0)+'%';
@@ -322,20 +339,25 @@
     el('#goal').textContent = String(stats.dailyGoal||20);
   }
 
-  // ======= STUDY MODE (PT -> Romaji) =======
-  function dueCards(){ const t=toISO(); return deck.filter(c => (c.due||t) <= t); }
+  // ======= STUDY (com direção) =======
+  function toISOtoday(){ return toISO(); }
+  function dueCards(){ const t=toISOtoday(); return deck.filter(c => (c.due||t) <= t); }
+
   function pickNext(){
     const d = dueCards();
     State.current = d.length ? d[Math.floor(Math.random()*d.length)] : null;
     State.showAnswer=false; State.input=''; el('#answer').value='';
     if(State.current){
-      // escolhe uma das traduções aceitas pra exibir
-      const opts = parsePT(State.current.pt);
-      el('#qPT').textContent = opts.length? opts[Math.floor(Math.random()*opts.length)] : State.current.pt;
+      if(State.direction==='PT2ROMAJI'){
+        const opts = parsePT(State.current.pt);
+        el('#qMain').textContent = opts.length? opts[Math.floor(Math.random()*opts.length)] : State.current.pt;
+      }else{
+        el('#qMain').textContent = State.current.romaji;
+      }
       el('#accepted').style.display='none';
       el('#afterCheck').style.display='none';
     } else {
-      el('#qPT').textContent = 'Nenhum card devido. Use Quiz, adicione cartas ou volte depois.';
+      el('#qMain').textContent = 'Nenhum card devido. Use Quiz, adicione cartas ou volte depois.';
     }
     renderHeader();
   }
@@ -343,19 +365,31 @@
   function checkAnswer(){
     if(!State.current) return;
     const user = normBasic(el('#answer').value);
-    const ok = user && (user === normBasic(State.current.romaji));
+    let ok=false, feedback='';
+    if(State.direction==='PT2ROMAJI'){
+      ok = user && (user === normBasic(State.current.romaji));
+      feedback = `Correto: <b>${State.current.romaji}</b><br><small>Traduções: ${parsePT(State.current.pt).join(' / ')}</small>`;
+    }else{
+      const acc = parsePT(State.current.pt);
+      ok = user && acc.includes(user);
+      feedback = `Romaji: <b>${State.current.romaji}</b><br><small>Traduções aceitas: ${acc.join(' / ')}</small>`;
+    }
     State.showAnswer = true;
-    const acc = `Resposta correta: <b>${State.current.romaji}</b><br><small>Traduções aceitas: ${parsePT(State.current.pt).join(' / ')}</small>`;
-    el('#accepted').innerHTML = acc; el('#accepted').style.display='block';
-    el('#afterCheck').style.display='flex';
-    toast(ok? '✔ Correto! Agora marque a dificuldade.' : '✘ Quase! Confirme a resposta e marque a dificuldade.');
+    el('#accepted').innerHTML = feedback; el('#accepted').style.display='block'; el('#afterCheck').style.display='flex';
+    toast(ok? '✔ Correto! Agora marque a dificuldade.' : '✘ Quase! Confirme e marque a dificuldade.');
   }
 
-  function grade(level){ // 0=difícil,1=médio,2=fácil
+  function grade(level){
     if(!State.current) return;
     State.current.cat = (level===0?'dificil':level===1?'medio':'facil');
     const user = normBasic(el('#answer').value);
-    if(user === normBasic(State.current.romaji)) State.current.ok++; else State.current.err++;
+    let isCorrect=false;
+    if(State.direction==='PT2ROMAJI'){
+      isCorrect = user === normBasic(State.current.romaji);
+    }else{
+      isCorrect = parsePT(State.current.pt).includes(user);
+    }
+    if(isCorrect) State.current.ok++; else State.current.err++;
     schedule(State.current, level);
     saveDeck();
     stats.studiedToday=(stats.studiedToday||0)+1; stats.lastStudy=toISO(); if(!stats.streak) stats.streak=1; saveStats();
@@ -363,43 +397,58 @@
   }
 
   el('#btnCheck').addEventListener('click', checkAnswer);
-  el('#answer').addEventListener('keydown', e=>{
-    if(e.key==='Enter'){ e.preventDefault(); checkAnswer(); }
-  });
+  el('#answer').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); checkAnswer(); }});
   el('#bHard').addEventListener('click', ()=>grade(0));
   el('#bMed').addEventListener('click',  ()=>grade(1));
   el('#bEasy').addEventListener('click', ()=>grade(2));
   el('#btnSkip').addEventListener('click', pickNext);
 
-  // ======= QUIZ (PT -> romaji múltipla escolha) =======
+  // ======= QUIZ (espelha a direção) =======
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} }
+
   function startQuizQuestion(){
-    if(deck.length<1){ el('#qPTQuiz').textContent='Sem cartas. Adicione algumas em “Adicionar”.'; el('#quizGrid').innerHTML=''; return; }
+    if(deck.length<1){ el('#qQuiz').textContent='Sem cartas. Adicione algumas em “Adicionar”.'; el('#quizGrid').innerHTML=''; return; }
     const idx = Math.floor(Math.random()*deck.length);
     const card = deck[idx];
-    const ptOpts = parsePT(card.pt);
-    const shownPT = ptOpts[Math.floor(Math.random()*Math.max(1,ptOpts.length))] || card.pt;
-    el('#qPTQuiz').textContent = shownPT;
 
-    // 3 distratores
-    const others = deck.filter((_,i)=>i!==idx);
-    shuffle(others);
-    const used = new Set([normBasic(card.romaji)]);
-    const picks=[card.romaji];
-    for(const c of others){
-      const r = c.romaji;
-      const n = normBasic(r);
-      if(!used.has(n)){ used.add(n); picks.push(r); }
-      if(picks.length>=4) break;
+    let shown, options=[], correct='';
+
+    if(State.direction==='PT2ROMAJI'){
+      const accPT = parsePT(card.pt);
+      shown = accPT[Math.floor(Math.random()*Math.max(1,accPT.length))] || card.pt;
+      correct = card.romaji;
+      const others = deck.filter((_,i)=>i!==idx); shuffle(others);
+      const used=new Set([normBasic(correct)]);
+      options=[correct];
+      for(const c of others){ const r=c.romaji, n=normBasic(r); if(!used.has(n)){ used.add(n); options.push(r); } if(options.length>=4) break; }
+    } else {
+      shown = card.romaji;
+      const accPT = parsePT(card.pt);
+      correct = accPT[0] || card.pt;
+      const others = deck.filter((_,i)=>i!==idx); shuffle(others);
+      const used = new Set([normBasic(correct)]);
+      options=[correct];
+      for(const c of others){
+        const list = parsePT(c.pt);
+        if(list.length){
+          const cand = list[0];
+          const n = normBasic(cand);
+          if(!used.has(n)){ used.add(n); options.push(cand); }
+        }
+        if(options.length>=4) break;
+      }
     }
-    while(picks.length<4) picks.push('—');
 
+    while(options.length<4) options.push('—');
     const order=[0,1,2,3]; shuffle(order);
     const correctIndex = order.indexOf(0);
-    const options = order.map(i=>picks[i]);
+    const shuffled = order.map(i=>options[i]);
 
-    State.quiz = {current:card, options, correctIndex, selectedIndex:-1};
+    el('#qQuiz').textContent = shown;
+    State.quiz = {current:card, options:shuffled, correctIndex, selectedIndex:-1};
     renderQuizOptions();
   }
+
   function renderQuizOptions(){
     const grid = el('#quizGrid'); grid.innerHTML='';
     State.quiz.options.forEach((opt,i)=>{
@@ -418,42 +467,6 @@
   el('#btnNextQuiz').addEventListener('click', startQuizQuestion);
 
   // ======= ADD / BULK =======
-  el('#btnAdd').addEventListener('click', ()=>{
-    const r = normBasic(el('#inRomaji').value);
-    const p = normBasic(el('#inPT').value);
-    if(!r || !p){ toast('Preencha romaji e traduções'); return; }
-    const key = r;
-    const exists = deck.some(c => normBasic(c.romaji)===key);
-    if(exists){ toast('Já existe esse romaji'); return; }
-    deck.push({id:String(Date.now()), romaji:r, pt:p, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'});
-    saveDeck(); el('#inRomaji').value=''; el('#inPT').value='';
-    toast('Card adicionado!');
-  });
-
-  el('#btnParse').addEventListener('click', ()=>{
-    const txt = el('#bulk').value;
-    const arr = parseBulk(txt);
-    el('#preview').innerHTML = arr.length ? `Pronto para importar: <b>${arr.length}</b> linha(s).` : 'Nada válido encontrado.';
-  });
-  el('#btnImport').addEventListener('click', ()=>{
-    const txt = el('#bulk').value;
-    const arr = parseBulk(txt);
-    if(!arr.length){ toast('Nada válido para importar'); return; }
-    let added=0, skipped=0;
-    const have = new Set(deck.map(c=>normBasic(c.romaji)));
-    const seen = new Set();
-    for(const it of arr){
-      const key = normBasic(it.romaji);
-      if(!key || !it.pt){ skipped++; continue; }
-      if(have.has(key) || seen.has(key)){ skipped++; continue; }
-      deck.push({id:String(Date.now()+Math.random()*9999), romaji:key, pt:normBasic(it.pt), due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'});
-      have.add(key); seen.add(key); added++;
-    }
-    saveDeck();
-    toast(`Importados: ${added}. Ignorados: ${skipped}.`);
-    el('#bulk').value=''; el('#preview').textContent='';
-  });
-
   function parseBulk(text){
     const out=[]; (text||'').split(/\r?\n/).forEach(line=>{
       line=line.trim(); if(!line) return;
@@ -465,57 +478,107 @@
     return out;
   }
 
+  el('#btnAdd').addEventListener('click', ()=>{
+    const r = normBasic(el('#inRomaji').value);
+    const p = normBasic(el('#inPT').value);
+    if(!r || !p){ toast('Preencha romaji e traduções'); return; }
+    const exists = deck.some(c => normBasic(c.romaji)===r);
+    if(exists){ toast('Já existe esse romaji'); return; }
+    deck.push({id:String(Date.now()), romaji:r, pt:p, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'});
+    saveDeck(); el('#inRomaji').value=''; el('#inPT').value='';
+    toast('Card adicionado!');
+  });
+
+  el('#btnParse').addEventListener('click', ()=>{
+    const arr = parseBulk(el('#bulk').value);
+    el('#preview').innerHTML = arr.length ? `Pronto para importar: <b>${arr.length}</b> linha(s).` : 'Nada válido encontrado.';
+  });
+
+  el('#btnImport').addEventListener('click', ()=>{
+    const arr = parseBulk(el('#bulk').value);
+    if(!arr.length){ toast('Nada válido para importar'); return; }
+    let added=0, skipped=0;
+    const have = new Set(deck.map(c=>normBasic(c.romaji)));
+    const seen = new Set();
+    for(const it of arr){
+      const key = normBasic(it.romaji);
+      if(!key || !it.pt){ skipped++; continue; }
+      if(have.has(key) || seen.has(key)){ skipped++; continue; }
+      deck.push({id:String(Date.now()+Math.random()*9999), romaji:key, pt:normBasic(it.pt), due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'});
+      have.add(key); seen.add(key); added++;
+    }
+    saveDeck(); toast(`Importados: ${added}. Ignorados: ${skipped}.`);
+    el('#bulk').value=''; el('#preview').textContent='';
+  });
+
   // ======= LIST =======
   function renderTable(){
     const t = el('#table'); t.innerHTML='';
     const head = `<tr><th>#</th><th>Romaji</th><th>Traduções</th><th>Cat</th><th>Próx.</th><th>✓</th><th>✗</th></tr>`;
     t.insertAdjacentHTML('beforeend', head);
-    deck
-      .slice()
-      .sort((a,b)=> (a.romaji>b.romaji?1:-1))
-      .forEach((c,i)=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${i+1}</td><td>${c.romaji}</td><td>${c.pt}</td><td>${c.cat||'none'}</td><td>${c.due||''}</td><td>${c.ok||0}</td><td>${c.err||0}</td>`;
-        tr.addEventListener('click', ()=>{
-          deck = deck.filter(x=>x.id!==c.id); saveDeck(); renderTable(); toast('Removido.');
-        });
-        t.appendChild(tr);
+    deck.slice().sort((a,b)=> (a.romaji>b.romaji?1:-1)).forEach((c,i)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${i+1}</td><td>${c.romaji}</td><td>${c.pt}</td><td>${c.cat||'none'}</td><td>${c.due||''}</td><td>${c.ok||0}</td><td>${c.err||0}</td>`;
+      tr.addEventListener('click', ()=>{
+        deck = deck.filter(x=>x.id!==c.id); saveDeck(); renderTable(); toast('Removido.');
       });
+      t.appendChild(tr);
+    });
   }
 
-  // ======= UTILS =======
-  function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} }
+  // ======= DICIONÁRIO VIA URL =======
+  async function loadFromUrl(url){
+    try{
+      const res = await fetch(url, {cache:'no-store'});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data = await res.json();
+      if(!Array.isArray(data)) throw new Error('JSON precisa ser um array');
+      let added=0, have = new Set(deck.map(c=>normBasic(c.romaji)));
+      data.forEach((obj,i)=>{
+        const r = normBasic(obj.romaji);
+        const p = normBasic(obj.pt);
+        if(!r || !p) return;
+        if(have.has(r)) return;
+        deck.push({id:String(Date.now()+i), romaji:r, pt:p, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'});
+        have.add(r); added++;
+      });
+      saveDeck(); toast(`Carregado da URL: ${added} itens.`);
+      if(State.mode==='list') renderTable();
+      if(State.mode==='study') pickNext();
+    }catch(err){
+      console.error(err);
+      toast('Falha ao carregar URL (CORS/JSON?)');
+    }
+  }
+  el('#btnLoadUrl').addEventListener('click', ()=>{
+    const url = el('#dictUrl').value.trim();
+    if(!url){ toast('Cole uma URL de JSON primeiro'); return; }
+    loadFromUrl(url);
+  });
 
-  // Seed/reset
+  // Seed/reset locais
   el('#btnSeed').addEventListener('click', ()=>{
-    if(!confirm('Carregar dicionário base? Isto adiciona entradas sem remover as atuais.')) return;
+    if(!confirm('Carregar dicionário base local? Isto adiciona entradas sem remover as atuais.')) return;
     const base = seed(defaultDeck);
     const have = new Set(deck.map(c=>normBasic(c.romaji)));
     let added=0;
-    base.forEach(b=>{
-      if(!have.has(normBasic(b.romaji))){ deck.push(b); added++; }
-    });
-    saveDeck(); toast(`Adicionados do dicionário base: ${added}.`);
+    base.forEach(b=>{ if(!have.has(normBasic(b.romaji))){ deck.push(b); added++; }});
+    saveDeck(); toast(`Adicionados do dicionário base local: ${added}.`);
   });
+
   el('#btnReset').addEventListener('click', ()=>{
     if(!confirm('Zerar progresso (manter cartas)?')) return;
     const today = toISO();
     deck.forEach(c=>{ c.due=today; c.ef=2.5; c.ivl=0; c.reps=0; c.ok=0; c.err=0; c.cat='none'; });
     saveDeck();
-    stats = {...defaultStats, lastStudy:toISO()}; saveStats();
+    stats = {...{streak:0,lastStudy:null,studiedToday:0,dailyGoal:20}, lastStudy:toISO()}; saveStats();
     renderHeader(); pickNext(); toast('Progresso zerado.');
   });
 
   // ======= INIT =======
+  applyDirectionLabels();
   renderHeader();
   pickNext();
-
-  // Evita “zoom” ao focar input no iOS (tamanho >= 16px já ajuda)
-  // Mantemos 18px na .answer
-
-  // Corrige 100vh no iOS com 100svh já usado na CSS (iOS 16+).
-  // Nada adicional requerido aqui.
-
   </script>
 </body>
 </html>
