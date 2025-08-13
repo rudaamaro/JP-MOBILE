@@ -24,6 +24,11 @@
     .progress{height:8px; background:#0f1422; border-radius:999px; overflow:hidden; flex:1; margin:0 10px; border:1px solid rgba(255,255,255,.06)}
     .progress > i{display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2))}
     .streak{color:var(--muted); font-weight:600; font-size:12px; white-space:nowrap}
+    .modeToggle{ display:inline-flex; align-items:center; gap:6px; background:#0f1422; border:1px solid rgba(255,255,255,.08);
+      border-radius:999px; padding:6px 10px; color:var(--text); font-weight:800 }
+    .modeToggle small{color:var(--muted); font-weight:700}
+    .pillBtn{ height:28px; padding:0 10px; border-radius:999px; border:1px solid rgba(255,255,255,.1);
+      background:var(--accent); color:#05121d; font-weight:800 }
     .tabs{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
     .tab{ padding:10px 12px; text-align:center; background:#0f1422; color:var(--text);
       border-radius:12px; border:1px solid rgba(255,255,255,.06); font-weight:700; }
@@ -83,6 +88,10 @@
     <header>
       <div class="brand">Flashcards — Romaji ↔ PT</div>
       <div class="progress"><i id="progBar" style="width:0%"></i></div>
+      <div class="modeToggle">
+        <small>Modo</small>
+        <button id="toggleMode" class="pillBtn" title="Alternar Revisão/Treino">Revisão</button>
+      </div>
       <div class="streak" id="streak">Streak: 0</div>
     </header>
 
@@ -99,10 +108,6 @@
           <div class="seg" aria-label="Direção">
             <input id="d1" type="radio" name="dir" value="PT2ROMAJI" checked><label for="d1">PT → Romaji</label>
             <input id="d2" type="radio" name="dir" value="ROMAJI2PT"><label for="d2">Romaji → PT</label>
-          </div>
-          <div class="seg" aria-label="Modo">
-            <input id="m1" type="radio" name="mode" value="REVIEW" checked><label for="m1">Revisão</label>
-            <input id="m2" type="radio" name="mode" value="TRAIN"><label for="m2">Treino ∞</label>
           </div>
           <div class="row" style="gap:6px">
             <label class="helper" for="catFilter">Categoria:&nbsp;</label>
@@ -146,7 +151,7 @@
           <input id="inCat" class="answer" placeholder="categoria (ex.: saudacao)">
           <button class="btn" id="btnAdd">Adicionar</button>
         </div>
-        <div class="helper">Dica: separe sinônimos em PT por <b>;</b> • Categoria livre (“saudacao”, “batalha”, “escola”, …)</div>
+        <div class="helper">Dica: separe sinônimos em PT por <b>;</b></div>
       </div>
       <div class="card">
         <div class="prompt">Importar em massa (colar lista)</div>
@@ -173,23 +178,23 @@
       </div>
     </section>
 
-    <div class="kudos">Feito para iOS/Safari • Salva no navegador • Direção PT↔Romaji • Treino ∞ • Áudio • Filtro por categoria • Carrega <code>anime_romaji.json</code></div>
+    <div class="kudos">Feito para iOS/Safari • Salva no navegador • Direção PT↔Romaji • Áudio • Filtro por categoria • Modo Revisão/Treino no topo • Carrega <code>anime_romaji.json</code></div>
     <div class="msg" id="msg" style="display:none"></div>
   </div>
 
   <script>
+  // ======= CONFIG =======
+  // Se o site estiver no GitHub Pages com anime_romaji.json na raiz, este caminho funciona:
+  const DATA_URL = './anime_romaji.json';
+
   // ======= STORAGE & HELPERS =======
-  const LS_DECK = 'romajiDeck_v4';
+  const LS_DECK = 'romajiDeck_v5';
   const LS_STATS = 'romajiStats_v3';
 
   const defaultDeck = [
-    ["konnichiwa","olá; boa tarde","saudacao"],
-    ["ohayou","bom dia","saudacao"],
-    ["konbanwa","boa noite","saudacao"],
-    ["arigatou","obrigado; obrigada","saudacao"],
-    ["sumimasen","desculpa; com licença","saudacao"],
-    ["itadakimasu","bom apetite","comida"],
-    ["sayounara","tchau; adeus","saudacao"]
+    ["konnichiwa","olá; boa tarde","geral"],
+    ["ohayou","bom dia","geral"],
+    ["konbanwa","boa noite (cumprimento)","geral"]
   ];
 
   const toISO = (d = new Date()) => {
@@ -202,10 +207,8 @@
       .replace(/\([^)]*\)/g,' ')
       .replace(/[\p{P}\p{S}]/gu,' ')
       .replace(/\s+/g,' ').trim();
-
   const parsePT = pt => (pt||'').split(/[|;,\n]/).map(normBasic).filter(Boolean);
 
-  // ======= DECK LOAD/SAVE =======
   function seed(list){
     const today = toISO();
     return list.map(([romaji,pt,cat='geral'], i)=>({
@@ -258,22 +261,16 @@
     card.reps++; card.due = addDays(toISO(), card.ivl);
   }
 
-  // ======= TTS (áudio) =======
+  // ======= ÁUDIO =======
   let voices = [];
-  function loadVoices(){
-    voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
-  }
-  if ('speechSynthesis' in window){
-    speechSynthesis.onvoiceschanged = loadVoices; loadVoices();
-  }
+  function loadVoices(){ voices = window.speechSynthesis ? speechSynthesis.getVoices() : []; }
+  if ('speechSynthesis' in window){ speechSynthesis.onvoiceschanged = loadVoices; loadVoices(); }
   function speak(txt, langHint='ja-JP'){
     if(!('speechSynthesis' in window)) return;
     const u = new SpeechSynthesisUtterance(txt);
     const pick = (pref)=> voices.find(v=>v.lang && v.lang.toLowerCase().startsWith(pref.toLowerCase()));
     const v = pick(langHint) || pick('ja') || pick('pt-BR') || voices[0];
-    if(v) u.voice = v;
-    u.lang = v?.lang || langHint;
-    u.rate = 0.95; u.pitch = 1.0; u.volume = 1;
+    if(v) u.voice = v; u.lang = v?.lang || langHint; u.rate = 0.95; u.pitch = 1.0;
     speechSynthesis.cancel(); speechSynthesis.speak(u);
   }
 
@@ -284,25 +281,28 @@
 
   const State = {
     modeTab: 'study',
-    direction: 'PT2ROMAJI', // PT→Romaji | ROMAJI→PT
-    studyMode: 'REVIEW',    // REVIEW (SRS) | TRAIN (∞)
+    direction: 'PT2ROMAJI',   // PT→Romaji | ROMAJI→PT
+    studyMode: 'REVIEW',      // REVIEW | TRAIN
     catFilter: 'todas',
     current: null,
-    showAnswer: false,
-    // fila de treino infinito
     trainPool: [],
     trainWrong: []
   };
 
-  // ======= UI HELPERS =======
+  // ======= UI =======
   const el = s => document.querySelector(s);
   const els = s => [...document.querySelectorAll(s)];
   const toastEl = el('#msg');
+  function toast(t, ms=1400){ toastEl.textContent=t; toastEl.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>{toastEl.style.display='none'}, ms); }
 
-  function toast(t, ms=1400){
-    toastEl.textContent=t; toastEl.style.display='block';
-    clearTimeout(toast._t); toast._t=setTimeout(()=>{toastEl.style.display='none'}, ms);
+  // Top toggle (Revisão/Treino)
+  function updateModeToggle(){
+    el('#toggleMode').textContent = (State.studyMode==='REVIEW' ? 'Revisão' : 'Treino ∞');
   }
+  el('#toggleMode').addEventListener('click', ()=>{
+    State.studyMode = (State.studyMode==='REVIEW' ? 'TRAIN' : 'REVIEW');
+    updateModeToggle(); buildTrainPool(); pickNext();
+  });
 
   // Tabs
   els('.tab').forEach(b=>{
@@ -327,15 +327,6 @@
     });
   });
 
-  // Modo (Revisão / Treino ∞)
-  els('input[name="mode"]').forEach(r=>{
-    r.addEventListener('change', ()=>{
-      State.studyMode = r.value;
-      buildTrainPool();
-      if(State.modeTab==='study') pickNext();
-    });
-  });
-
   // Categoria
   el('#catFilter').addEventListener('change', ()=>{
     State.catFilter = el('#catFilter').value;
@@ -354,12 +345,12 @@
       el('#answer').placeholder = 'ex.: olá';
     }
   }
-
   function renderHeader(){
     const pct = Math.max(0, Math.min(1, (stats.studiedToday||0)/(stats.dailyGoal||20)));
     el('#progBar').style.width = (pct*100).toFixed(0)+'%';
     el('#streak').textContent = `Streak: ${stats.streak||0}`;
     el('#goal').textContent = String(stats.dailyGoal||20);
+    updateModeToggle();
   }
 
   // ======= CATEGORIAS =======
@@ -374,7 +365,6 @@
     });
     sel.value = cats.has(cur)? cur : 'todas';
   }
-
   function filteredByCategory(list){
     if(State.catFilter==='todas') return list;
     return list.filter(c=> (c.cat||'geral')===State.catFilter);
@@ -386,27 +376,24 @@
     const base = filteredByCategory(deck).slice();
     shuffle(base);
     State.trainPool = base;
-    State.trainWrong = []; // limpa fila de erros
+    State.trainWrong = [];
   }
 
   // ======= ESTUDO =======
   function dueCards(){ const t=toISO(); return deck.filter(c => (c.due||t) <= t); }
-
   function pickFromReview(){
     const arr = filteredByCategory(dueCards());
     return arr.length ? arr[Math.floor(Math.random()*arr.length)] : null;
   }
   function pickFromTrain(){
-    // 60% prioriza erros recentes, 40% pool geral
     const useWrong = State.trainWrong.length && Math.random() < 0.6;
     if(useWrong) return State.trainWrong[Math.floor(Math.random()*State.trainWrong.length)];
     if(!State.trainPool.length) buildTrainPool();
     return State.trainPool[Math.floor(Math.random()*State.trainPool.length)] || null;
   }
-
   function pickNext(){
     State.current = (State.studyMode==='REVIEW') ? pickFromReview() : pickFromTrain();
-    State.showAnswer=false; el('#answer').value='';
+    el('#answer').value='';
     if(State.current){
       if(State.direction==='PT2ROMAJI'){
         const opts = parsePT(State.current.pt);
@@ -418,7 +405,7 @@
       el('#afterCheck').style.display='none';
     } else {
       el('#qMain').textContent = (State.studyMode==='REVIEW')
-        ? 'Sem cartas “devidas” nesta categoria. Tente Treino ∞ ou outra categoria.'
+        ? 'Sem cartas “devidas” nesta categoria. Use Treino ∞.'
         : 'Sem cartas nesta categoria. Adicione algumas em “Adicionar”.';
     }
     renderHeader();
@@ -436,11 +423,9 @@
       ok = !!user && acc.has(user);
       feedback = `Romaji: <b>${State.current.romaji}</b> • <small>Traduções aceitas: ${[...acc].join(' / ')}</small>`;
     }
-    State.showAnswer = true;
     el('#accepted').innerHTML = feedback; el('#accepted').style.display='block'; el('#afterCheck').style.display='flex';
     toast(ok? '✔ Correto! Agora marque a dificuldade.' : '✘ Quase! Confirme e marque a dificuldade.');
     el('#afterCheck').dataset.ok = ok ? '1' : '0';
-    // fila de treino: empilha erros para ressurgirem
     if(State.studyMode==='TRAIN'){
       const iWrong = State.trainWrong.findIndex(c=>c.id===State.current.id);
       if(!ok && iWrong===-1) State.trainWrong.push(State.current);
@@ -457,7 +442,6 @@
       saveDeck();
       stats.studiedToday=(stats.studiedToday||0)+1; stats.lastStudy=toISO(); if(!stats.streak) stats.streak=1; saveStats();
     } else {
-      // treino ∞: só registra estatísticas leves, não mexe na data due
       if(wasOk) State.current.ok++; else State.current.err++;
       saveDeck();
     }
@@ -466,22 +450,16 @@
 
   // Áudio
   el('#speakRomaji').addEventListener('click', ()=>{
-    const c = State.current; if(!c) return;
-    speak(c.romaji, 'ja-JP');
+    const c = State.current; if(!c) return; speak(c.romaji, 'ja-JP');
   });
   el('#speakPT').addEventListener('click', ()=>{
     const c = State.current; if(!c) return;
-    // decide qual texto tocar: se direção PT→Romaji, tocar PT mostrado; se Romaji→PT, tocar uma tradução
-    let txt='';
-    if(State.direction==='PT2ROMAJI'){
-      txt = el('#qMain').textContent || parsePT(c.pt)[0] || c.pt;
-    }else{
-      txt = (parsePT(c.pt)[0] || c.pt);
-    }
+    let txt=''; if(State.direction==='PT2ROMAJI'){ txt = el('#qMain').textContent || parsePT(c.pt)[0] || c.pt; }
+    else { txt = (parsePT(c.pt)[0] || c.pt); }
     speak(txt, 'pt-BR');
   });
 
-  // Botões
+  // Ações
   el('#btnCheck').addEventListener('click', checkAnswer);
   el('#answer').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); checkAnswer(); }});
   el('#bHard').addEventListener('click', ()=>grade(0));
@@ -492,14 +470,11 @@
   function parseBulk(text){
     const out=[]; (text||'').split(/\r?\n/).forEach(line=>{
       line=line.trim(); if(!line) return;
-      // romaji ; t1 ; t2 ; #cat
       const parts=line.split(/\t|\s*;\s*/).map(s=>s.trim()).filter(Boolean);
       if(parts.length<2) return;
       let cat=''; if(parts[parts.length-1].startsWith('#')) cat = parts.pop().slice(1);
-      const [romaji, ...rest] = parts;
-      out.push({romaji, pt: rest.join(';'), cat});
-    });
-    return out;
+      const [romaji, ...rest] = parts; out.push({romaji, pt: rest.join(';'), cat});
+    }); return out;
   }
   function addCard(r,p,cat){
     const rom = normBasic(r), pt = normBasic(p); const c = String(cat||'geral').toLowerCase().trim() || 'geral';
@@ -519,16 +494,13 @@
     el('#preview').innerHTML = arr.length ? `Pronto para importar: <b>${arr.length}</b> linha(s).` : 'Nada válido encontrado.';
   });
   el('#btnImport').addEventListener('click', ()=>{
-    const arr = parseBulk(el('#bulk').value);
-    if(!arr.length){ toast('Nada válido para importar'); return; }
-    let added=0, skipped=0;
-    for(const it of arr){ if(addCard(it.romaji, it.pt, it.cat)) added++; else skipped++; }
+    const arr = parseBulk(el('#bulk').value); if(!arr.length){ toast('Nada válido para importar'); return; }
+    let added=0, skipped=0; for(const it of arr){ if(addCard(it.romaji, it.pt, it.cat)) added++; else skipped++; }
     saveDeck(); refreshCategoriesUI(); buildTrainPool();
-    toast(`Importados: ${added}. Ignorados: ${skipped}.`);
-    el('#bulk').value=''; el('#preview').textContent='';
+    toast(`Importados: ${added}. Ignorados: ${skipped}.`); el('#bulk').value=''; el('#preview').textContent='';
   });
 
-  // ======= LISTA + IMPORT/EXPORT JSON =======
+  // ======= LISTA + IMPORT/EXPORT =======
   function renderTable(){
     const t = el('#table'); t.innerHTML='';
     const head = `<tr><th>#</th><th>Romaji</th><th>Traduções</th><th>Cat</th><th>Próx.</th><th>✓</th><th>✗</th></tr>`;
@@ -544,11 +516,9 @@
   el('#fileIn').addEventListener('change', async (ev)=>{
     const f = ev.target.files?.[0]; if(!f) return;
     try{
-      const text = await f.text();
-      const data = JSON.parse(text);
+      const text = await f.text(); const data = JSON.parse(text);
       if(!Array.isArray(data)) throw new Error('JSON precisa ser array [{romaji,pt,cat?}]');
-      let added=0;
-      const have = new Set(deck.map(c=>normBasic(c.romaji)));
+      let added=0; const have = new Set(deck.map(c=>normBasic(c.romaji)));
       data.forEach((obj,i)=>{
         const r = normBasic(obj.romaji), p = normBasic(obj.pt), c = String(obj.cat||'geral').toLowerCase();
         if(!r || !p || have.has(r)) return;
@@ -562,37 +532,34 @@
   el('#btnExport').addEventListener('click', ()=>{
     const data = deck.map(({romaji,pt,cat})=>({romaji,pt,cat}));
     const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'anime_romaji.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'anime_romaji.json'; a.click(); URL.revokeObjectURL(a.href);
   });
 
-  // ======= LOAD JSON LOCAL =======
+  // ======= CARREGAR DO SEU JSON (GitHub Pages) =======
   async function hydrateFromJson(){
     try{
-      const res = await fetch('./anime_romaji.json', {cache:'no-store'});
+      const res = await fetch(DATA_URL, {cache:'no-store'});
       if(res.ok){
         const data = await res.json();
         if(Array.isArray(data)){
           let added=0, have = new Set(deck.map(c=>normBasic(c.romaji)));
           data.forEach((obj,i)=>{
-            const r = normBasic(obj.romaji), p = normBasic(obj.pt), c = String(obj.cat||'geral').toLowerCase();
+            const r = normBasic(obj.romaji), p = Array.isArray(obj.pt)? obj.pt.join(';') : String(obj.pt||'');
+            const c = String(obj.cat||'geral').toLowerCase();
             if(!r || !p || have.has(r)) return;
-            deck.push({id:String(Date.now()+i), romaji:r, pt:p, cat:c, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0});
+            deck.push({id:String(Date.now()+i), romaji:r, pt:normBasic(p), cat:c, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0});
             have.add(r); added++;
           });
           if(added) saveDeck();
         }
       }
-    }catch(e){ /* pode falhar em file://; ignorar */ }
+    }catch(e){ /* em file:// pode falhar; ignore */ }
   }
 
   // ======= INIT =======
   (async function init(){
     if(!deck) deck = seed(defaultDeck);
-    await hydrateFromJson();
+    await hydrateFromJson();      // lê o seu anime_romaji.json hospedado
     applyDirectionLabels();
     refreshCategoriesUI();
     buildTrainPool();
