@@ -37,12 +37,17 @@
     .seg input:checked + label{ background:var(--accent); color:#05121d; }
     .prompt{ text-align:center; color:var(--muted); font-weight:700; letter-spacing:.3px; }
     .question{ text-align:center; color:var(--text); font-weight:900; font-size: clamp(20px, 6.5vw, 40px); word-break:break-word; }
+    .qRow{ display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap }
+    .audioBtn{ height:38px; min-width:38px; padding:0 12px; border-radius:12px; background:#0f1422; color:var(--text);
+      border:1px solid rgba(255,255,255,.08); font-weight:800 }
     .inputRow{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center; }
     input.answer{
       flex:1 1 320px; max-width:560px; height:52px; background:#0f1422; border:2px solid var(--stroke);
       border-radius:14px; padding:0 14px; color:var(--text); font-size:18px; font-weight:700; outline:none;
     }
     input.answer:focus{ border-color:var(--accent) }
+    select.select{ height:44px; padding:0 12px; border-radius:12px; background:#0f1422; color:var(--text);
+      border:2px solid var(--stroke); font-weight:700 }
     .btn{ height:52px; padding:0 16px; border-radius:14px; font-weight:800; border:1px solid rgba(255,255,255,.08);
       background:var(--accent); color:#05121d; }
     .btn.secondary{ background:#1f2937; color:#e7eef7 }
@@ -70,7 +75,7 @@
       border-radius:12px; padding:10px 12px; font-weight:700; text-align:center;
       max-width:var(--maxw); margin:0 auto;
     }
-    button, input, textarea { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+    button, input, textarea, select { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   </style>
 </head>
 <body>
@@ -91,15 +96,27 @@
     <section class="section active" id="study">
       <div class="card">
         <div class="row">
-          <div class="seg" role="tablist" aria-label="Direção">
+          <div class="seg" aria-label="Direção">
             <input id="d1" type="radio" name="dir" value="PT2ROMAJI" checked><label for="d1">PT → Romaji</label>
             <input id="d2" type="radio" name="dir" value="ROMAJI2PT"><label for="d2">Romaji → PT</label>
           </div>
-          <span class="helper">Meta diária: <b id="goal">20</b></span>
+          <div class="seg" aria-label="Modo">
+            <input id="m1" type="radio" name="mode" value="REVIEW" checked><label for="m1">Revisão</label>
+            <input id="m2" type="radio" name="mode" value="TRAIN"><label for="m2">Treino ∞</label>
+          </div>
+          <div class="row" style="gap:6px">
+            <label class="helper" for="catFilter">Categoria:&nbsp;</label>
+            <select id="catFilter" class="select"><option value="todas">todas</option></select>
+            <span class="helper">Meta diária: <b id="goal">20</b></span>
+          </div>
         </div>
 
         <div class="prompt" id="promptLbl">Tradução (PT-BR)</div>
-        <div class="question" id="qMain">—</div>
+        <div class="qRow">
+          <button title="Ouvir Romaji" class="audioBtn" id="speakRomaji">🔊 JP</button>
+          <div class="question" id="qMain">—</div>
+          <button title="Ouvir Português" class="audioBtn" id="speakPT">🔊 PT</button>
+        </div>
         <div class="center helper" id="helperLbl">Digite o <b>romaji</b> e pressione Verificar</div>
 
         <div class="inputRow">
@@ -126,14 +143,15 @@
         <div class="inputRow">
           <input id="inRomaji" class="answer" placeholder="romaji (ex.: arigatou)" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false">
           <input id="inPT" class="answer" placeholder="traduções PT (ex.: obrigado; obrigada)">
+          <input id="inCat" class="answer" placeholder="categoria (ex.: saudacao)">
           <button class="btn" id="btnAdd">Adicionar</button>
         </div>
-        <div class="helper">Dica: separe sinônimos em PT por <b>;</b></div>
+        <div class="helper">Dica: separe sinônimos em PT por <b>;</b> • Categoria livre (“saudacao”, “batalha”, “escola”, …)</div>
       </div>
       <div class="card">
         <div class="prompt">Importar em massa (colar lista)</div>
-        <div class="helper">Formato: <code>romaji ; tradução1 ; tradução2...</code></div>
-        <textarea class="bulk" id="bulk" placeholder="konnichiwa ; olá ; boa tarde&#10;arigatou ; obrigado ; obrigada"></textarea>
+        <div class="helper">Formato: <code>romaji ; tradução1 ; tradução2 ; #categoria</code> (categoria opcional, iniciando com <code>#</code>)</div>
+        <textarea class="bulk" id="bulk" placeholder="konnichiwa ; olá ; boa tarde ; #saudacao&#10;arigatou ; obrigado ; obrigada ; #saudacao"></textarea>
         <div class="center">
           <button class="btn secondary" id="btnParse">Pré-visualizar</button>
           <button class="btn" id="btnImport">Adicionar tudo</button>
@@ -155,23 +173,23 @@
       </div>
     </section>
 
-    <div class="kudos">Feito para iOS/Safari • Salva no navegador • Direção PT↔Romaji • Carrega <code>anime_romaji.json</code> automaticamente</div>
+    <div class="kudos">Feito para iOS/Safari • Salva no navegador • Direção PT↔Romaji • Treino ∞ • Áudio • Filtro por categoria • Carrega <code>anime_romaji.json</code></div>
     <div class="msg" id="msg" style="display:none"></div>
   </div>
 
   <script>
   // ======= STORAGE & HELPERS =======
-  const LS_DECK = 'romajiDeck_v3';
+  const LS_DECK = 'romajiDeck_v4';
   const LS_STATS = 'romajiStats_v3';
 
   const defaultDeck = [
-    ["konnichiwa","olá; boa tarde"],
-    ["ohayou","bom dia"],
-    ["konbanwa","boa noite"],
-    ["arigatou","obrigado; obrigada"],
-    ["sumimasen","desculpa; com licença"],
-    ["itadakimasu","bom apetite"],
-    ["sayounara","tchau; adeus"]
+    ["konnichiwa","olá; boa tarde","saudacao"],
+    ["ohayou","bom dia","saudacao"],
+    ["konbanwa","boa noite","saudacao"],
+    ["arigatou","obrigado; obrigada","saudacao"],
+    ["sumimasen","desculpa; com licença","saudacao"],
+    ["itadakimasu","bom apetite","comida"],
+    ["sayounara","tchau; adeus","saudacao"]
   ];
 
   const toISO = (d = new Date()) => {
@@ -180,7 +198,7 @@
   };
   const addDays = (iso,n)=>{const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return toISO(d);};
   const normBasic = s => (s||'').toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // acentos
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
       .replace(/\([^)]*\)/g,' ')
       .replace(/[\p{P}\p{S}]/gu,' ')
       .replace(/\s+/g,' ').trim();
@@ -190,11 +208,12 @@
   // ======= DECK LOAD/SAVE =======
   function seed(list){
     const today = toISO();
-    return list.map(([romaji,pt], i)=>({
+    return list.map(([romaji,pt,cat='geral'], i)=>({
       id:String(Date.now()+i),
-      romaji: String(romaji||'').toLowerCase().trim(),
-      pt: String(pt||'').toLowerCase().trim(),
-      due: today, ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'
+      romaji:String(romaji||'').toLowerCase().trim(),
+      pt:String(pt||'').toLowerCase().trim(),
+      cat:String(cat||'geral').toLowerCase().trim(),
+      due: today, ef:2.5, ivl:0, reps:0, ok:0, err:0
     }));
   }
   function migrate(arr){
@@ -203,8 +222,9 @@
       id: c.id || String(Date.now()+Math.random()),
       romaji: String(c.romaji||'').toLowerCase().trim(),
       pt: String(c.pt||'').toLowerCase().trim(),
+      cat: String(c.cat||'geral').toLowerCase().trim(),
       due: c.due || today, ef: typeof c.ef==='number'?c.ef:2.5,
-      ivl: c.ivl||0, reps: c.reps||0, ok:c.ok||0, err:c.err||0, cat:(['dificil','medio','facil'].includes(c.cat)?c.cat:'none')
+      ivl: c.ivl||0, reps: c.reps||0, ok:c.ok||0, err:c.err||0
     }));
   }
   function loadDeckLS(){
@@ -238,19 +258,43 @@
     card.reps++; card.due = addDays(toISO(), card.ivl);
   }
 
+  // ======= TTS (áudio) =======
+  let voices = [];
+  function loadVoices(){
+    voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+  }
+  if ('speechSynthesis' in window){
+    speechSynthesis.onvoiceschanged = loadVoices; loadVoices();
+  }
+  function speak(txt, langHint='ja-JP'){
+    if(!('speechSynthesis' in window)) return;
+    const u = new SpeechSynthesisUtterance(txt);
+    const pick = (pref)=> voices.find(v=>v.lang && v.lang.toLowerCase().startsWith(pref.toLowerCase()));
+    const v = pick(langHint) || pick('ja') || pick('pt-BR') || voices[0];
+    if(v) u.voice = v;
+    u.lang = v?.lang || langHint;
+    u.rate = 0.95; u.pitch = 1.0; u.volume = 1;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  }
+
   // ======= STATE =======
   let deck = loadDeckLS();
   let stats = loadStats();
   rollover();
 
   const State = {
-    mode: 'study',
+    modeTab: 'study',
     direction: 'PT2ROMAJI', // PT→Romaji | ROMAJI→PT
+    studyMode: 'REVIEW',    // REVIEW (SRS) | TRAIN (∞)
+    catFilter: 'todas',
     current: null,
-    showAnswer: false
+    showAnswer: false,
+    // fila de treino infinito
+    trainPool: [],
+    trainWrong: []
   };
 
-  // ======= UI =======
+  // ======= UI HELPERS =======
   const el = s => document.querySelector(s);
   const els = s => [...document.querySelectorAll(s)];
   const toastEl = el('#msg');
@@ -268,9 +312,9 @@
       const tab = b.dataset.tab;
       els('.section').forEach(s=>s.classList.remove('active'));
       el('#'+tab).classList.add('active');
-      State.mode = tab;
+      State.modeTab = tab;
       if(tab==='study') pickNext();
-      if(tab==='list') renderTable();
+      if(tab==='list') { renderTable(); refreshCategoriesUI(); }
     });
   });
 
@@ -279,8 +323,24 @@
     r.addEventListener('change', ()=>{
       State.direction = r.value;
       applyDirectionLabels();
-      if(State.mode==='study') pickNext();
+      if(State.modeTab==='study') pickNext();
     });
+  });
+
+  // Modo (Revisão / Treino ∞)
+  els('input[name="mode"]').forEach(r=>{
+    r.addEventListener('change', ()=>{
+      State.studyMode = r.value;
+      buildTrainPool();
+      if(State.modeTab==='study') pickNext();
+    });
+  });
+
+  // Categoria
+  el('#catFilter').addEventListener('change', ()=>{
+    State.catFilter = el('#catFilter').value;
+    buildTrainPool();
+    pickNext();
   });
 
   function applyDirectionLabels(){
@@ -295,7 +355,6 @@
     }
   }
 
-  // Header
   function renderHeader(){
     const pct = Math.max(0, Math.min(1, (stats.studiedToday||0)/(stats.dailyGoal||20)));
     el('#progBar').style.width = (pct*100).toFixed(0)+'%';
@@ -303,12 +362,50 @@
     el('#goal').textContent = String(stats.dailyGoal||20);
   }
 
-  // ======= STUDY =======
+  // ======= CATEGORIAS =======
+  function refreshCategoriesUI(){
+    const sel = el('#catFilter');
+    const cats = new Set(deck.map(c=>c.cat||'geral')); cats.add('todas');
+    const cur = sel.value;
+    sel.innerHTML = '';
+    [...cats].sort().forEach(c=>{
+      const opt = document.createElement('option'); opt.value=c; opt.textContent=c;
+      sel.appendChild(opt);
+    });
+    sel.value = cats.has(cur)? cur : 'todas';
+  }
+
+  function filteredByCategory(list){
+    if(State.catFilter==='todas') return list;
+    return list.filter(c=> (c.cat||'geral')===State.catFilter);
+  }
+
+  // ======= POOL TREINO ∞ =======
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} }
+  function buildTrainPool(){
+    const base = filteredByCategory(deck).slice();
+    shuffle(base);
+    State.trainPool = base;
+    State.trainWrong = []; // limpa fila de erros
+  }
+
+  // ======= ESTUDO =======
   function dueCards(){ const t=toISO(); return deck.filter(c => (c.due||t) <= t); }
 
+  function pickFromReview(){
+    const arr = filteredByCategory(dueCards());
+    return arr.length ? arr[Math.floor(Math.random()*arr.length)] : null;
+  }
+  function pickFromTrain(){
+    // 60% prioriza erros recentes, 40% pool geral
+    const useWrong = State.trainWrong.length && Math.random() < 0.6;
+    if(useWrong) return State.trainWrong[Math.floor(Math.random()*State.trainWrong.length)];
+    if(!State.trainPool.length) buildTrainPool();
+    return State.trainPool[Math.floor(Math.random()*State.trainPool.length)] || null;
+  }
+
   function pickNext(){
-    const d = dueCards();
-    State.current = d.length ? d[Math.floor(Math.random()*d.length)] : null;
+    State.current = (State.studyMode==='REVIEW') ? pickFromReview() : pickFromTrain();
     State.showAnswer=false; el('#answer').value='';
     if(State.current){
       if(State.direction==='PT2ROMAJI'){
@@ -320,7 +417,9 @@
       el('#accepted').style.display='none';
       el('#afterCheck').style.display='none';
     } else {
-      el('#qMain').textContent = 'Nenhum card devido. Adicione cartas na aba “Adicionar”.';
+      el('#qMain').textContent = (State.studyMode==='REVIEW')
+        ? 'Sem cartas “devidas” nesta categoria. Tente Treino ∞ ou outra categoria.'
+        : 'Sem cartas nesta categoria. Adicione algumas em “Adicionar”.';
     }
     renderHeader();
   }
@@ -331,30 +430,58 @@
     let ok=false, feedback='';
     if(State.direction==='PT2ROMAJI'){
       ok = !!user && (user === normBasic(State.current.romaji));
-      feedback = `Correto: <b>${State.current.romaji}</b><br><small>Traduções: ${parsePT(State.current.pt).join(' / ')}</small>`;
+      feedback = `Correto: <b>${State.current.romaji}</b> • <small>Traduções: ${parsePT(State.current.pt).join(' / ')}</small>`;
     }else{
       const acc = new Set(parsePT(State.current.pt));
       ok = !!user && acc.has(user);
-      feedback = `Romaji: <b>${State.current.romaji}</b><br><small>Traduções aceitas: ${[...acc].join(' / ')}</small>`;
+      feedback = `Romaji: <b>${State.current.romaji}</b> • <small>Traduções aceitas: ${[...acc].join(' / ')}</small>`;
     }
     State.showAnswer = true;
     el('#accepted').innerHTML = feedback; el('#accepted').style.display='block'; el('#afterCheck').style.display='flex';
     toast(ok? '✔ Correto! Agora marque a dificuldade.' : '✘ Quase! Confirme e marque a dificuldade.');
-    // salva flag de acerto/erro para a nota
     el('#afterCheck').dataset.ok = ok ? '1' : '0';
+    // fila de treino: empilha erros para ressurgirem
+    if(State.studyMode==='TRAIN'){
+      const iWrong = State.trainWrong.findIndex(c=>c.id===State.current.id);
+      if(!ok && iWrong===-1) State.trainWrong.push(State.current);
+      if(ok && iWrong!==-1) State.trainWrong.splice(iWrong,1);
+    }
   }
 
   function grade(level){
     if(!State.current) return;
-    State.current.cat = (level===0?'dificil':level===1?'medio':'facil');
     const wasOk = el('#afterCheck').dataset.ok === '1';
-    if(wasOk) State.current.ok++; else State.current.err++;
-    schedule(State.current, level);
-    saveDeck();
-    stats.studiedToday=(stats.studiedToday||0)+1; stats.lastStudy=toISO(); if(!stats.streak) stats.streak=1; saveStats();
+    if(State.studyMode==='REVIEW'){
+      if(wasOk) State.current.ok++; else State.current.err++;
+      schedule(State.current, level);
+      saveDeck();
+      stats.studiedToday=(stats.studiedToday||0)+1; stats.lastStudy=toISO(); if(!stats.streak) stats.streak=1; saveStats();
+    } else {
+      // treino ∞: só registra estatísticas leves, não mexe na data due
+      if(wasOk) State.current.ok++; else State.current.err++;
+      saveDeck();
+    }
     pickNext();
   }
 
+  // Áudio
+  el('#speakRomaji').addEventListener('click', ()=>{
+    const c = State.current; if(!c) return;
+    speak(c.romaji, 'ja-JP');
+  });
+  el('#speakPT').addEventListener('click', ()=>{
+    const c = State.current; if(!c) return;
+    // decide qual texto tocar: se direção PT→Romaji, tocar PT mostrado; se Romaji→PT, tocar uma tradução
+    let txt='';
+    if(State.direction==='PT2ROMAJI'){
+      txt = el('#qMain').textContent || parsePT(c.pt)[0] || c.pt;
+    }else{
+      txt = (parsePT(c.pt)[0] || c.pt);
+    }
+    speak(txt, 'pt-BR');
+  });
+
+  // Botões
   el('#btnCheck').addEventListener('click', checkAnswer);
   el('#answer').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); checkAnswer(); }});
   el('#bHard').addEventListener('click', ()=>grade(0));
@@ -365,22 +492,27 @@
   function parseBulk(text){
     const out=[]; (text||'').split(/\r?\n/).forEach(line=>{
       line=line.trim(); if(!line) return;
+      // romaji ; t1 ; t2 ; #cat
       const parts=line.split(/\t|\s*;\s*/).map(s=>s.trim()).filter(Boolean);
       if(parts.length<2) return;
+      let cat=''; if(parts[parts.length-1].startsWith('#')) cat = parts.pop().slice(1);
       const [romaji, ...rest] = parts;
-      out.push({romaji, pt: rest.join(';')});
+      out.push({romaji, pt: rest.join(';'), cat});
     });
     return out;
   }
+  function addCard(r,p,cat){
+    const rom = normBasic(r), pt = normBasic(p); const c = String(cat||'geral').toLowerCase().trim() || 'geral';
+    if(!rom || !pt) return false;
+    if(deck.some(x=>normBasic(x.romaji)===rom)) return false;
+    deck.push({id:String(Date.now()+Math.random()*9999), romaji:rom, pt:pt, cat:c, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0});
+    return true;
+  }
   el('#btnAdd').addEventListener('click', ()=>{
-    const r = normBasic(el('#inRomaji').value);
-    const p = normBasic(el('#inPT').value);
-    if(!r || !p){ toast('Preencha romaji e traduções'); return; }
-    const exists = deck.some(c => normBasic(c.romaji)===r);
-    if(exists){ toast('Já existe esse romaji'); return; }
-    deck.push({id:String(Date.now()), romaji:r, pt:p, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'});
-    saveDeck(); el('#inRomaji').value=''; el('#inPT').value='';
-    toast('Card adicionado!');
+    const ok = addCard(el('#inRomaji').value, el('#inPT').value, el('#inCat').value);
+    if(!ok){ toast('Preencha corretamente ou evite duplicar romaji'); return; }
+    saveDeck(); el('#inRomaji').value=''; el('#inPT').value=''; el('#inCat').value='';
+    refreshCategoriesUI(); buildTrainPool(); toast('Card adicionado!');
   });
   el('#btnParse').addEventListener('click', ()=>{
     const arr = parseBulk(el('#bulk').value);
@@ -390,52 +522,45 @@
     const arr = parseBulk(el('#bulk').value);
     if(!arr.length){ toast('Nada válido para importar'); return; }
     let added=0, skipped=0;
-    const have = new Set(deck.map(c=>normBasic(c.romaji)));
-    for(const it of arr){
-      const r = normBasic(it.romaji), p = normBasic(it.pt);
-      if(!r || !p || have.has(r)){ skipped++; continue; }
-      deck.push({id:String(Date.now()+Math.random()*9999), romaji:r, pt:p, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'});
-      have.add(r); added++;
-    }
-    saveDeck(); toast(`Importados: ${added}. Ignorados: ${skipped}.`);
+    for(const it of arr){ if(addCard(it.romaji, it.pt, it.cat)) added++; else skipped++; }
+    saveDeck(); refreshCategoriesUI(); buildTrainPool();
+    toast(`Importados: ${added}. Ignorados: ${skipped}.`);
     el('#bulk').value=''; el('#preview').textContent='';
   });
 
-  // ======= LISTA + IMPORT/EXPORT JSON LOCAL =======
+  // ======= LISTA + IMPORT/EXPORT JSON =======
   function renderTable(){
     const t = el('#table'); t.innerHTML='';
     const head = `<tr><th>#</th><th>Romaji</th><th>Traduções</th><th>Cat</th><th>Próx.</th><th>✓</th><th>✗</th></tr>`;
     t.insertAdjacentHTML('beforeend', head);
     deck.slice().sort((a,b)=> (a.romaji>b.romaji?1:-1)).forEach((c,i)=>{
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${i+1}</td><td>${c.romaji}</td><td>${c.pt}</td><td>${c.cat||'none'}</td><td>${c.due||''}</td><td>${c.ok||0}</td><td>${c.err||0}</td>`;
-      tr.addEventListener('click', ()=>{ deck = deck.filter(x=>x.id!==c.id); saveDeck(); renderTable(); toast('Removido.'); });
+      tr.innerHTML = `<td>${i+1}</td><td>${c.romaji}</td><td>${c.pt}</td><td>${c.cat||'geral'}</td><td>${c.due||''}</td><td>${c.ok||0}</td><td>${c.err||0}</td>`;
+      tr.addEventListener('click', ()=>{ deck = deck.filter(x=>x.id!==c.id); saveDeck(); renderTable(); refreshCategoriesUI(); buildTrainPool(); toast('Removido.'); });
       t.appendChild(tr);
     });
   }
-
-  // Import JSON (arquivo local)
   el('#btnImportFile').addEventListener('click', ()=> el('#fileIn').click());
   el('#fileIn').addEventListener('change', async (ev)=>{
     const f = ev.target.files?.[0]; if(!f) return;
     try{
       const text = await f.text();
       const data = JSON.parse(text);
-      if(!Array.isArray(data)) throw new Error('JSON precisa ser um array de objetos {romaji, pt}');
-      let added=0, have = new Set(deck.map(c=>normBasic(c.romaji)));
-      for(const obj of data){
-        const r = normBasic(obj.romaji), p = normBasic(obj.pt);
-        if(!r || !p || have.has(r)) continue;
-        deck.push({id:String(Date.now()+Math.random()*9999), romaji:r, pt:p, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'});
+      if(!Array.isArray(data)) throw new Error('JSON precisa ser array [{romaji,pt,cat?}]');
+      let added=0;
+      const have = new Set(deck.map(c=>normBasic(c.romaji)));
+      data.forEach((obj,i)=>{
+        const r = normBasic(obj.romaji), p = normBasic(obj.pt), c = String(obj.cat||'geral').toLowerCase();
+        if(!r || !p || have.has(r)) return;
+        deck.push({id:String(Date.now()+i), romaji:r, pt:p, cat:c, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0});
         have.add(r); added++;
-      }
-      saveDeck(); toast(`Importados do arquivo: ${added}.`); renderTable();
+      });
+      saveDeck(); renderTable(); refreshCategoriesUI(); buildTrainPool();
+      toast(`Importados do arquivo: ${added}.`);
     }catch(e){ console.error(e); toast('Falha ao importar JSON'); }
   });
-
-  // Export JSON (baixa arquivo)
   el('#btnExport').addEventListener('click', ()=>{
-    const data = deck.map(({romaji,pt})=>({romaji,pt}));
+    const data = deck.map(({romaji,pt,cat})=>({romaji,pt,cat}));
     const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -444,9 +569,8 @@
     URL.revokeObjectURL(a.href);
   });
 
-  // ======= LOAD ORDER =======
+  // ======= LOAD JSON LOCAL =======
   async function hydrateFromJson(){
-    // 1) tenta carregar do arquivo local da mesma pasta
     try{
       const res = await fetch('./anime_romaji.json', {cache:'no-store'});
       if(res.ok){
@@ -454,15 +578,15 @@
         if(Array.isArray(data)){
           let added=0, have = new Set(deck.map(c=>normBasic(c.romaji)));
           data.forEach((obj,i)=>{
-            const r = normBasic(obj.romaji), p = normBasic(obj.pt);
+            const r = normBasic(obj.romaji), p = normBasic(obj.pt), c = String(obj.cat||'geral').toLowerCase();
             if(!r || !p || have.has(r)) return;
-            deck.push({id:String(Date.now()+i), romaji:r, pt:p, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'});
+            deck.push({id:String(Date.now()+i), romaji:r, pt:p, cat:c, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0});
             have.add(r); added++;
           });
           if(added) saveDeck();
         }
       }
-    }catch(e){ /* ignorar: pode estar rodando em file:// */ }
+    }catch(e){ /* pode falhar em file://; ignorar */ }
   }
 
   // ======= INIT =======
@@ -470,6 +594,8 @@
     if(!deck) deck = seed(defaultDeck);
     await hydrateFromJson();
     applyDirectionLabels();
+    refreshCategoriesUI();
+    buildTrainPool();
     renderHeader();
     pickNext();
   })();
