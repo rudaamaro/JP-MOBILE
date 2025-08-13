@@ -2,636 +2,519 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <!-- Mobile-first, web app e safe areas -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <!-- Mobile-first e Safari iOS -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Flashcards JP↔PT — Mobile</title>
+  <title>Flashcards (Romaji ↔ PT)</title>
   <style>
-    :root { color-scheme: dark; }
-    html, body { height: 100%; margin: 0; background:#0b0f14; }
-    body { overscroll-behavior: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-    #stage { position: fixed; inset: 0; }
-    canvas { display:block; width:100vw; height:100vh; }
-
-    /* INPUT OVERLAY: abre teclado nativo no celular */
-    .overlay-input {
-      position: fixed; z-index: 10; left: 0; top: 0; width: 1px; height: 1px;
-      opacity: 0; pointer-events: none; border: none; outline: none;
-      background: #0f1422; color: #e7eef7; font: 500 clamp(16px, 2.5vh, 20px) system-ui;
-      -webkit-user-select: text; user-select: text;
+    :root{
+      color-scheme: dark;
+      --bg:#0b0f14; --card:#111827; --muted:#9fb3c8; --text:#e7eef7;
+      --accent:#43b6ff; --accent2:#7cffad; --danger:#ff6b6b; --warn:#ffd166; --stroke:#223047;
+      --radius:16px; --maxw:880px;
     }
-    .overlay-input.visible {
-      opacity: 1; pointer-events: auto; border-radius: 12px; padding: 12px;
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+    *{box-sizing:border-box}
+    html,body{height:100%; margin:0; background:var(--bg); font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;}
+    body{min-height:100svh; -webkit-text-size-adjust:100%;}
+    .app{
+      min-height:100svh; display:flex; flex-direction:column; align-items:center;
+      padding: env(safe-area-inset-top) 12px calc(12px + env(safe-area-inset-bottom)) 12px;
+      gap:12px;
     }
-
-    /* Espaço p/ a barra inferior não ficar colada no gesto home */
-    .safe-bottom { height: calc(env(safe-area-inset-bottom, 0px)); }
+    header, .card, .toolbar, .section { width:100%; max-width:var(--maxw); }
+    header{
+      display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px;
+    }
+    .brand{font-weight:800; color:var(--text); font-size:18px}
+    .progress{height:8px; background:#0f1422; border-radius:999px; overflow:hidden; flex:1; margin:0 10px; border:1px solid rgba(255,255,255,.06)}
+    .progress > i{display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2))}
+    .streak{color:var(--muted); font-weight:600; font-size:12px; white-space:nowrap}
+    nav.tabs{
+      display:grid; grid-template-columns:repeat(4,1fr); gap:8px;
+    }
+    .tab{
+      padding:12px; text-align:center; background:#0f1422; color:var(--text);
+      border-radius:12px; border:1px solid rgba(255,255,255,.06); font-weight:700;
+    }
+    .tab.active{ background:var(--accent); color:#05121d; border-color:rgba(67,182,255,.5) }
+    .card{
+      background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:var(--radius);
+      padding:18px; display:flex; flex-direction:column; gap:16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .prompt{
+      text-align:center; color:var(--muted); font-weight:700; letter-spacing:.3px;
+    }
+    .question{
+      text-align:center; color:var(--text); font-weight:900; font-size: clamp(20px, 6.5vw, 40px);
+      word-break:break-word;
+    }
+    .inputRow{
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center;
+    }
+    input.answer{
+      flex:1 1 320px; max-width:560px; height:52px; background:#0f1422; border:2px solid var(--stroke);
+      border-radius:14px; padding:0 14px; color:var(--text); font-size:18px; font-weight:700;
+      outline:none;
+    }
+    input.answer:focus{ border-color:var(--accent) }
+    .btn{
+      height:52px; padding:0 16px; border-radius:14px; font-weight:800; border:1px solid rgba(255,255,255,.08);
+      background:var(--accent); color:#05121d;
+    }
+    .btn.secondary{ background:#1f2937; color:var(--text) }
+    .btn.warn{ background:var(--warn); color:#2a1b00 }
+    .btn.good{ background:var(--accent2); color:#04210f }
+    .btn.danger{ background:var(--danger); color:#2a0000 }
+    .center{display:flex; justify-content:center; gap:10px; flex-wrap:wrap}
+    .helper{ color:var(--muted); text-align:center; font-size:13px }
+    .pillRow{display:flex; gap:8px; flex-wrap:wrap; justify-content:center}
+    .pill{ padding:8px 12px; border-radius:999px; border:1px solid rgba(255,255,255,.08); background:#0f1422; color:var(--text); font-weight:700; font-size:13px }
+    .pill.active{ background:var(--accent); color:#05121d; border-color:rgba(67,182,255,.5)}
+    .toolbar{
+      display:flex; gap:8px; flex-wrap:wrap; justify-content:space-between; align-items:center;
+      color:var(--muted); font-weight:600; font-size:12px;
+    }
+    .toolbar .left, .toolbar .right{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+    .section{display:none}
+    .section.active{display:block}
+    textarea.bulk{
+      width:100%; min-height:200px; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.08);
+      background:#0f1422; color:var(--text); font: 500 14px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    table.list{width:100%; border-collapse:separate; border-spacing:0 6px}
+    table.list th, table.list td{padding:10px 12px; text-align:left; font-size:14px}
+    table.list th{color:var(--muted); font-weight:800}
+    table.list tr{background:#0f1422; border:1px solid rgba(255,255,255,.08)}
+    table.list tr td:first-child{border-radius:12px 0 0 12px}
+    table.list tr td:last-child{border-radius:0 12px 12px 0}
+    .kudos{ color:var(--muted); text-align:center; font-size:12px; padding:8px }
+    .msg{
+      position:fixed; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom));
+      background:rgba(0,0,0,.55); color:var(--text); border:1px solid rgba(255,255,255,.15);
+      border-radius:12px; padding:10px 12px; font-weight:700; text-align:center;
+      max-width:var(--maxw); margin:0 auto;
+    }
+    /* Botões grandes mais “clicáveis” no iOS */
+    button, input, textarea { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   </style>
 </head>
 <body>
-  <div id="stage">
-    <canvas id="app"></canvas>
+  <div class="app" id="app">
+    <header>
+      <div class="brand">Flashcards — Romaji</div>
+      <div class="progress"><i id="progBar" style="width:0%"></i></div>
+      <div class="streak" id="streak">Streak: 0</div>
+    </header>
+
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="study">Estudar</button>
+      <button class="tab" data-tab="quiz">Quiz</button>
+      <button class="tab" data-tab="add">Adicionar</button>
+      <button class="tab" data-tab="list">Lista</button>
+    </nav>
+
+    <!-- STUDY -->
+    <section class="section active" id="study">
+      <div class="card">
+        <div class="prompt">Tradução (PT-BR)</div>
+        <div class="question" id="qPT">—</div>
+        <div class="center helper">Digite o <b>romaji</b> e pressione Verificar</div>
+        <div class="inputRow">
+          <input id="answer" class="answer" placeholder="ex.: konnichiwa"
+            autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"
+            inputmode="latin" enterkeyhint="done">
+          <button class="btn" id="btnCheck">Verificar</button>
+        </div>
+        <div class="center" id="afterCheck" style="display:none">
+          <button class="btn danger" id="bHard">Difícil (1)</button>
+          <button class="btn warn"   id="bMed">Médio (2)</button>
+          <button class="btn good"   id="bEasy">Fácil (3)</button>
+        </div>
+        <div class="center helper" id="accepted" style="display:none"></div>
+      </div>
+      <div class="toolbar">
+        <div class="left">
+          <span>Meta diária: <b id="goal">20</b></span>
+          <button class="btn secondary" id="btnSkip">Pular</button>
+        </div>
+        <div class="right">
+          <button class="btn secondary" id="btnSeed">Carregar dicionário base</button>
+          <button class="btn secondary" id="btnReset">Zerar progresso</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUIZ -->
+    <section class="section" id="quiz">
+      <div class="card">
+        <div class="prompt">Escolha o romaji correto</div>
+        <div class="question" id="qPTQuiz">—</div>
+        <div class="center" id="quizGrid"></div>
+        <div class="center">
+          <button class="btn secondary" id="btnNextQuiz">Próximo ▶</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADD -->
+    <section class="section" id="add">
+      <div class="card">
+        <div class="prompt">Adicionar novo card</div>
+        <div class="inputRow">
+          <input id="inRomaji" class="answer" placeholder="romaji (ex.: arigatou)" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false">
+          <input id="inPT" class="answer" placeholder="traduções (ex.: obrigado; obrigada)">
+          <button class="btn" id="btnAdd">Adicionar</button>
+        </div>
+        <div class="helper">Dica: separe sinônimos em PT por ponto e vírgula <b>;</b></div>
+      </div>
+      <div class="card">
+        <div class="prompt">Importar em massa (colar lista)</div>
+        <div class="helper">Formato por linha: <code>romaji ; tradução1 ; tradução2...</code></div>
+        <textarea class="bulk" id="bulk" placeholder="konnichiwa ; olá ; boa tarde&#10;arigatou ; obrigado ; obrigada"></textarea>
+        <div class="center">
+          <button class="btn secondary" id="btnParse">Pré-visualizar</button>
+          <button class="btn" id="btnImport">Adicionar tudo</button>
+        </div>
+        <div id="preview" class="helper"></div>
+      </div>
+    </section>
+
+    <!-- LIST -->
+    <section class="section" id="list">
+      <div class="card">
+        <div class="prompt">Cartas (toque para remover)</div>
+        <table class="list" id="table"></table>
+      </div>
+    </section>
+
+    <div class="kudos">Feito para iOS/Safari • Salva no navegador • Sem hiragana, apenas romaji</div>
+    <div class="msg" id="msg" style="display:none"></div>
   </div>
-  <!-- Campo real para abrir o teclado (sincronizado com o Canvas) -->
-  <input id="mobileInput" class="overlay-input" inputmode="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="" />
 
   <script>
-  // =========================
-  //  MOBILE-FIRST CANVAS APP
-  // =========================
-  const cvs = document.getElementById('app');
-  const ctx = cvs.getContext('2d');
-  const mobileInput = document.getElementById('mobileInput');
-
-  const IS_TOUCH = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-  const IS_MOBILE = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (Math.min(window.innerWidth, window.innerHeight) < 768);
-
-  // =========================
-  //  FIX: declarar C e SIZES antes de usar updateSizes()
-  // =========================
-  // Cores
-  const C={card:'#121826',accent:'#43b6ff',accent2:'#7cffad',text:'#e7eef7',sub:'#9fb3c8',danger:'#ff6b6b',warn:'#ffd166',stroke:'rgba(255,255,255,0.08)'};
-
-  // Tamanhos ajustados para mobile
-  const SIZES = {
-    headerH: 56,
-    footerH: 72,
-    cardPad: 16,
-    bigTitle: 20,
-    pillH: 34,
-    buttonH: 48,
-    hiraganaStudyFactor: 0.12,
-    hiraganaStudyMin: 24,
-    hiraganaQuizPx: 18,
-    hiraganaManagePx: 12
-  };
-
-  function updateSizes(){
-    const base = Math.min(window.innerWidth, window.innerHeight);
-    SIZES.headerH = Math.max(48, Math.floor(base * 0.08));
-    SIZES.footerH = Math.max(64, Math.floor(base * 0.12));
-    SIZES.cardPad = Math.max(12, Math.floor(base * 0.04));
-    SIZES.pillH = Math.max(28, Math.floor(base * 0.07));
-    SIZES.buttonH = Math.max(44, Math.floor(base * 0.1));
-  }
-  // =========================
-
-  function fitCanvas(){
-    const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
-    const w = Math.floor(window.innerWidth), h = Math.floor(window.innerHeight);
-    cvs.width = w * dpr; cvs.height = h * dpr;
-    cvs.style.width = w + 'px'; cvs.style.height = h + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-
-  window.addEventListener('resize', () => { fitCanvas(); updateSizes(); hideMobileInput(); });
-  // Chamar após as declarações
-  fitCanvas();
-  updateSizes();
-
-  // Utilitários de desenho
-  function roundRect(x,y,w,h,r=16){ r=Math.min(r, Math.min(w,h)/2); ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-  function drawButton(b){
-    const {x,y,w,h,label,fill=C.accent,stroke=C.stroke,text=C.text}=b;
-    roundRect(x,y,w,h,14);
-    ctx.fillStyle=fill;ctx.fill();
-    if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}
-    ctx.fillStyle=text;
-    let fontSize = Math.max(13, Math.floor(h*0.42));
-    ctx.font=`700 ${fontSize}px system-ui`;
-    while(ctx.measureText(String(label)).width > w-16 && fontSize>10){
-      fontSize -=1;
-      ctx.font=`700 ${fontSize}px system-ui`;
-    }
-    ctx.textAlign='center';
-    ctx.textBaseline='middle';
-    ctx.fillText(String(label),x+w/2,y+h/2+1);
-  }
-  function drawIconButton(b,icon){const {x,y,w,h,fill=C.accent}=b; roundRect(x,y,w,h,14); ctx.fillStyle=fill; ctx.fill(); ctx.strokeStyle=C.stroke; ctx.stroke(); ctx.fillStyle='#06131f'; ctx.font=`700 ${Math.max(14,Math.floor(h*0.6))}px system-ui`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(icon,x+w/2,y+h/2+1);} 
-  function drawPill(p){const {x,y,w,h,label,active=false}=p; roundRect(x,y,w,h,999); ctx.fillStyle=active?C.accent:'#1f2937'; ctx.fill(); ctx.strokeStyle=active?'rgba(67,182,255,0.5)':C.stroke; ctx.stroke(); ctx.fillStyle=active?'#06131f':C.text; ctx.font='700 13px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(label,x+w/2,y+h/2+1);}  
-  function drawInputBox(inp){const {x,y,w,h,label,value,placeholder='',focused=false}=inp;roundRect(x,y,w,h,12);ctx.fillStyle='#0f1422';ctx.fill();ctx.strokeStyle=focused?C.accent:C.stroke;ctx.lineWidth=focused?2:1;ctx.stroke();ctx.fillStyle=C.sub;ctx.font='700 12px system-ui';ctx.textAlign='left';ctx.textBaseline='top';if(label)ctx.fillText(label,x+12,y+8);ctx.font='600 18px system-ui';ctx.fillStyle=value?C.text:'rgba(231,238,247,0.4)';const shown=value||placeholder;ctx.fillText(shown+(focused&&tick()%60<30?'|':''),x+12,y+(label?28:12));}
-  function drawProgressBar(x,y,w,h,p){roundRect(x,y,w,h,12);ctx.fillStyle='#0f1422';ctx.fill();const ww=Math.max(0,Math.min(1,p))*w;roundRect(x,y,ww,h,12);const g=ctx.createLinearGradient(x,y,x+w,y);g.addColorStop(0,C.accent);g.addColorStop(1,C.accent2);ctx.fillStyle=g;ctx.fill();ctx.strokeStyle=C.stroke;ctx.stroke();ctx.font='700 12px system-ui';ctx.fillStyle=C.text;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(Math.round(Math.max(0,Math.min(1,p))*100)+'%',x+w/2,y+h/2);}  
-
-  // Área oculta p/ colar (mantida)
-  const pasteArea=document.createElement('textarea'); pasteArea.style.position='fixed'; pasteArea.style.opacity='0'; pasteArea.style.pointerEvents='none'; document.body.appendChild(pasteArea);
-
-  // LocalStorage / deck
-  const LS_KEYS={deck:'jpDeck_v5',stats:'jpStats_v2'};
-  function todayStr(d=new Date()){const y=d.getFullYear(),m=('0'+(d.getMonth()+1)).slice(-2),day=('0'+d.getDate()).slice(-2);return `${y}-${m}-${day}`;}
-  function addDays(iso,n){const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);return todayStr(d);}  
-
-  const defaultDeck=[
-    {id:'1',hiragana:'こんにちは',romaji:'konnichiwa',pt:'olá|ola|boa tarde',due:todayStr(),ef:2.5,ivl:0,reps:0,ok:0,err:0,cat:'none'},
-    {id:'2',hiragana:'ありがとう',romaji:'arigatou',pt:'obrigado|obrigada',due:todayStr(),ef:2.5,ivl:0,reps:0,ok:0,err:0,cat:'none'},
-    {id:'3',hiragana:'すみません',romaji:'sumimasen',pt:'desculpa|com licença|com licenca',due:todayStr(),ef:2.5,ivl:0,reps:0,ok:0,err:0,cat:'none'}
+  // ======= STORAGE & HELPERS =======
+  const LS_DECK = 'romajiDeck_v1';
+  const LS_STATS = 'romajiStats_v1';
+  const defaultDeck = [
+    ["konnichiwa","olá; boa tarde"],
+    ["ohayou","bom dia"],
+    ["konbanwa","boa noite"],
+    ["arigatou","obrigado; obrigada"],
+    ["sumimasen","desculpa; com licença"],
+    ["itadakimasu","bom apetite"],
+    ["sayounara","tchau; adeus"]
   ];
-  function migrate(a){
-    return (a||[]).map(c=>({
-      id:c.id||String(Date.now()+Math.random()),
-      hiragana:c.hiragana||'',
-      romaji:(c.romaji||'').toLowerCase(),
-      pt:(c.pt||'').toLowerCase(),
-      due:c.due||todayStr(),
-      ef:typeof c.ef==='number'?c.ef:2.5,
-      ivl:typeof c.ivl==='number'?c.ivl:0,
-      reps:c.reps||0, ok:c.ok||0, err:c.err||0,
-      cat:(c.cat==='dificil'||c.cat==='medio'||c.cat==='facil')?c.cat:'none'
+  const toISO = (d = new Date()) => {
+    const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  };
+  const addDays = (iso,n)=>{const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+n); return toISO(d);};
+  const normBasic = s => (s||'').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // acentos
+      .replace(/\([^)]*\)/g,' ')  // remove (observações)
+      .replace(/[\p{P}\p{S}]/gu,' ') // pontuação
+      .replace(/\s+/g,' ').trim();
+
+  function loadDeck(){
+    try{
+      const raw = JSON.parse(localStorage.getItem(LS_DECK));
+      if(Array.isArray(raw)) return migrate(raw);
+    }catch(e){}
+    return seed(defaultDeck.slice());
+  }
+  function saveDeck(){ localStorage.setItem(LS_DECK, JSON.stringify(deck)); }
+  function seed(list){
+    const today = toISO();
+    return list.map(([romaji,pt], i)=>({
+      id:String(Date.now()+i),
+      romaji: String(romaji||'').toLowerCase().trim(),
+      pt: String(pt||'').toLowerCase().trim(),
+      due: today, ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'
     }));
   }
-  function loadDeck(){try{return migrate(JSON.parse(localStorage.getItem(LS_KEYS.deck))||defaultDeck.slice());}catch(e){return defaultDeck.slice();}}
-  function saveDeck(){localStorage.setItem(LS_KEYS.deck,JSON.stringify(deck));}
-  const defaultStats={streak:0,lastStudy:null,studiedToday:0,dailyGoal:20};
-  function loadStats(){try{return Object.assign({},defaultStats,JSON.parse(localStorage.getItem(LS_KEYS.stats)||'{}'));}catch(e){return {...defaultStats};}}
-  function saveStats(){localStorage.setItem(LS_KEYS.stats,JSON.stringify(stats));}
+  function migrate(arr){ // garante campos
+    const today = toISO();
+    return arr.map(c=>({
+      id: c.id || String(Date.now()+Math.random()),
+      romaji: String(c.romaji||'').toLowerCase().trim(),
+      pt: String(c.pt||'').toLowerCase().trim(),
+      due: c.due || today, ef: typeof c.ef==='number'?c.ef:2.5,
+      ivl: c.ivl||0, reps: c.reps||0, ok:c.ok||0, err:c.err||0, cat:(['dificil','medio','facil'].includes(c.cat)?c.cat:'none')
+    }));
+  }
+  function parsePT(pt){ return (pt||'').split(/[|;,\n]/).map(normBasic).filter(Boolean); }
 
-  let deck=loadDeck(); let stats=loadStats();
-  function applyRollover(){const t=todayStr(); if(!stats.lastStudy){stats.lastStudy=t;stats.studiedToday=0;saveStats();return;} if(stats.lastStudy!==t){const y=new Date(stats.lastStudy+'T00:00:00');const d=new Date(t+'T00:00:00');const diff=Math.round((d-y)/86400000);stats.streak=(diff===1)?(stats.streak+1):1;stats.studiedToday=0;stats.lastStudy=t;saveStats();}} applyRollover();
+  // SRS (SuperMemo-ish)
+  function schedule(card,grade){
+    const minEF=1.3;
+    if(grade===0){ // difícil
+      card.err++; card.reps=0; card.ef=Math.max(minEF,(card.ef||2.5)-0.2); card.ivl=1; card.due=addDays(toISO(),1); return;
+    }
+    card.ok++;
+    if(card.reps===0){ card.ivl = (grade===2)?3:1; }
+    else { const mult = grade===2?(card.ef*1.3):card.ef; card.ivl = Math.max(1, Math.round(card.ivl*mult)); }
+    card.ef = Math.max(minEF, (card.ef||2.5) + (grade===2?+0.10:-0.05));
+    card.reps++; card.due = addDays(toISO(), card.ivl);
+  }
 
-  // SRS
-  function schedule(card,grade){const minEF=1.3; if(grade===0){card.err=(card.err||0)+1; card.reps=0; card.ef=Math.max(minEF,(card.ef||2.5)-0.2); card.ivl=1; card.due=addDays(todayStr(),1); return;} card.ok=(card.ok||0)+1; const ef=card.ef||2.5; if(card.reps===0){card.ivl=(grade===2)?3:1;} else {const mult=grade===2?(ef*1.3):ef; card.ivl=Math.max(1,Math.round(card.ivl*mult));} card.ef=Math.max(minEF,ef+(grade===2?+0.10:-0.05)); card.reps=(card.reps||0)+1; card.due=addDays(todayStr(),card.ivl);}  
+  // Stats
+  const defaultStats = {streak:0,lastStudy:null,studiedToday:0,dailyGoal:20};
+  function loadStats(){
+    try{ return Object.assign({}, defaultStats, JSON.parse(localStorage.getItem(LS_STATS)||'{}')); }catch(e){ return {...defaultStats};}
+  }
+  function saveStats(){ localStorage.setItem(LS_STATS, JSON.stringify(stats)); }
+  function rollover(){
+    const t = toISO();
+    if(!stats.lastStudy){ stats.lastStudy=t; stats.studiedToday=0; saveStats(); return; }
+    if(stats.lastStudy!==t){
+      const y=new Date(stats.lastStudy+'T00:00:00'), d=new Date(t+'T00:00:00');
+      stats.streak = Math.round((d-y)/86400000)===1 ? (stats.streak+1) : 1;
+      stats.studiedToday=0; stats.lastStudy=t; saveStats();
+    }
+  }
 
-  // Estado
-  const State={
-    mode:'study', // mobile: já cai no modo principal
-    input:'',
-    showAnswer:false,
-    focusField:null,
-    addForm:{hiragana:'',romaji:'',pt:''},
-    message:'',
-    manage:{page:0,pageSize:10,selected:null,sort:'due'},
-    bulkText:'',
-    trainFilter:'todas',
-    quiz:{current:null, options:[], correctIndex:-1, selectedIndex:-1}
+  let deck = loadDeck();
+  let stats = loadStats();
+  rollover();
+
+  // ======= STATE =======
+  const State = {
+    mode: 'study',
+    current: null,
+    input: '',
+    showAnswer: false,
+    trainFilter: 'todas',
+    quiz: {current:null, options:[], correctIndex:-1, selectedIndex:-1}
   };
 
-  // Normalização
-  function normalizeBasic(s){
-    return (s||'')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/\([^)]*\)/g, ' ')
-      .replace(/[\p{P}\p{S}]/gu, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+  // ======= UI ELEMENTS =======
+  const el = s => document.querySelector(s);
+  const els = s => [...document.querySelectorAll(s)];
+  const msg = el('#msg');
+
+  function toast(t, ms=1400){
+    msg.textContent=t; msg.style.display='block';
+    clearTimeout(toast._t); toast._t=setTimeout(()=>{msg.style.display='none'}, ms);
   }
-  function parseAnswers(pt){return (pt||'').split(/[|;,]/).map(normalizeBasic).filter(Boolean);}  
 
-  function dueCards(){const t=todayStr(); return deck.filter(c => (c.due||t) <= t);} 
-  let currentCard=null;
-  function pickNext(){ const p=dueCards(); currentCard=p.length?p[Math.floor(Math.random()*p.length)]:null; State.input=''; State.showAnswer=false; }
-  function trainPool(){ if(State.trainFilter==='todas') return deck; return deck.filter(c=>c.cat===State.trainFilter); }
-  function pickNextTrain(){ const pool=trainPool(); currentCard=pool.length?pool[Math.floor(Math.random()*pool.length)]:null; State.input=''; State.showAnswer=false; }
-
-  // Quiz
-  function shuffleInPlace(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
-  function startQuizQuestion(){
-    if(deck.length===0){ State.quiz={current:null,options:[],correctIndex:-1,selectedIndex:-1}; return; }
-    const idx=Math.floor(Math.random()*deck.length);
-    const card=deck[idx];
-    const answers=parseAnswers(card.pt);
-    const correctPT = answers[Math.floor(Math.random()*Math.max(1,answers.length))] || '';
-    const pool = deck.filter((c,i)=> i!==idx && parseAnswers(c.pt).length>0);
-    shuffleInPlace(pool);
-    const distractors = [];
-    const used = new Set([normalizeBasic(correctPT)]);
-    for(const c of pool){ if(distractors.length>=3) break; const list=parseAnswers(c.pt); if(list.length===0) continue; const pick=list[Math.floor(Math.random()*list.length)]; const norm=normalizeBasic(pick); if(!used.has(norm)) { used.add(norm); distractors.push(pick); } }
-    while(distractors.length<3){ distractors.push('—'); }
-    const options=[correctPT, ...distractors.slice(0,3)];
-    const order=[0,1,2,3]; shuffleInPlace(order);
-    const mapped = order.map(i=>options[i]);
-    const correctIndex = order.indexOf(0);
-    State.quiz={current:card, options:mapped, correctIndex:correctIndex, selectedIndex:-1};
-  }
-  function selectQuizOption(index){ if(State.quiz.selectedIndex!==-1) return; State.quiz.selectedIndex=index; const ok = index===State.quiz.correctIndex; State.message = ok? '✔ Correto!':'✘ Resposta incorreta.'; }
-  function nextQuiz(){ startQuizQuestion(); State.message=''; }
-
-  // TTS JP
-  function speakJP(t){ if(!('speechSynthesis'in window)){ State.message='TTS não suportado'; return; } const u=new SpeechSynthesisUtterance(t); u.lang='ja-JP'; const vs=speechSynthesis.getVoices(); const jp=vs.find(v=>/ja-JP|Japanese/i.test(v.lang+v.name))||vs.find(v=>/ja|JP|Japanese/i.test(v.lang+v.name)); if(jp)u.voice=jp; u.rate=0.95; speechSynthesis.cancel(); speechSynthesis.speak(u); }
-  if('speechSynthesis' in window){ speechSynthesis.onvoiceschanged=()=>{}; }
-
-  // -----------------------
-  //   TECLADO (overlay)
-  // -----------------------
-  let overlayBind = { mode: null, field: null };
-  function showMobileInput(x, y, w, h, value, placeholder, bind){
-    mobileInput.style.left = Math.round(x) + 'px';
-    mobileInput.style.top  = Math.round(y) + 'px';
-    mobileInput.style.width  = Math.round(w) + 'px';
-    mobileInput.style.height = Math.round(h) + 'px';
-    mobileInput.value = value || '';
-    mobileInput.placeholder = placeholder || '';
-    overlayBind = bind || {mode:null, field:null};
-    mobileInput.classList.add('visible');
-    // Empurra um pouco para cima da área segura do iOS
-    const pad = parseInt(getComputedStyle(document.documentElement).getPropertyValue('env(safe-area-inset-bottom)') || '0', 10) || 0;
-    mobileInput.style.paddingBottom = (12 + pad) + 'px';
-    mobileInput.focus({ preventScroll: true });
-    // Seleciona fim do texto
-    requestAnimationFrame(()=>{ const v = mobileInput.value; mobileInput.setSelectionRange(v.length, v.length); });
-  }
-  function hideMobileInput(){ mobileInput.classList.remove('visible'); overlayBind={mode:null, field:null}; }
-
-  // Sincroniza texto digitado no input real com o estado
-  mobileInput.addEventListener('input', ()=>{
-    const val = mobileInput.value;
-    if(overlayBind.mode==='study'){
-      State.input = val;
-    } else if(overlayBind.mode==='add'){
-      if(overlayBind.field && State.addForm.hasOwnProperty(overlayBind.field)){
-        State.addForm[overlayBind.field] = val;
-      }
-    } else if(overlayBind.mode==='bulk'){
-      State.bulkText = val;
-    }
-  });
-  // Enter confirma
-  mobileInput.addEventListener('keydown', (e)=>{
-    if(e.key==='Enter'){
-      if(overlayBind.mode==='study'){ hideMobileInput(); checkAnswer(); }
-      if(overlayBind.mode==='add' && overlayBind.field){ hideMobileInput(); addCardFromForm(); }
-      if(overlayBind.mode==='bulk'){ /* nada */ }
-      e.preventDefault();
-    }
-    if(e.key==='Escape'){ hideMobileInput(); }
+  // Tabs
+  els('.tab').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      els('.tab').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      const tab = b.dataset.tab;
+      els('.section').forEach(s=>s.classList.remove('active'));
+      el('#'+tab).classList.add('active');
+      State.mode = tab;
+      if(tab==='study'){ pickNext(); }
+      if(tab==='quiz'){ startQuizQuestion(); }
+      if(tab==='list'){ renderTable(); }
+    });
   });
 
-  // -----------------------
-  //  INPUTS / CLIQUES
-  // -----------------------
-  function clientToCanvas(evt){
-    const r = cvs.getBoundingClientRect();
-    const x = (evt.clientX ?? (evt.touches && evt.touches[0].clientX)) - r.left;
-    const y = (evt.clientY ?? (evt.touches && evt.touches[0].clientY)) - r.top;
-    return { x, y };
+  // Progress
+  function renderHeader(){
+    const pct = Math.max(0, Math.min(1, (stats.studiedToday||0)/(stats.dailyGoal||20)));
+    el('#progBar').style.width = (pct*100).toFixed(0)+'%';
+    el('#streak').textContent = `Streak: ${stats.streak||0}`;
+    el('#goal').textContent = String(stats.dailyGoal||20);
   }
 
-  const mouse={x:0,y:0,down:false};
-  function addPointerListeners(){
-    if(IS_TOUCH){
-      cvs.addEventListener('touchstart', (e)=>{ const p=clientToCanvas(e); mouse.x=p.x; mouse.y=p.y; mouse.down=true; handleClick(p.x,p.y); }, {passive:true});
-      cvs.addEventListener('touchmove', (e)=>{ const p=clientToCanvas(e); mouse.x=p.x; mouse.y=p.y; }, {passive:true});
-      cvs.addEventListener('touchend', ()=>{ mouse.down=false; });
-      // Evita gesture zoom
-      document.addEventListener('gesturestart', e=>e.preventDefault());
+  // ======= STUDY MODE (PT -> Romaji) =======
+  function dueCards(){ const t=toISO(); return deck.filter(c => (c.due||t) <= t); }
+  function pickNext(){
+    const d = dueCards();
+    State.current = d.length ? d[Math.floor(Math.random()*d.length)] : null;
+    State.showAnswer=false; State.input=''; el('#answer').value='';
+    if(State.current){
+      // escolhe uma das traduções aceitas pra exibir
+      const opts = parsePT(State.current.pt);
+      el('#qPT').textContent = opts.length? opts[Math.floor(Math.random()*opts.length)] : State.current.pt;
+      el('#accepted').style.display='none';
+      el('#afterCheck').style.display='none';
+    } else {
+      el('#qPT').textContent = 'Nenhum card devido. Use Quiz, adicione cartas ou volte depois.';
     }
-    // Mouse também (desktop)
-    cvs.addEventListener('mousemove', e=>{ const r=cvs.getBoundingClientRect(); mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top; });
-    cvs.addEventListener('mousedown', e=>{ mouse.down=true; handleClick(mouse.x,mouse.y); });
-    window.addEventListener('mouseup', ()=>{ mouse.down=false; });
-  }
-  addPointerListeners();
-
-  function hit(b,x,y){return x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h;}
-  function handleClick(x,y){ const u=layout(); const all=[...u.buttons,...u.clickZones]; for(const b of all){ if(hit(b,x,y)){ b.onClick&&b.onClick(); return; } } }
-
-  // -----------------------
-  //  LAYOUT MOBILE-FIRST
-  // -----------------------
-  function layout(){
-    const W = cvs.clientWidth, H = cvs.clientHeight;
-    const headerH = SIZES.headerH;
-    const footerH = SIZES.footerH;
-    const pad = SIZES.cardPad;
-
-    const topBar = { x:0, y:0, w:W, h:headerH };
-    const bottomBar = { x:0, y:H-footerH, w:W, h:footerH };
-
-    // Área principal (cartão)
-    const cardX = pad;
-    const cardY = topBar.y + topBar.h + pad;
-    const cardW = W - pad*2;
-    const cardH = Math.max(220, H - (topBar.h + footerH + pad*3));
-
-    const card = { x:cardX, y:cardY, w:cardW, h:cardH };
-    const buttons=[], clickZones=[], inputs=[];
-
-    // Botões inferiores como "aba" (Estudar/Treinar/Quiz/Resumo/Lista)
-    const tabW = Math.max(40, Math.floor((W - pad*2 - 4*8)/5)); // 5 abas, gaps 8px
-    const tabY = bottomBar.y + 12;
-    const makeTab = (i, label, onClick, fill) => ({ x: pad + i*(tabW+8), y: tabY, w: tabW, h: bottomBar.h-24, label, onClick, fill: fill || '#1f2937' });
-
-    buttons.push(
-      makeTab(0, 'Estudar', ()=>{ State.mode='study'; pickNext(); }),
-      makeTab(1, 'Treinar', ()=>{ State.mode='train'; pickNextTrain(); }, '#0ea5e9'),
-      makeTab(2, 'Quiz',    ()=>{ State.mode='quiz'; startQuizQuestion(); }, '#f59e0b'),
-      makeTab(3, 'Resumo',  ()=>{ State.mode='summary'; }, '#8b5cf6'),
-      makeTab(4, 'Lista',   ()=>{ State.mode='manage'; }, '#334155')
-    );
-
-    // Engrenagem (adicionar) no topo esquerdo
-    const gear = { x: pad, y: Math.floor(topBar.y + (topBar.h-40)/2), w: 40, h: 40, onClick: ()=>{ State.mode='add'; State.focusField='hiragana'; hideMobileInput(); } };
-    clickZones.push(gear);
-
-    // Barra de progresso e streak no topo (lado direito)
-    const progW = Math.min(380, W - pad*2 - 40 - 12);
-    const prog = { x: W - pad - progW, y: topBar.y + Math.floor((topBar.h-18)/2), w: progW, h: 16 };
-
-    // Filtros do treino (pills)
-    let trainPills=[];
-    if(State.mode==='train'){
-      const defs=[{key:'todas',label:'Todas'},{key:'dificil',label:'Difícil'},{key:'medio',label:'Médio'},{key:'facil',label:'Fácil'}];
-      const pw = Math.floor((card.w - 24*2 - 10*3)/4); // 4 pílulas
-      const ph = SIZES.pillH; let px=card.x+24, py=card.y+16;
-      for(const p of defs){
-        const pill={x:px,y:py,w:pw,h:ph,label:p.label,active: State.trainFilter===p.key};
-        trainPills.push(pill);
-        clickZones.push({x:pill.x,y:pill.y,w:pw,h:ph,onClick:()=>{ State.trainFilter=p.key; pickNextTrain(); }});
-        px+=pw+10;
-      }
-    }
-
-    // STUDY & TRAIN (campo de resposta mobilizado)
-    if(State.mode==='study'||State.mode==='train'){
-      const btnAudio={x:card.x+card.w-48,y:card.y+12,w:36,h:36,label:'\uD83D\uDD0A',fill:'#243b55',onClick:()=>{ if(currentCard) speakJP(currentCard.hiragana); }};
-      buttons.push(btnAudio);
-
-      // Caixa de resposta
-      const inpW = card.w - 24*2;
-      const inpX = card.x + 24;
-      const baseY = card.y + Math.max(96, Math.floor(card.h*0.42));
-      const inp = { x: inpX, y: baseY, w: inpW, h: 52, label:'Tradução (PT-BR)', value: State.input, placeholder: 'ex.: olá; boa tarde', focused: true };
-      inputs.push(inp);
-      clickZones.push({ x: inp.x, y: inp.y, w: inp.w, h: inp.h, onClick: ()=>{
-        showMobileInput(inp.x, inp.y, inp.w, inp.h, State.input, 'ex.: olá; boa tarde', { mode:'study' });
-      }});
-
-      if(!State.showAnswer){
-        const btnVer={x:inp.x+inp.w-160,y:inp.y+inp.h+12,w:160,h:SIZES.buttonH,label:'Verificar',onClick:()=>{ hideMobileInput(); checkAnswer(); }};
-        buttons.push(btnVer);
-      } else {
-        const bx=card.x+24, by=inp.y+inp.h+12; const bw=Math.floor((card.w-24*2-12*2)/3), bh=SIZES.buttonH;
-        const bHard={x:bx,y:by,w:bw,h:bh,label:'Difícil',fill:C.danger,onClick:()=>chooseDifficulty('dificil')};
-        const bMed={x:bx+bw+12,y:by,w:bw,h:bh,label:'Médio',fill:C.warn,onClick:()=>chooseDifficulty('medio')};
-        const bEasy={x:bx+(bw+12)*2,y:by,w:bw,h:bh,label:'Fácil',fill:C.accent2,onClick:()=>chooseDifficulty('facil')};
-        buttons.push(bHard,bMed,bEasy);
-      }
-    }
-
-    // ADD (form com 3 campos, cada um abre teclado)
-    if(State.mode==='add'){
-      const iw=Math.min(520,card.w-32); const ix=card.x+(card.w-iw)/2;
-      const i1={x:ix,y:card.y+64,w:iw,h:56,label:'Hiragana',value:State.addForm.hiragana,placeholder:'ex.: こんにちは',focused:State.focusField==='hiragana'};
-      const i2={x:ix,y:card.y+64+66,w:iw,h:56,label:'Romaji',value:State.addForm.romaji,placeholder:'ex.: konnichiwa',focused:State.focusField==='romaji'};
-      const i3={x:ix,y:card.y+64+66*2,w:iw,h:56,label:'Tradução (PT-BR)',value:State.addForm.pt,placeholder:'ex.: olá; boa tarde',focused:State.focusField==='pt'};
-      inputs.push(i1,i2,i3);
-      for(const it of [i1,i2,i3]){
-        const f = (it===i1?'hiragana':it===i2?'romaji':'pt');
-        clickZones.push({x:it.x,y:it.y,w:it.w,h:it.h,onClick:()=>{
-          State.focusField=f;
-          showMobileInput(it.x, it.y, it.w, it.h, State.addForm[f], it.placeholder, { mode:'add', field:f });
-        }});
-      }
-      const bAdd={x:ix,y:i3.y+i3.h+12,w:iw,h:SIZES.buttonH,label:'Adicionar (Enter)',onClick:()=>{ hideMobileInput(); addCardFromForm(); }};
-      const bBulk={x:ix,y:bAdd.y+SIZES.buttonH+12,w:iw,h:SIZES.buttonH,label:'Colar lista (Bulk)',fill:'#334155',onClick:()=>{ State.mode='bulk'; State.bulkText=''; State.message='Cole/edite sua lista aqui.'; showMobileInput(ix, bAdd.y+SIZES.buttonH+12, iw, Math.min(220, card.h-200), State.bulkText, 'hiragana ; romaji ; tradução1 ; ...', {mode:'bulk'}); }};
-      buttons.push(bAdd,bBulk);
-    }
-
-    // BULK (texto aparece no próprio overlay-input)
-    if(State.mode==='bulk'){
-      // Apenas orientações visuais
-      // O conteúdo é editado no overlay input já aberto em bBulk
-    }
-
-    // MANAGE (lista)
-    if(State.mode==='manage'){
-      const listX=card.x+12, listY=card.y+56, listW=card.w-24, rowH=36; 
-      const items=sortDeck(deck,State.manage.sort);
-      const start=State.manage.page*State.manage.pageSize; 
-      const end=Math.min(items.length,start+State.manage.pageSize);
-      for(let r=start,row=0;r<end;r++,row++){
-        const it=items[r]; const y=listY+row*rowH; 
-        if(State.manage.selected===it.id){roundRect(listX,y,listW,rowH-6,10); ctx.fillStyle='rgba(67,182,255,0.12)'; ctx.fill();}
-        ctx.fillStyle=C.text; ctx.font='600 14px system-ui'; ctx.textAlign='left'; ctx.textBaseline='middle';
-        // Hiragana menor
-        const __prev=ctx.font; ctx.font=`700 ${SIZES.hiraganaManagePx}px system-ui`; ctx.fillText(it.hiragana, listX+8, y+rowH/2);
-        ctx.font=__prev; ctx.fillStyle=C.sub; ctx.fillText(' • '+it.romaji+'  |  '+(it.cat||'none')+'  |  due '+(it.due||'')+'  | ✓'+(it.ok||0)+'  ✗'+(it.err||0), listX+60, y+rowH/2);
-        clickZones.push({x:listX,y:y,w:listW,h:rowH-6,onClick:()=>{State.manage.selected=it.id;}});
-      }
-      const totalPages=Math.max(1,Math.ceil(deck.length/State.manage.pageSize));
-      const bPrev={x:card.x+12,y:card.y+card.h-48,w:120,h:40,label:'◀ Anterior',fill:'#1f2937',onClick:()=>{State.manage.page=Math.max(0,State.manage.page-1);}}; 
-      const bNext={x:card.x+12+120+8,y:card.y+card.h-48,w:120,h:40,label:'Próxima ▶',fill:'#1f2937',onClick:()=>{State.manage.page=Math.min(totalPages-1,State.manage.page+1);}}; 
-      const bDel={x:card.x+card.w-160-12,y:card.y+card.h-48,w:160,h:40,label:'Excluir',fill:'#dc2626',onClick:deleteSelected}; 
-      buttons.push(bPrev,bNext,bDel); 
-      ctx.fillStyle=C.sub; ctx.font='600 12px system-ui'; ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillText(`Página ${State.manage.page+1}/${totalPages}`, card.x+12, card.y+card.h-58);
-    }
-
-    // QUIZ — botões
-    if (State.mode === 'quiz') {
-      const q = State.quiz;
-      if (q.current) {
-        const gridPad = 10;
-        const bw = (card.w - gridPad * 3) / 2;
-        const bh = SIZES.buttonH;
-        let ox = card.x + gridPad,
-            oy = card.y + card.h - (bh * 2 + gridPad * 3);
-        for (let i = 0; i < 4; i++) {
-          const row = Math.floor(i / 2), col = i % 2;
-          const bx = ox + col * (bw + gridPad), by = oy + row * (bh + gridPad);
-          const isSel = q.selectedIndex === i; const isCorrect = (q.correctIndex === i);
-          let fillVar = '#1f2937'; if (q.selectedIndex !== -1) { if (isCorrect) fillVar = C.accent2; else if (isSel) fillVar = C.danger; }
-          buttons.push({ x: bx, y: by, w: bw, h: bh, label: q.options[i] || '—', fill: fillVar, onClick: () => selectQuizOption(i) });
-        }
-        buttons.push({ x: card.x + card.w - 140, y: card.y + card.h - SIZES.buttonH, w: 120, h: SIZES.buttonH, label: (q.selectedIndex === -1 ? 'Pular' : 'Próximo ▶'), fill: '#0ea5e9', onClick: nextQuiz });
-        buttons.push({ x: card.x + 12, y: card.y + card.h - SIZES.buttonH, w: 40, h: Math.max(36, SIZES.buttonH - 8), label: '🔊', fill: '#243b55', onClick: () => { speakJP(q.current.hiragana); } });
-      }
-    }
-
-    return { topBar, bottomBar, buttons, clickZones, card, inputs, gear, prog, pad, cardW, cardH };
+    renderHeader();
   }
 
-  // -----------------------
-  //  RENDER
-  // -----------------------
-  let _tick=0; function tick(){return _tick;}
-  function render(){
-    _tick++;
-    const L = layout();
-    ctx.clearRect(0,0,cvs.clientWidth,cvs.clientHeight);
-
-    // Top bar
-    ctx.fillStyle = '#0b0f14'; ctx.fillRect(0,0,cvs.clientWidth,SIZES.headerH);
-    drawIconButton({x:L.gear.x,y:L.gear.y,w:L.gear.w || 40,h:L.gear.h || 40},'⚙');
-    const pct=Math.max(0,Math.min(1,(stats.studiedToday||0)/(stats.dailyGoal||20))); 
-    drawProgressBar(L.prog.x, L.prog.y, L.prog.w, L.prog.h, pct);
-
-    // Card
-    roundRect(L.card.x, L.card.y, L.card.w, L.card.h, 20); ctx.fillStyle=C.card; ctx.fill(); ctx.strokeStyle=C.stroke; ctx.stroke();
-
-    // Conteúdo por modo
-    if(State.mode==='study'||State.mode==='train'){
-      // Títulos
-      ctx.fillStyle=C.text; ctx.font='800 18px system-ui'; ctx.textAlign='left'; ctx.textBaseline='top';
-      ctx.fillText(State.mode==='study'?'Estudar':'Treinar', L.card.x+24, L.card.y+16);
-      // Treino: filtros
-      if(State.mode==='train'){
-        const L2 = layout(); // para pegar pills
-        if(L2 && L2.buttons){} // noop
-      }
-
-      if(!currentCard){
-        ctx.fillStyle=C.sub; ctx.font='600 16px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        const msg = (State.mode==='study')?'Nenhum card devido. Vá ao Quiz/Treino ou volte depois.':(trainPool().length? 'Digite a tradução e toque em Verificar.':'Sem itens nesta categoria. Troque o filtro.');
-        ctx.fillText(msg, L.card.x+L.card.w/2, L.card.y+L.card.h/2);
-      } else {
-        // HIRAGANA (menor no mobile)
-        ctx.fillStyle=C.text; 
-        ctx.font = `800 ${Math.max(SIZES.hiraganaStudyMin, Math.floor(L.card.h * SIZES.hiraganaStudyFactor))}px system-ui`;
-        ctx.textAlign='center'; ctx.textBaseline='top'; 
-        ctx.fillText(currentCard.hiragana, L.card.x+L.card.w/2, L.card.y+44); 
-
-        // Romaji
-        ctx.fillStyle=C.sub; ctx.font='700 20px system-ui';
-        const ry = L.card.y + 44 + Math.max(SIZES.hiraganaStudyMin, Math.floor(L.card.h*SIZES.hiraganaStudyFactor)) + 6;
-        ctx.fillText(currentCard.romaji, L.card.x+L.card.w/2, ry);
-
-        // Resposta correta (após verificar)
-        let afterY = ry + 34;
-        if(State.showAnswer){
-          const answers=parseAnswers(currentCard.pt);
-          ctx.fillStyle=C.sub; ctx.font='700 14px system-ui'; ctx.fillText('Respostas aceitas:', L.card.x+L.card.w/2, afterY);
-          ctx.fillStyle=C.text; ctx.font='900 20px system-ui'; ctx.fillText(answers.join(' / '), L.card.x+L.card.w/2, afterY+20);
-          afterY += 56;
-        }
-
-        // Botão áudio
-        drawButton({x:L.card.x+L.card.w-48,y:L.card.y+12,w:36,h:36,label:'🔊',fill:'#243b55',onClick:()=>{ if(currentCard) speakJP(currentCard.hiragana); }});
-
-        // Filtros Treino
-        if(State.mode==='train'){
-          const defs=[{key:'todas',label:'Todas'},{key:'dificil',label:'Difícil'},{key:'medio',label:'Médio'},{key:'facil',label:'Fácil'}];
-          const pw = Math.floor((L.card.w - 24*2 - 10*3)/4), ph=SIZES.pillH; let px=L.card.x+24, py=L.card.y+16;
-          for(const p of defs){ const pill={x:px,y:py,w:pw,h:ph,label:p.label,active: State.trainFilter===p.key}; drawPill(pill); const hitz={x:px,y:py,w:pw,h:ph,onClick:()=>{ State.trainFilter=p.key; pickNextTrain(); }}; if(!layout().clickZones.some(z=>z===hitz)){} px+=pw+10; }
-        }
-
-        // Campo de input (desenhado e com overlay real ao toque)
-        const inpW = L.card.w - 24*2; const inpX = L.card.x + 24; const baseY = L.card.y + Math.max(96, Math.floor(L.card.h*0.42));
-        drawInputBox({ x: inpX, y: baseY, w: inpW, h: 52, label:'Tradução (PT-BR)', value: State.input, placeholder:'ex.: olá; boa tarde', focused:true });
-
-        if(!State.showAnswer){ drawButton({x:inpX+inpW-160,y:baseY+52+12,w:160,h:SIZES.buttonH,label:'Verificar',onClick:()=>{ hideMobileInput(); checkAnswer(); }}); }
-        else {
-          const bx= L.card.x+24, by=baseY+52+12; const bw=Math.floor((L.card.w-24*2-12*2)/3), bh=SIZES.buttonH;
-          drawButton({x:bx,y:by,w:bw,h:bh,label:'Difícil',fill:C.danger,onClick:()=>chooseDifficulty('dificil')});
-          drawButton({x:bx+bw+12,y:by,w:bw,h:bh,label:'Médio',fill:C.warn,onClick:()=>chooseDifficulty('medio')});
-          drawButton({x:bx+(bw+12)*2,y:by,w:bw,h:bh,label:'Fácil',fill:C.accent2,onClick:()=>chooseDifficulty('facil')});
-        }
-      }
-    }
-
-    if(State.mode==='add'){
-      ctx.fillStyle=C.text; ctx.font='800 18px system-ui'; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText('Adicionar novo card', L.card.x+L.card.w/2, L.card.y+16);
-      const iw=Math.min(520, L.card.w-32); const ix=L.card.x+(L.card.w-iw)/2;
-      const i1={x:ix,y:L.card.y+64,w:iw,h:56,label:'Hiragana',value:State.addForm.hiragana,placeholder:'ex.: こんにちは',focused:State.focusField==='hiragana'}; 
-      const i2={x:ix,y:L.card.y+64+66,w:iw,h:56,label:'Romaji',value:State.addForm.romaji,placeholder:'ex.: konnichiwa',focused:State.focusField==='romaji'}; 
-      const i3={x:ix,y:L.card.y+64+66*2,w:iw,h:56,label:'Tradução (PT-BR)',value:State.addForm.pt,placeholder:'ex.: olá; boa tarde',focused:State.focusField==='pt'}; 
-      for(const i of [i1,i2,i3]) drawInputBox(i);
-      drawButton({x:ix,y:i3.y+i3.h+12,w:iw,h:SIZES.buttonH,label:'Adicionar (Enter)',onClick:()=>{ hideMobileInput(); addCardFromForm(); }});
-      drawButton({x:ix,y:i3.y+i3.h+12+SIZES.buttonH+12,w:iw,h:SIZES.buttonH,label:'Colar lista (Bulk)',fill:'#334155',onClick:()=>{ State.mode='bulk'; State.bulkText=''; State.message='Cole/edite sua lista.'; showMobileInput(ix, i3.y+i3.h+12+SIZES.buttonH+12, iw, Math.min(220, L.card.h-200), State.bulkText, 'hiragana ; romaji ; tradução1 ; ...', {mode:'bulk'}); }});
-    }
-
-    if(State.mode==='summary'){
-      ctx.fillStyle=C.text; ctx.font='800 18px system-ui'; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText('Resumo do dia', L.card.x+L.card.w/2, L.card.y+16);
-      ctx.textAlign='left'; ctx.font='700 16px system-ui'; ctx.fillStyle=C.sub; 
-      const Ls=[`Cards estudados hoje: ${stats.studiedToday||0}`,`Meta diária: ${stats.dailyGoal||20}`,`Streak atual: ${stats.streak||0} dia(s)`,`Cards no deck: ${deck.length}`,`Cards devidos agora: ${dueCards().length}`]; 
-      let yy=L.card.y+64; for(const t of Ls){ctx.fillText(t,L.card.x+24,yy); yy+=28;}
-    }
-
-    if(State.mode==='quiz'){
-      const q=State.quiz;
-      ctx.fillStyle=C.text; ctx.font='800 18px system-ui'; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText('Quiz — toque na tradução correta', L.card.x+L.card.w/2, L.card.y+16);
-      if(!q.current){
-        ctx.fillStyle=C.sub; ctx.font='600 16px system-ui'; ctx.fillText('Sem cartas suficientes. Adicione ⚙ e volte ao Quiz.', L.card.x+L.card.w/2, L.card.y+L.card.h/2);
-      } else {
-        const romajiSize = Math.max(28, Math.floor(L.card.h * 0.16));
-        const romajiY = L.card.y + 56;
-        ctx.fillStyle = C.text; ctx.font = `900 ${romajiSize}px system-ui`; ctx.fillText(q.current.romaji, L.card.x + L.card.w/2, romajiY);
-        const hiraganaY = romajiY + 10 + 22; // pequeno espaçamento
-        ctx.fillStyle = C.sub; ctx.font = `700 ${SIZES.hiraganaQuizPx}px system-ui`; ctx.fillText(q.current.hiragana, L.card.x + L.card.w/2, hiraganaY);
-      }
-    }
-
-    // Mensagens (toast)
-    if(State.message){
-      ctx.fillStyle='rgba(0,0,0,0.55)'; 
-      const mw=Math.min(640,cvs.clientWidth-24); 
-      const mx=(cvs.clientWidth-mw)/2, my=cvs.clientHeight - SIZES.footerH - 20; 
-      roundRect(mx,my,mw,40,12); ctx.fill(); ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.stroke(); 
-      ctx.fillStyle=C.text; ctx.font='700 14px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(State.message, mx+mw/2, my+20);
-    }
-
-    // Footer tabs
-    ctx.fillStyle = '#0b0f14'; ctx.fillRect(0, cvs.clientHeight - SIZES.footerH, cvs.clientWidth, SIZES.footerH);
-    const L2 = layout(); for(const b of L2.buttons) drawButton(b);
-
-    requestAnimationFrame(render);
-  }
-  render();
-
-  // ------------
-  // Funções deck
-  // ------------
-  function addCardFromForm(){
-    const f=State.addForm; 
-    if(!f.hiragana.trim()||!f.romaji.trim()||!f.pt.trim()){State.message='Preencha todos os campos';return;} 
-    const combo=`${f.hiragana.trim()}|${f.romaji.trim().toLowerCase()}`; 
-    const dup=deck.some(c=>`${(c.hiragana||'').trim()}|${(c.romaji||'').toLowerCase().trim()}`===combo); 
-    if(dup){State.message='Já existe um card com esse Hiragana+Romaji';return;} 
-    const id=String(Date.now()); 
-    const ptStore=f.pt.trim().toLowerCase().replace(/\s*([;|,])\s*/g,'|'); 
-    deck.push({id:id,hiragana:f.hiragana.trim(),romaji:f.romaji.trim().toLowerCase(),pt:ptStore,due:todayStr(),ef:2.5,ivl:0,reps:0,ok:0,err:0,cat:'none'}); 
-    saveDeck(); 
-    State.addForm={hiragana:'',romaji:'',pt:''}; 
-    State.focusField='hiragana'; 
-    State.message='Card adicionado!';
-  }
-  function deleteSelected(){const id=State.manage.selected; if(!id){State.message='Selecione um item';return;} deck=deck.filter(c=>c.id!==id); saveDeck(); State.manage.selected=null; State.message='Card removido.';}
-  function sortDeck(items,key){const a=items.slice(); a.sort((x,y)=>{if(key==='due'){return (x.due||'')<(y.due||'')?-1:1;} if(key==='ok'){return (y.ok||0)-(x.ok||0);} if(key==='err'){return (y.err||0)-(x.err||0);} if(key==='cat'){return (x.cat||'').localeCompare(y.cat||'');} return x.hiragana.localeCompare(y.hiragana);}); return a;}
-
-  // -----------------
-  // Verificação/respo
-  // -----------------
   function checkAnswer(){
-    if(!currentCard) return; 
-    const ok=parseAnswers(currentCard.pt).includes(normalizeBasic(State.input)); 
-    State.showAnswer=true; 
-    State.message= ok?'✔ Correto! Escolha a dificuldade.':'✘ Quase! Veja as respostas e marque a dificuldade.';
-  }
-  function chooseDifficulty(level){
-    if(!currentCard) return;
-    currentCard.cat = level; saveDeck();
-    if(State.mode==='study'){
-      const g = (level==='dificil')?0:(level==='medio')?1:2;
-      const ok = parseAnswers(currentCard.pt).includes(normalizeBasic(State.input));
-      if(ok) currentCard.ok=(currentCard.ok||0)+1; else currentCard.err=(currentCard.err||0)+1;
-      schedule(currentCard,g); saveDeck();
-      stats.studiedToday=(stats.studiedToday||0)+1; stats.lastStudy=todayStr(); if(!stats.streak)stats.streak=1; saveStats();
-      pickNext(); hideMobileInput();
-    } else { pickNextTrain(); hideMobileInput(); }
+    if(!State.current) return;
+    const user = normBasic(el('#answer').value);
+    const ok = user && (user === normBasic(State.current.romaji));
+    State.showAnswer = true;
+    const acc = `Resposta correta: <b>${State.current.romaji}</b><br><small>Traduções aceitas: ${parsePT(State.current.pt).join(' / ')}</small>`;
+    el('#accepted').innerHTML = acc; el('#accepted').style.display='block';
+    el('#afterCheck').style.display='flex';
+    toast(ok? '✔ Correto! Agora marque a dificuldade.' : '✘ Quase! Confirme a resposta e marque a dificuldade.');
   }
 
-  // ---------------
-  // Atalhos mínimos
-  // ---------------
-  window.addEventListener('keydown',e=>{
-    if((State.mode==='study'||State.mode==='train'||State.mode==='quiz')&&(e.key==='F5'||(e.ctrlKey&&e.key.toLowerCase()==='r'))){e.preventDefault();return;}
-    if(!IS_MOBILE){
-      if(State.mode==='study'||State.mode==='train'){
-        if(!State.showAnswer){ if(e.key==='Enter'){ checkAnswer(); return; } if(e.key==='Backspace'){ State.input = State.input.slice(0,-1); return; } if(e.key.length===1){ State.input += e.key; return; } }
-        else { if(e.key==='1'){chooseDifficulty('dificil');return;} if(e.key==='2'){chooseDifficulty('medio');return;} if(e.key==='3'){chooseDifficulty('facil');return;} }
-      }
-      if(State.mode==='add'){
-        const f=State.focusField||'hiragana';
-        if(e.key==='Enter'){ addCardFromForm(); return; }
-        if(e.key==='Backspace'){ State.addForm[f] = State.addForm[f].slice(0,-1); return; }
-        if(e.key.length===1){ State.addForm[f] += e.key; return; }
-      }
+  function grade(level){ // 0=difícil,1=médio,2=fácil
+    if(!State.current) return;
+    State.current.cat = (level===0?'dificil':level===1?'medio':'facil');
+    const user = normBasic(el('#answer').value);
+    if(user === normBasic(State.current.romaji)) State.current.ok++; else State.current.err++;
+    schedule(State.current, level);
+    saveDeck();
+    stats.studiedToday=(stats.studiedToday||0)+1; stats.lastStudy=toISO(); if(!stats.streak) stats.streak=1; saveStats();
+    pickNext();
+  }
+
+  el('#btnCheck').addEventListener('click', checkAnswer);
+  el('#answer').addEventListener('keydown', e=>{
+    if(e.key==='Enter'){ e.preventDefault(); checkAnswer(); }
+  });
+  el('#bHard').addEventListener('click', ()=>grade(0));
+  el('#bMed').addEventListener('click',  ()=>grade(1));
+  el('#bEasy').addEventListener('click', ()=>grade(2));
+  el('#btnSkip').addEventListener('click', pickNext);
+
+  // ======= QUIZ (PT -> romaji múltipla escolha) =======
+  function startQuizQuestion(){
+    if(deck.length<1){ el('#qPTQuiz').textContent='Sem cartas. Adicione algumas em “Adicionar”.'; el('#quizGrid').innerHTML=''; return; }
+    const idx = Math.floor(Math.random()*deck.length);
+    const card = deck[idx];
+    const ptOpts = parsePT(card.pt);
+    const shownPT = ptOpts[Math.floor(Math.random()*Math.max(1,ptOpts.length))] || card.pt;
+    el('#qPTQuiz').textContent = shownPT;
+
+    // 3 distratores
+    const others = deck.filter((_,i)=>i!==idx);
+    shuffle(others);
+    const used = new Set([normBasic(card.romaji)]);
+    const picks=[card.romaji];
+    for(const c of others){
+      const r = c.romaji;
+      const n = normBasic(r);
+      if(!used.has(n)){ used.add(n); picks.push(r); }
+      if(picks.length>=4) break;
     }
+    while(picks.length<4) picks.push('—');
+
+    const order=[0,1,2,3]; shuffle(order);
+    const correctIndex = order.indexOf(0);
+    const options = order.map(i=>picks[i]);
+
+    State.quiz = {current:card, options, correctIndex, selectedIndex:-1};
+    renderQuizOptions();
+  }
+  function renderQuizOptions(){
+    const grid = el('#quizGrid'); grid.innerHTML='';
+    State.quiz.options.forEach((opt,i)=>{
+      const b = document.createElement('button');
+      b.className='btn secondary'; b.style.minWidth='140px'; b.textContent = opt;
+      b.addEventListener('click', ()=>{
+        if(State.quiz.selectedIndex!==-1) return;
+        State.quiz.selectedIndex=i;
+        const ok = i===State.quiz.correctIndex;
+        b.className = 'btn ' + (ok?'good':'danger');
+        toast(ok?'✔ Correto!':'✘ Erro.');
+      });
+      grid.appendChild(b);
+    });
+  }
+  el('#btnNextQuiz').addEventListener('click', startQuizQuestion);
+
+  // ======= ADD / BULK =======
+  el('#btnAdd').addEventListener('click', ()=>{
+    const r = normBasic(el('#inRomaji').value);
+    const p = normBasic(el('#inPT').value);
+    if(!r || !p){ toast('Preencha romaji e traduções'); return; }
+    const key = r;
+    const exists = deck.some(c => normBasic(c.romaji)===key);
+    if(exists){ toast('Já existe esse romaji'); return; }
+    deck.push({id:String(Date.now()), romaji:r, pt:p, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'});
+    saveDeck(); el('#inRomaji').value=''; el('#inPT').value='';
+    toast('Card adicionado!');
   });
 
-  // Inicializa
+  el('#btnParse').addEventListener('click', ()=>{
+    const txt = el('#bulk').value;
+    const arr = parseBulk(txt);
+    el('#preview').innerHTML = arr.length ? `Pronto para importar: <b>${arr.length}</b> linha(s).` : 'Nada válido encontrado.';
+  });
+  el('#btnImport').addEventListener('click', ()=>{
+    const txt = el('#bulk').value;
+    const arr = parseBulk(txt);
+    if(!arr.length){ toast('Nada válido para importar'); return; }
+    let added=0, skipped=0;
+    const have = new Set(deck.map(c=>normBasic(c.romaji)));
+    const seen = new Set();
+    for(const it of arr){
+      const key = normBasic(it.romaji);
+      if(!key || !it.pt){ skipped++; continue; }
+      if(have.has(key) || seen.has(key)){ skipped++; continue; }
+      deck.push({id:String(Date.now()+Math.random()*9999), romaji:key, pt:normBasic(it.pt), due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0, cat:'none'});
+      have.add(key); seen.add(key); added++;
+    }
+    saveDeck();
+    toast(`Importados: ${added}. Ignorados: ${skipped}.`);
+    el('#bulk').value=''; el('#preview').textContent='';
+  });
+
+  function parseBulk(text){
+    const out=[]; (text||'').split(/\r?\n/).forEach(line=>{
+      line=line.trim(); if(!line) return;
+      const parts=line.split(/\t|\s*;\s*/).map(s=>s.trim()).filter(Boolean);
+      if(parts.length<2) return;
+      const [romaji, ...rest] = parts;
+      out.push({romaji, pt: rest.join(';')});
+    });
+    return out;
+  }
+
+  // ======= LIST =======
+  function renderTable(){
+    const t = el('#table'); t.innerHTML='';
+    const head = `<tr><th>#</th><th>Romaji</th><th>Traduções</th><th>Cat</th><th>Próx.</th><th>✓</th><th>✗</th></tr>`;
+    t.insertAdjacentHTML('beforeend', head);
+    deck
+      .slice()
+      .sort((a,b)=> (a.romaji>b.romaji?1:-1))
+      .forEach((c,i)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${i+1}</td><td>${c.romaji}</td><td>${c.pt}</td><td>${c.cat||'none'}</td><td>${c.due||''}</td><td>${c.ok||0}</td><td>${c.err||0}</td>`;
+        tr.addEventListener('click', ()=>{
+          deck = deck.filter(x=>x.id!==c.id); saveDeck(); renderTable(); toast('Removido.');
+        });
+        t.appendChild(tr);
+      });
+  }
+
+  // ======= UTILS =======
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} }
+
+  // Seed/reset
+  el('#btnSeed').addEventListener('click', ()=>{
+    if(!confirm('Carregar dicionário base? Isto adiciona entradas sem remover as atuais.')) return;
+    const base = seed(defaultDeck);
+    const have = new Set(deck.map(c=>normBasic(c.romaji)));
+    let added=0;
+    base.forEach(b=>{
+      if(!have.has(normBasic(b.romaji))){ deck.push(b); added++; }
+    });
+    saveDeck(); toast(`Adicionados do dicionário base: ${added}.`);
+  });
+  el('#btnReset').addEventListener('click', ()=>{
+    if(!confirm('Zerar progresso (manter cartas)?')) return;
+    const today = toISO();
+    deck.forEach(c=>{ c.due=today; c.ef=2.5; c.ivl=0; c.reps=0; c.ok=0; c.err=0; c.cat='none'; });
+    saveDeck();
+    stats = {...defaultStats, lastStudy:toISO()}; saveStats();
+    renderHeader(); pickNext(); toast('Progresso zerado.');
+  });
+
+  // ======= INIT =======
+  renderHeader();
   pickNext();
+
+  // Evita “zoom” ao focar input no iOS (tamanho >= 16px já ajuda)
+  // Mantemos 18px na .answer
+
+  // Corrige 100vh no iOS com 100svh já usado na CSS (iOS 16+).
+  // Nada adicional requerido aqui.
 
   </script>
 </body>
