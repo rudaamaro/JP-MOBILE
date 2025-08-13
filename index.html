@@ -261,18 +261,156 @@
     card.reps++; card.due = addDays(toISO(), card.ivl);
   }
 
-  // ======= ÁUDIO =======
-  let voices = [];
-  function loadVoices(){ voices = window.speechSynthesis ? speechSynthesis.getVoices() : []; }
-  if ('speechSynthesis' in window){ speechSynthesis.onvoiceschanged = loadVoices; loadVoices(); }
-  function speak(txt, langHint='ja-JP'){
-    if(!('speechSynthesis' in window)) return;
-    const u = new SpeechSynthesisUtterance(txt);
-    const pick = (pref)=> voices.find(v=>v.lang && v.lang.toLowerCase().startsWith(pref.toLowerCase()));
-    const v = pick(langHint) || pick('ja') || pick('pt-BR') || voices[0];
-    if(v) u.voice = v; u.lang = v?.lang || langHint; u.rate = 0.95; u.pitch = 1.0;
-    speechSynthesis.cancel(); speechSynthesis.speak(u);
+// ======= ÁUDIO (iOS fix: romaji -> hiragana) =======
+let voices = [];
+function loadVoices(){ voices = window.speechSynthesis ? speechSynthesis.getVoices() : []; }
+if ('speechSynthesis' in window){
+  speechSynthesis.onvoiceschanged = loadVoices; loadVoices();
+}
+
+// conversão romaji -> hiragana (básico, cobre 99% do seu deck)
+function romajiToHiragana(input){
+  if(!input) return "";
+  let s = input.toLowerCase().trim();
+
+  // normaliza espaços/pontuação
+  s = s.replace(/[^a-zA-Z0-9 ?!.,-]/g, ' ')
+       .replace(/\s+/g,' ')
+       .trim();
+
+  // casos especiais comuns
+  s = s.replace(/nn/g, 'n');    // trata "nn" como ん
+  // alongamentos simples (não perfeito, mas ajuda naturalidade)
+  // deixa "ou" e "uu" como estão (おう/うう saem automaticamente pelo parser de mora)
+
+  // tabelas
+  const youon = {
+    'kya':'きゃ','kyu':'きゅ','kyo':'きょ',
+    'gya':'ぎゃ','gyu':'ぎゅ','gyo':'ぎょ',
+    'sha':'しゃ','shu':'しゅ','sho':'しょ',
+    'ja':'じゃ','ju':'じゅ','jo':'じょ',
+    'jya':'じゃ','jyu':'じゅ','jyo':'じょ',
+    'cha':'ちゃ','chu':'ちゅ','cho':'ちょ',
+    'nya':'にゃ','nyu':'にゅ','nyo':'にょ',
+    'hya':'ひゃ','hyu':'ひゅ','hyo':'ひょ',
+    'bya':'びゃ','byu':'びゅ','byo':'びょ',
+    'pya':'ぴゃ','pyu':'ぴゅ','pyo':'ぴょ',
+    'mya':'みゃ','myu':'みゅ','myo':'みょ',
+    'rya':'りゃ','ryu':'りゅ','ryo':'りょ'
+  };
+  const map = {
+    'a':'あ','i':'い','u':'う','e':'え','o':'お',
+    'ka':'か','ki':'き','ku':'く','ke':'け','ko':'こ',
+    'ga':'が','gi':'ぎ','gu':'ぐ','ge':'げ','go':'ご',
+    'sa':'さ','shi':'し','si':'し','su':'す','se':'せ','so':'そ',
+    'za':'ざ','ji':'じ','zi':'じ','zu':'ず','ze':'ぜ','zo':'ぞ',
+    'ta':'た','chi':'ち','ti':'ち','tsu':'つ','tu':'つ','te':'て','to':'と',
+    'da':'だ','di':'ぢ','du':'づ','de':'で','do':'ど',
+    'na':'な','ni':'に','nu':'ぬ','ne':'ね','no':'の',
+    'ha':'は','hi':'ひ','fu':'ふ','hu':'ふ','he':'へ','ho':'ほ',
+    'ba':'ば','bi':'び','bu':'ぶ','be':'べ','bo':'ぼ',
+    'pa':'ぱ','pi':'ぴ','pu':'ぷ','pe':'ぺ','po':'ぽ',
+    'ma':'ま','mi':'み','mu':'む','me':'め','mo':'も',
+    'ya':'や','yu':'ゆ','yo':'よ',
+    'ra':'ら','ri':'り','ru':'る','re':'れ','ro':'ろ',
+    'wa':'わ','wo':'を',
+    // palavras comuns que vêm “ocidentalizadas” (mantém naturalidade)
+    'che':'ちぇ','she':'しぇ','je':'じぇ'
+  };
+
+  // tokenização greedy
+  let out = '';
+  let i = 0;
+  const isVowel = c => /[aeiou]/.test(c);
+  const isConsonant = c => /[bcdfghjklmnpqrstvwxyz]/.test(c);
+
+  while(i < s.length){
+    // espaços e pontuação leves
+    if(/\s/.test(s[i])){ out += ' '; i++; continue; }
+    if(/[?!.,-]/.test(s[i])){ out += s[i]; i++; continue; }
+
+    // sokuon (pequeno っ) para consoante duplicada (exceto 'n')
+    if(i+1 < s.length && s[i] === s[i+1] && isConsonant(s[i]) && s[i] !== 'n'){
+      out += 'っ'; i++; continue;
+    }
+
+    // ん antes de consoante ou fim
+    if(s[i] === 'n'){
+      const nxt = s[i+1] || '';
+      if(!nxt || (!isVowel(nxt) && nxt !== 'y')){
+        out += 'ん'; i++; continue;
+      }
+    }
+
+    // youon (3 letras)
+    const tri = s.slice(i, i+3);
+    if(youon[tri]){ out += youon[tri]; i += 3; continue; }
+
+    // kana “normais” (3, 2, 1)
+    const triMap = map[tri];
+    if(triMap){ out += triMap; i += 3; continue; }
+    const bi = s.slice(i, i+2);
+    const biMap = map[bi];
+    if(biMap){ out += biMap; i += 2; continue; }
+    const one = s[i];
+    const oneMap = map[one];
+    if(oneMap){ out += oneMap; i += 1; continue; }
+
+    // fallback: mantém letra (evita travar)
+    out += s[i];
+    i++;
   }
+
+  // “ou” após お vira おう naturalmente por map + sequência; apenas compacta múltiplos espaços
+  return out.replace(/\s{2,}/g,' ').trim();
+}
+
+// fala japonês usando ja-JP e texto em hiragana
+function speakJP(romaji){
+  if(!('speechSynthesis' in window)) return;
+  const kana = romajiToHiragana(romaji);
+  if(!kana) return;
+  const u = new SpeechSynthesisUtterance(kana);
+  // tenta voz japonesa; no iOS às vezes só funciona se NÃO setar voice, apenas lang
+  const pick = (pref)=> voices.find(v=>v.lang && v.lang.toLowerCase().startsWith(pref));
+  const v = pick('ja-jp') || pick('ja');
+  if(v) u.voice = v;
+  u.lang = 'ja-JP';
+  u.rate = 0.95;
+  u.pitch = 1.0;
+  // “desengasga” no iOS se havia outra fala em andamento
+  try{ speechSynthesis.cancel(); }catch(_){}
+  speechSynthesis.speak(u);
+}
+
+// fala PT (sem mudanças)
+function speakPT(texto){
+  if(!('speechSynthesis' in window)) return;
+  const u = new SpeechSynthesisUtterance(texto);
+  const pick = (pref)=> voices.find(v=>v.lang && v.lang.toLowerCase().startsWith(pref));
+  const v = pick('pt-br') || pick('pt-pt') || voices[0];
+  if(v) u.voice = v;
+  u.lang = v?.lang || 'pt-BR';
+  u.rate = 1.0; u.pitch = 1.0;
+  try{ speechSynthesis.cancel(); }catch(_){}
+  speechSynthesis.speak(u);
+}
+
+// ——— substitua os listeners antigos por estes:
+document.getElementById('speakRomaji')?.addEventListener('click', ()=>{
+  const c = State.current; if(!c) return;
+  speakJP(c.romaji);
+});
+document.getElementById('speakPT')?.addEventListener('click', ()=>{
+  const c = State.current; if(!c) return;
+  let txt='';
+  if(State.direction==='PT2ROMAJI'){
+    txt = document.getElementById('qMain').textContent || parsePT(c.pt)[0] || c.pt;
+  } else {
+    txt = (parsePT(c.pt)[0] || c.pt);
+  }
+  speakPT(txt);
+});
 
   // ======= STATE =======
   let deck = loadDeckLS();
