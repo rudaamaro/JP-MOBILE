@@ -12,6 +12,10 @@
     --bg:#0b0f14; --card:#111827; --muted:#9fb3c8; --text:#e7eef7;
     --accent:#43b6ff; --accent2:#7cffad; --danger:#ff6b6b; --warn:#ffd166; --stroke:#223047;
     --radius:16px; --maxw:860px;
+
+    /* destaque estilo “duolingo” */
+    --duo:#2bd463;
+    --pill:#0f1422;
   }
   *{box-sizing:border-box}
   html,body{height:100%; margin:0; background:var(--bg); font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
@@ -22,54 +26,58 @@
   header{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px}
   .brand{font-weight:800; color:var(--text); font-size:18px}
 
-  /* Tabs */
+  /* Tabs topo */
   .tabs{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
-  .tab{padding:10px 12px; text-align:center; background:#0f1422; color:var(--text);
-    border-radius:12px; border:1px solid rgba(255,255,255,.06); font-weight:700; cursor:pointer}
-  .tab.active{background:#27c23a; color:#04120a; border-color:#28a43a}
+  .tab{padding:10px 12px; text-align:center; background:var(--pill); color:var(--text);
+    border-radius:999px; border:1px solid rgba(255,255,255,.06); font-weight:700}
+  .tab.active{background:var(--duo); color:#05121d; border-color:rgba(67,182,255,.0)}
 
-  /* Cards e UI */
+  /* Cartões e UI */
   .card{background:var(--card); border:1px solid rgba(255,255,255,.08); border-radius:var(--radius);
     padding:18px; display:flex; flex-direction:column; gap:16px; box-shadow:0 10px 30px rgba(0,0,0,.25)}
   .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between}
-  .seg{display:inline-flex; padding:4px; gap:4px; border-radius:14px; background:#0f1422; border:1px solid rgba(255,255,255,.06)}
+
+  /* Segment control (direções) */
+  .seg{display:inline-flex; padding:4px; gap:4px; border-radius:999px; background:var(--pill); border:1px solid rgba(255,255,255,.06)}
   .seg input{display:none}
-  .seg label{padding:8px 12px; border-radius:10px; font-weight:800; color:var(--text); cursor:pointer}
+  .seg label{padding:10px 14px; border-radius:999px; font-weight:800; color:var(--text); cursor:pointer}
   .seg input:checked + label{background:var(--accent); color:#05121d}
+
   .prompt{text-align:center; color:var(--muted); font-weight:700; letter-spacing:.3px}
   .question{text-align:center; color:var(--text); font-weight:900; font-size:clamp(20px,6.5vw,40px); word-break:break-word}
   .qRow{display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap}
-  .audioBtn{height:38px; min-width:38px; padding:0 12px; border-radius:12px; background:#0f1422; color:var(--text);
-    border:1px solid rgba(255,255,255,.08); font-weight:800; cursor:pointer}
+
+  .audioBtn{height:38px; min-width:58px; padding:0 12px; border-radius:999px; background:var(--pill); color:var(--text);
+    border:1px solid rgba(255,255,255,.08); font-weight:800; display:inline-flex; align-items:center; justify-content:center; gap:6px; cursor:pointer}
+  .audioBtn .dot{width:6px; height:6px; border-radius:999px; background:#7aa7ff}
+
   .inputRow{display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center}
   input.answer{flex:1 1 320px; max-width:560px; height:52px; background:#0f1422; border:2px solid var(--stroke);
     border-radius:14px; padding:0 14px; color:#e7eef7; font-size:18px; font-weight:700; outline:none}
   input.answer:focus{border-color:var(--accent)}
   input.answer.correct{border-color:var(--accent2); box-shadow:0 0 0 3px rgba(124,255,173,.15)}
   input.answer.wrong{border-color:var(--danger); box-shadow:0 0 0 3px rgba(255,107,107,.15)}
-  select.select{height:44px; padding:0 12px; border-radius:12px; background:#0f1422; color:#e7eef7; border:2px solid var(--stroke); font-weight:700}
-  .btn{height:52px; padding:0 16px; border-radius:14px; font-weight:800; border:1px solid rgba(255,255,255,.08); background:#27c23a; color:#04120a; cursor:pointer}
+  select.select{height:44px; padding:0 12px; border-radius:12px; background:var(--pill); color:#e7eef7; border:2px solid var(--stroke); font-weight:700}
+
+  .btn{height:52px; padding:0 16px; border-radius:14px; font-weight:800; border:1px solid rgba(255,255,255,.08); background:var(--duo); color:#05121d; cursor:pointer}
   .btn.secondary{background:#1f2937; color:#e7eef7}
   .btn:disabled{opacity:.5; cursor:not-allowed}
   .btn:focus, .choice:focus, .audioBtn:focus {outline:3px solid rgba(67,182,255,.6); outline-offset:2px}
+
   .center{display:flex; justify-content:center; gap:10px; flex-wrap:wrap}
   .helper{color:var(--muted); text-align:center; font-size:13px}
+  .okText{color:var(--accent2); font-weight:800}
   .section{display:none}
   .section.active{display:block}
   textarea.bulk{width:100%; min-height:200px; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.08);
     background:#0f1422; color:#e7eef7; font:500 14px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 
-  /* feedback banner */
+  /* banner feedback */
   .flash{padding:8px 12px; border-radius:10px; font-weight:800; text-align:center}
-  .flash.ok{background:#0f3f2e; color:#c6ffde; border:1px solid #1f7a57}
-  .flash.err{background:#3a1515; color:#ffc6c6; border:1px solid #7a2e2e}
+  .flash.ok{background:#063; color:#c6ffde}
+  .flash.err{background:#4a1212; color:#ffc6c6}
 
-  /* Destaque verde nas palavras corretas/aceitas */
-  .accepted { color: var(--muted); }
-  .accepted b { color: #7cffad; }
-  .accepted small { color: #b5ffd2; }
-
-  /* === LISTA === */
+  /* Lista */
   .tableWrap{max-width:100%; overflow:auto; border-radius:12px; overscroll-behavior:contain}
   table.list{width:100%; border-collapse:separate; border-spacing:0 6px; table-layout:fixed}
   table.list th,table.list td{padding:10px 12px; text-align:left; font-size:14px; word-break:break-word; white-space:normal}
@@ -84,10 +92,10 @@
   .col-cat{width:12%}
   .col-ok,.col-err{width:48px; text-align:right}
 
-  /* === QUIZ === */
+  /* Quiz */
   .choices{display:grid; grid-template-columns:repeat(2,minmax(160px,1fr)); gap:10px}
-  .choice{padding:12px; border-radius:12px; border:2px solid var(--stroke); background:#0f1422; color:var(--text); font-weight:800; cursor:pointer}
-  .choice:hover{border-color:#27c23a}
+  .choice{padding:12px; border-radius:14px; border:2px solid var(--stroke); background:#0f1422; color:var(--text); font-weight:800; cursor:pointer}
+  .choice:hover{border-color:var(--accent)}
   .choice.correct{border-color:var(--accent2)}
   .choice.wrong{border-color:var(--danger)}
   .quizActions{display:flex; gap:10px; justify-content:center; margin-top:4px}
@@ -138,9 +146,9 @@
 
       <div class="prompt" id="promptLbl">Tradução (PT-BR)</div>
       <div class="qRow">
-        <button title="Ouvir Japonês" class="audioBtn" id="speakJP">🔊 JP</button>
+        <button title="Ouvir Japonês" class="audioBtn" id="speakJP"><span class="dot"></span> JP</button>
         <div class="question" id="qMain">—</div>
-        <button title="Ouvir Português" class="audioBtn" id="speakPT">🔊 PT</button>
+        <button title="Ouvir Português" class="audioBtn" id="speakPT"><span class="dot"></span> PT</button>
       </div>
       <div class="center helper" id="helperLbl">Digite o <b>romaji</b> e pressione Verificar</div>
 
@@ -152,7 +160,7 @@
         <button class="btn secondary" id="btnSkip">Pular</button>
       </div>
 
-      <div class="center helper accepted" id="accepted" style="display:none" aria-live="polite"></div>
+      <div class="center helper" id="accepted" style="display:none" aria-live="polite"></div>
     </div>
   </section>
 
@@ -173,9 +181,9 @@
 
       <div class="prompt" id="qPrompt">Pergunta</div>
       <div class="qRow">
-        <button title="Ouvir Japonês" class="audioBtn" id="qSpeakJP">🔊 JP</button>
+        <button title="Ouvir Japonês" class="audioBtn" id="qSpeakJP"><span class="dot"></span> JP</button>
         <div class="question" id="qQuestion">—</div>
-        <button title="Ouvir Português" class="audioBtn" id="qSpeakPT">🔊 PT</button>
+        <button title="Ouvir Português" class="audioBtn" id="qSpeakPT"><span class="dot"></span> PT</button>
       </div>
 
       <div class="choices" id="choices"></div>
@@ -238,13 +246,14 @@
   const normBasic=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\([^)]*\)/g,' ').replace(/[\p{P}\p{S}]/gu,' ').replace(/\s+/g,' ').trim();
   const parsePT=pt=>(pt||'').split(/[|;,\n]/).map(normBasic).filter(Boolean);
   const isKana=s=>/[\u3040-\u309f\u30a0-\u30ff]/.test(s||'');
+
   function seed(list){return list.map(([romaji,pt,cat='geral',kana=''],i)=>({id:String(Date.now()+i),romaji:String(romaji||'').toLowerCase().trim(),pt:String(pt||'').toLowerCase().trim(),cat:String(cat||'geral').toLowerCase().trim(),kana:String(kana||'').trim(),ok:0,err:0}));}
   function migrate(arr){return arr.map(c=>({id:c.id||String(Date.now()+Math.random()),romaji:String(c.romaji||'').toLowerCase().trim(),pt:String(c.pt||'').toLowerCase().trim(),cat:String(c.cat||'geral').toLowerCase().trim(),kana:String(c.kana||c.hiragana||'').trim(),ok:c.ok||0,err:c.err||0}));}
   function loadDeckLS(){try{const raw=JSON.parse(localStorage.getItem(LS_DECK)); if(Array.isArray(raw)) return migrate(raw);}catch(e){} return null;}
   function saveDeck(){localStorage.setItem(LS_DECK, JSON.stringify(deck));}
   function toast(t,ms=1400){const el=document.querySelector('#msg'); el.textContent=t; el.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>el.style.display='none',ms);}
 
-  // banner no topo da carta
+  // banner de feedback no topo da carta
   function flash(msg, ok=true){
     const card = document.querySelector('#study .card');
     const n = document.createElement('div');
@@ -254,59 +263,53 @@
     setTimeout(()=>n.remove(), 1200);
   }
 
-  // ===== ÁUDIO (robusto p/ mobile) =====
+  // ===== ÁUDIO (robusto p/ mobile/desktop) =====
   let voices = [];
-  let voicesReady = false;
-
-  function loadVoices() {
-    try {
-      voices = window.speechSynthesis ? speechSynthesis.getVoices() || [] : [];
-      voicesReady = voices.length > 0;
-    } catch { voices = []; voicesReady = false; }
+  function refreshVoices(){
+    try { voices = window.speechSynthesis ? speechSynthesis.getVoices() || [] : []; }
+    catch(_) { voices = []; }
   }
-  if ('speechSynthesis' in window) {
-    speechSynthesis.onvoiceschanged = () => { loadVoices(); };
-    loadVoices();
-    setTimeout(loadVoices, 600);
+  refreshVoices();
+  if ('speechSynthesis' in window){
+    speechSynthesis.onvoiceschanged = refreshVoices;
   }
 
-  function pickVoice(langStartsWith, prefers = []) {
-    if (!voicesReady) loadVoices();
-    const list = voices.filter(v => (v.lang || '').toLowerCase().startsWith(langStartsWith));
-    for (const pref of prefers) {
-      const found = list.find(v => (v.name || '').toLowerCase().includes(pref));
-      if (found) return found;
+  function pickVoice(langStartsWithArray){
+    refreshVoices();
+    const lower = (v)=> (v.lang||'').toLowerCase();
+    // tenta na ordem
+    for(const pref of langStartsWithArray){
+      const v = voices.find(v=> lower(v).startsWith(pref));
+      if(v) return v;
     }
-    return list[0] || null;
+    // fallback: qualquer pt/ja
+    const any = voices.find(v=> langStartsWithArray.some(p=>lower(v).startsWith(p.slice(0,2))));
+    return any || null;
   }
 
-  function speak(text, opts) {
-    if (!('speechSynthesis' in window)) return;
-    if (!text) return;
+  function speak(text, langPrefs, rate=1.0, pitch=1.0){
+    if(!('speechSynthesis' in window)) return;
+    if(!text) return;
     const u = new SpeechSynthesisUtterance(text);
-    if (opts?.lang) u.lang = opts.lang;
-    if (opts?.rate) u.rate = opts.rate;
-    if (opts?.pitch) u.pitch = opts.pitch;
-    if (opts?.voice) u.voice = opts.voice;
-    try { speechSynthesis.cancel(); } catch {}
+    const v = pickVoice(langPrefs);
+    if(v) u.voice = v;
+    u.lang = (v?.lang) || (langPrefs[0] || 'en-US');
+    u.rate = rate; u.pitch = pitch;
+    try{ speechSynthesis.cancel(); }catch(_){}
+    // leve debounce para evitar engasgos em mobile
     clearTimeout(speak._t);
-    speak._t = setTimeout(() => speechSynthesis.speak(u), 120);
+    speak._t = setTimeout(()=>speechSynthesis.speak(u),120);
   }
 
   function romajiToHiragana(input){
     if(!input) return '';
-    let s=input.toLowerCase().trim()
-      .replace(/[^a-z0-9 ?!.,-]/g,' ')
-      .replace(/\s+/g,' ')
-      .trim()
-      .replace(/nn/g,'n')
-      .replace(/n'(?=[^aeiouy])/g,'n');
+    let s=input.toLowerCase().trim().replace(/[^a-z0-9 ?!.,-]/g,' ').replace(/\s+/g,' ').trim().replace(/nn/g,'n').replace(/n'(?=[^aeiouy])/g,'n');
     const yo={'kya':'きゃ','kyu':'きゅ','kyo':'きょ','gya':'ぎゃ','gyu':'ぎゅ','gyo':'ぎょ','sha':'しゃ','shu':'しゅ','sho':'しょ','ja':'じゃ','ju':'じゅ','jo':'じょ','jya':'じゃ','jyu':'じゅ','jyo':'じょ','cha':'ちゃ','chu':'ちゅ','cho':'ちょ','nya':'にゃ','nyu':'にゅ','nyo':'にょ','hya':'ひゃ','hyu':'ひゅ','hyo':'ひょ','bya':'びゃ','byu':'びゅ','byo':'びょ','pya':'ぴゃ','pyu':'ぴゅ','pyo':'ぴょ','mya':'みゃ','myu':'みゅ','myo':'みょ','rya':'りゃ','ryu':'りゅ','ryo':'りょ'};
     const mp={'a':'あ','i':'い','u':'う','e':'え','o':'お','ka':'か','ki':'き','ku':'く','ke':'け','ko':'こ','ga':'が','gi':'ぎ','gu':'ぐ','ge':'げ','go':'ご','sa':'さ','shi':'し','si':'し','su':'す','se':'せ','so':'そ','za':'ざ','ji':'じ','zi':'じ','zu':'ず','ze':'ぜ','zo':'ぞ','ta':'た','chi':'ち','ti':'ち','tsu':'つ','tu':'つ','te':'て','to':'と','da':'だ','di':'ぢ','du':'づ','de':'で','do':'ど','na':'な','ni':'に','nu':'ぬ','ne':'ね','no':'の','ha':'は','hi':'ひ','fu':'ふ','hu':'ふ','he':'へ','ho':'ほ','ba':'ば','bi':'び','bu':'ぶ','be':'べ','bo':'ぼ','pa':'ぱ','pi':'ぴ','pu':'ぷ','pe':'ぺ','po':'ぽ','ma':'ま','mi':'み','mu':'む','me':'め','mo':'も','ya':'や','yu':'ゆ','yo':'よ','ra':'ら','ri':'り','ru':'る','re':'れ','ro':'ろ','wa':'わ','wo':'を','che':'ちぇ','she':'しぇ','je':'じぇ'};
     let out='',i=0; const vow=c=>/[aeiou]/.test(c), cons=c=>/[bcdfghjklmnpqrstvwxyz]/.test(c);
     while(i<s.length){
       if(/\s/.test(s[i])){out+=' '; i++; continue;}
-      if(/[?!.,-]/.test(s[i])){out+=s[i]); i++; continue;}
+      if(/[?!.,-]/.test(s[i])){out+=s[i]; i++; continue;}
       if(i+1<s.length && s[i]===s[i+1] && cons(s[i]) && s[i]!=='n'){out+='っ'; i++; continue;}
       if(s[i]==='n'){const nx=s[i+1]||''; if(!nx||(!vow(nx)&&nx!=='y')){out+='ん'; i++; continue;}}
       const tri=s.slice(i,i+3); if(yo[tri]){out+=yo[tri]; i+=3; continue;}
@@ -319,16 +322,14 @@
   }
 
   function speakJP(text){
-    const kana = /[\u3040-\u30ff]/.test(text||'') ? text : romajiToHiragana(text||'');
+    const kana = isKana(text)? text : romajiToHiragana(text);
     if(!kana) return;
-    const v = pickVoice('ja', ['japanese','ja']);
-    speak(kana, { lang:'ja-JP', rate:0.95, pitch:1.0, voice:v });
+    // Japonês mais natural: taxa ligeiramente menor
+    speak(kana, ['ja-jp','ja'], 0.95, 1.0);
   }
   function speakPT(text){
-    if(!text) return;
-    const v = pickVoice('pt', ['brazil','brasil','pt-br']);
-    const lang = (v?.lang || '').toLowerCase().startsWith('pt') ? v.lang : 'pt-BR';
-    speak(text, { lang, rate:1.0, pitch:1.0, voice:v });
+    // força pt-BR quando disponível
+    speak(text, ['pt-br','pt-pt','pt'], 1.0, 1.0);
   }
 
   // ===== STATE =====
@@ -366,6 +367,7 @@
     const dir = State.direction;
     answer().setAttribute('inputmode', (dir==='PT2ROMAJI') ? 'latin' : 'text');
   }
+
   function renderQuestion(){
     const c=State.current; if(!c){ el('#qMain').textContent='Sem cartas nesta categoria.'; return; }
     const dir=State.direction;
@@ -396,18 +398,19 @@
   // categoria (study)
   el('#catFilter').addEventListener('change',()=>{ State.catFilter = el('#catFilter').value; pickNext(); });
 
-  // estados do botão verificar
+  // habilitar/desabilitar botão verificar
   answer().addEventListener('input', ()=> btnCheck().disabled = !answer().value.trim());
 
+  // verificar + pular/próximo
   function checkAnswer(){
     const c=State.current; if(!c) return;
     const user=normBasic(answer().value); let ok=false, feedback='';
     if(State.direction==='PT2ROMAJI'){
       ok = !!user && user===normBasic(c.romaji);
-      feedback = `Romaji correto: <b>${c.romaji}</b> • <small>Traduções: ${parsePT(c.pt).join(' / ')}</small>`;
+      feedback = `<span class="okText">Romaji correto: <b>${c.romaji}</b></span> • <small class="okText">Traduções: ${parsePT(c.pt).join(' / ')}</small>`;
     } else {
       const acc=new Set(parsePT(c.pt)); ok = !!user && acc.has(user);
-      feedback = `Aceitas: <small>${[...acc].join(' / ')}</small>`;
+      feedback = `<span class="okText">Aceitas:</span> <small class="okText">${[...acc].join(' / ')}</small>`;
     }
     answer().classList.remove('correct','wrong'); answer().classList.add(ok?'correct':'wrong');
     el('#accepted').innerHTML=feedback; el('#accepted').style.display='block';
@@ -425,6 +428,7 @@
       else checkAnswer();
     }
   });
+
   btnSkip().addEventListener('click', pickNext);
 
   // áudio study
@@ -432,15 +436,17 @@
   el('#speakPT').addEventListener('click', ()=>{ const c=State.current; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
 
   // ===== QUIZ =====
+  function valFor(card, dir){
+    return dir==='PT2ROMAJI' ? card.romaji : (parsePT(card.pt)[0]||card.pt);
+  }
   function buildChoices(card, dir, cat){
     let pool = filteredByCategory(deck,cat).filter(c=>c.id!==card.id);
     if(pool.length < 3) pool = deck.filter(c=>c.id!==card.id);
-    const val = (it)=> dir==='PT2ROMAJI' ? it.romaji : (parsePT(it.pt)[0]||it.pt);
-    const correct = val(card);
-    const used=new Set([correct]);
-    const opts=[];
+    const correct = valFor(card, dir);
+    const used=new Set([correct]); const opts=[];
     while(opts.length<3 && pool.length){
-      const it=pool[Math.floor(Math.random()*pool.length)], k=val(it);
+      const it=pool[Math.floor(Math.random()*pool.length)];
+      const k=valFor(it, dir);
       if(!used.has(k)){ used.add(k); opts.push(k); }
     }
     const all=[...opts, correct].sort(()=>Math.random()-0.5);
@@ -455,14 +461,12 @@
 
     const {options, correct}=buildChoices(c, dir, cat);
     const wrap=el('#choices'); wrap.innerHTML='';
-    options.forEach((text,idx)=>{
+    options.forEach(text=>{
       const b=document.createElement('button'); b.className='choice'; b.textContent=text; b.setAttribute('tabindex','0');
       b.addEventListener('click', ()=>{
         if(b.disabled) return;
-
-        // Toca áudio da alternativa clicada (Duolingo vibe)
-        if (Quiz.direction === 'PT2ROMAJI') speakJP(text);
-        else speakPT(text);
+        // toca áudio ao clicar (JP para PT→Romaji/Hira→PT, PT para Romaji→PT)
+        if(dir==='ROMAJI2PT'){ speakPT(text); } else { const jp = c.kana && isKana(c.kana) ? c.kana : c.romaji; speakJP(jp); }
 
         const isCorrect = text===correct;
         b.classList.add(isCorrect?'correct':'wrong');
@@ -491,7 +495,7 @@
     }
   });
 
-  // áudio quiz (botões dedicados)
+  // áudio quiz botões centrais
   el('#qSpeakJP').addEventListener('click', ()=>{ const c=Quiz.current; if(!c) return; const text=c.kana&&isKana(c.kana)?c.kana:c.romaji; speakJP(text); });
   el('#qSpeakPT').addEventListener('click', ()=>{ const c=Quiz.current; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
 
