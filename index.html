@@ -18,7 +18,7 @@
     .overlay-input {
       position: fixed; z-index: 10; left: 0; top: 0; width: 1px; height: 1px;
       opacity: 0; pointer-events: none; border: none; outline: none;
-      background: #0f1422; color: #e7eef7; font: 500 18px system-ui;
+      background: #0f1422; color: #e7eef7; font: 500 clamp(16px, 2.5vh, 20px) system-ui;
       -webkit-user-select: text; user-select: text;
     }
     .overlay-input.visible {
@@ -55,8 +55,9 @@
     cvs.style.width = w + 'px'; cvs.style.height = h + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-  window.addEventListener('resize', () => { fitCanvas(); hideMobileInput(); });
+  window.addEventListener('resize', () => { fitCanvas(); updateSizes(); hideMobileInput(); });
   fitCanvas();
+  updateSizes();
 
   // Cores
   const C={card:'#121826',accent:'#43b6ff',accent2:'#7cffad',text:'#e7eef7',sub:'#9fb3c8',danger:'#ff6b6b',warn:'#ffd166',stroke:'rgba(255,255,255,0.08)'};
@@ -75,9 +76,33 @@
     hiraganaManagePx: 12
   };
 
+  function updateSizes(){
+    const base = Math.min(window.innerWidth, window.innerHeight);
+    SIZES.headerH = Math.max(48, Math.floor(base * 0.08));
+    SIZES.footerH = Math.max(64, Math.floor(base * 0.12));
+    SIZES.cardPad = Math.max(12, Math.floor(base * 0.04));
+    SIZES.pillH = Math.max(28, Math.floor(base * 0.07));
+    SIZES.buttonH = Math.max(44, Math.floor(base * 0.1));
+  }
+
   // Utilitários de desenho
   function roundRect(x,y,w,h,r=16){ r=Math.min(r, Math.min(w,h)/2); ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
-  function drawButton(b){const {x,y,w,h,label,fill=C.accent,stroke=C.stroke,text=C.text}=b;roundRect(x,y,w,h,14);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}ctx.fillStyle=text;ctx.font=`700 ${Math.max(13,Math.floor(h*0.42))}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(label),x+w/2,y+h/2+1);}  
+  function drawButton(b){
+    const {x,y,w,h,label,fill=C.accent,stroke=C.stroke,text=C.text}=b;
+    roundRect(x,y,w,h,14);
+    ctx.fillStyle=fill;ctx.fill();
+    if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}
+    ctx.fillStyle=text;
+    let fontSize = Math.max(13, Math.floor(h*0.42));
+    ctx.font=`700 ${fontSize}px system-ui`;
+    while(ctx.measureText(String(label)).width > w-16 && fontSize>10){
+      fontSize -=1;
+      ctx.font=`700 ${fontSize}px system-ui`;
+    }
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.fillText(String(label),x+w/2,y+h/2+1);
+  }
   function drawIconButton(b,icon){const {x,y,w,h,fill=C.accent}=b; roundRect(x,y,w,h,14); ctx.fillStyle=fill; ctx.fill(); ctx.strokeStyle=C.stroke; ctx.stroke(); ctx.fillStyle='#06131f'; ctx.font=`700 ${Math.max(14,Math.floor(h*0.6))}px system-ui`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(icon,x+w/2,y+h/2+1);} 
   function drawPill(p){const {x,y,w,h,label,active=false}=p; roundRect(x,y,w,h,999); ctx.fillStyle=active?C.accent:'#1f2937'; ctx.fill(); ctx.strokeStyle=active?'rgba(67,182,255,0.5)':C.stroke; ctx.stroke(); ctx.fillStyle=active?'#06131f':C.text; ctx.font='700 13px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(label,x+w/2,y+h/2+1);}  
   function drawInputBox(inp){const {x,y,w,h,label,value,placeholder='',focused=false}=inp;roundRect(x,y,w,h,12);ctx.fillStyle='#0f1422';ctx.fill();ctx.strokeStyle=focused?C.accent:C.stroke;ctx.lineWidth=focused?2:1;ctx.stroke();ctx.fillStyle=C.sub;ctx.font='700 12px system-ui';ctx.textAlign='left';ctx.textBaseline='top';if(label)ctx.fillText(label,x+12,y+8);ctx.font='600 18px system-ui';ctx.fillStyle=value?C.text:'rgba(231,238,247,0.4)';const shown=value||placeholder;ctx.fillText(shown+(focused&&tick()%60<30?'|':''),x+12,y+(label?28:12));}
@@ -278,7 +303,7 @@
     const buttons=[], clickZones=[], inputs=[];
 
     // Botões inferiores como "aba" (Estudar/Treinar/Quiz/Resumo/Lista)
-    const tabW = Math.floor((W - pad*2 - 4*8)/5); // 5 abas, gaps 8px
+    const tabW = Math.max(40, Math.floor((W - pad*2 - 4*8)/5)); // 5 abas, gaps 8px
     const tabY = bottomBar.y + 12;
     const makeTab = (i, label, onClick, fill) => ({ x: pad + i*(tabW+8), y: tabY, w: tabW, h: bottomBar.h-24, label, onClick, fill: fill || '#1f2937' });
 
@@ -328,10 +353,10 @@
       }});
 
       if(!State.showAnswer){
-        const btnVer={x:inp.x+inp.w-160,y:inp.y+inp.h+12,w:160,h:48,label:'Verificar',onClick:()=>{ hideMobileInput(); checkAnswer(); }};
+        const btnVer={x:inp.x+inp.w-160,y:inp.y+inp.h+12,w:160,h:SIZES.buttonH,label:'Verificar',onClick:()=>{ hideMobileInput(); checkAnswer(); }};
         buttons.push(btnVer);
       } else {
-        const bx=card.x+24, by=inp.y+inp.h+12; const bw=Math.floor((card.w-24*2-12*2)/3), bh=48;
+        const bx=card.x+24, by=inp.y+inp.h+12; const bw=Math.floor((card.w-24*2-12*2)/3), bh=SIZES.buttonH;
         const bHard={x:bx,y:by,w:bw,h:bh,label:'Difícil',fill:C.danger,onClick:()=>chooseDifficulty('dificil')};
         const bMed={x:bx+bw+12,y:by,w:bw,h:bh,label:'Médio',fill:C.warn,onClick:()=>chooseDifficulty('medio')};
         const bEasy={x:bx+(bw+12)*2,y:by,w:bw,h:bh,label:'Fácil',fill:C.accent2,onClick:()=>chooseDifficulty('facil')};
@@ -353,8 +378,8 @@
           showMobileInput(it.x, it.y, it.w, it.h, State.addForm[f], it.placeholder, { mode:'add', field:f });
         }});
       }
-      const bAdd={x:ix,y:i3.y+i3.h+12,w:iw,h:52,label:'Adicionar (Enter)',onClick:()=>{ hideMobileInput(); addCardFromForm(); }};
-      const bBulk={x:ix,y:bAdd.y+60,w:iw,h:48,label:'Colar lista (Bulk)',fill:'#334155',onClick:()=>{ State.mode='bulk'; State.bulkText=''; State.message='Cole/edite sua lista aqui.'; showMobileInput(ix, bAdd.y+60, iw, Math.min(220, card.h-200), State.bulkText, 'hiragana ; romaji ; tradução1 ; ...', {mode:'bulk'}); }};
+      const bAdd={x:ix,y:i3.y+i3.h+12,w:iw,h:SIZES.buttonH,label:'Adicionar (Enter)',onClick:()=>{ hideMobileInput(); addCardFromForm(); }};
+      const bBulk={x:ix,y:bAdd.y+SIZES.buttonH+12,w:iw,h:SIZES.buttonH,label:'Colar lista (Bulk)',fill:'#334155',onClick:()=>{ State.mode='bulk'; State.bulkText=''; State.message='Cole/edite sua lista aqui.'; showMobileInput(ix, bAdd.y+SIZES.buttonH+12, iw, Math.min(220, card.h-200), State.bulkText, 'hiragana ; romaji ; tradução1 ; ...', {mode:'bulk'}); }};
       buttons.push(bAdd,bBulk);
     }
 
@@ -393,7 +418,7 @@
       if (q.current) {
         const gridPad = 10;
         const bw = (card.w - gridPad * 3) / 2;
-        const bh = 56;
+        const bh = SIZES.buttonH;
         let ox = card.x + gridPad,
             oy = card.y + card.h - (bh * 2 + gridPad * 3);
         for (let i = 0; i < 4; i++) {
@@ -403,8 +428,8 @@
           let fillVar = '#1f2937'; if (q.selectedIndex !== -1) { if (isCorrect) fillVar = C.accent2; else if (isSel) fillVar = C.danger; }
           buttons.push({ x: bx, y: by, w: bw, h: bh, label: q.options[i] || '—', fill: fillVar, onClick: () => selectQuizOption(i) });
         }
-        buttons.push({ x: card.x + card.w - 140, y: card.y + card.h - 56, w: 120, h: 44, label: (q.selectedIndex === -1 ? 'Pular' : 'Próximo ▶'), fill: '#0ea5e9', onClick: nextQuiz });
-        buttons.push({ x: card.x + 12, y: card.y + card.h - 56, w: 40, h: 36, label: '🔊', fill: '#243b55', onClick: () => { speakJP(q.current.hiragana); } });
+        buttons.push({ x: card.x + card.w - 140, y: card.y + card.h - SIZES.buttonH, w: 120, h: SIZES.buttonH, label: (q.selectedIndex === -1 ? 'Pular' : 'Próximo ▶'), fill: '#0ea5e9', onClick: nextQuiz });
+        buttons.push({ x: card.x + 12, y: card.y + card.h - SIZES.buttonH, w: 40, h: Math.max(36, SIZES.buttonH - 8), label: '🔊', fill: '#243b55', onClick: () => { speakJP(q.current.hiragana); } });
       }
     }
 
@@ -479,9 +504,9 @@
         const inpW = L.card.w - 24*2; const inpX = L.card.x + 24; const baseY = L.card.y + Math.max(96, Math.floor(L.card.h*0.42));
         drawInputBox({ x: inpX, y: baseY, w: inpW, h: 52, label:'Tradução (PT-BR)', value: State.input, placeholder:'ex.: olá; boa tarde', focused:true });
 
-        if(!State.showAnswer){ drawButton({x:inpX+inpW-160,y:baseY+52+12,w:160,h:48,label:'Verificar',onClick:()=>{ hideMobileInput(); checkAnswer(); }}); }
+        if(!State.showAnswer){ drawButton({x:inpX+inpW-160,y:baseY+52+12,w:160,h:SIZES.buttonH,label:'Verificar',onClick:()=>{ hideMobileInput(); checkAnswer(); }}); }
         else {
-          const bx= L.card.x+24, by=baseY+52+12; const bw=Math.floor((L.card.w-24*2-12*2)/3), bh=48;
+          const bx= L.card.x+24, by=baseY+52+12; const bw=Math.floor((L.card.w-24*2-12*2)/3), bh=SIZES.buttonH;
           drawButton({x:bx,y:by,w:bw,h:bh,label:'Difícil',fill:C.danger,onClick:()=>chooseDifficulty('dificil')});
           drawButton({x:bx+bw+12,y:by,w:bw,h:bh,label:'Médio',fill:C.warn,onClick:()=>chooseDifficulty('medio')});
           drawButton({x:bx+(bw+12)*2,y:by,w:bw,h:bh,label:'Fácil',fill:C.accent2,onClick:()=>chooseDifficulty('facil')});
@@ -496,8 +521,8 @@
       const i2={x:ix,y:L.card.y+64+66,w:iw,h:56,label:'Romaji',value:State.addForm.romaji,placeholder:'ex.: konnichiwa',focused:State.focusField==='romaji'}; 
       const i3={x:ix,y:L.card.y+64+66*2,w:iw,h:56,label:'Tradução (PT-BR)',value:State.addForm.pt,placeholder:'ex.: olá; boa tarde',focused:State.focusField==='pt'}; 
       for(const i of [i1,i2,i3]) drawInputBox(i);
-      drawButton({x:ix,y:i3.y+i3.h+12,w:iw,h:52,label:'Adicionar (Enter)',onClick:()=>{ hideMobileInput(); addCardFromForm(); }});
-      drawButton({x:ix,y:i3.y+i3.h+12+60,w:iw,h:48,label:'Colar lista (Bulk)',fill:'#334155',onClick:()=>{ State.mode='bulk'; State.bulkText=''; State.message='Cole/edite sua lista.'; showMobileInput(ix, i3.y+i3.h+12+60, iw, Math.min(220, L.card.h-200), State.bulkText, 'hiragana ; romaji ; tradução1 ; ...', {mode:'bulk'}); }});
+      drawButton({x:ix,y:i3.y+i3.h+12,w:iw,h:SIZES.buttonH,label:'Adicionar (Enter)',onClick:()=>{ hideMobileInput(); addCardFromForm(); }});
+      drawButton({x:ix,y:i3.y+i3.h+12+SIZES.buttonH+12,w:iw,h:SIZES.buttonH,label:'Colar lista (Bulk)',fill:'#334155',onClick:()=>{ State.mode='bulk'; State.bulkText=''; State.message='Cole/edite sua lista.'; showMobileInput(ix, i3.y+i3.h+12+SIZES.buttonH+12, iw, Math.min(220, L.card.h-200), State.bulkText, 'hiragana ; romaji ; tradução1 ; ...', {mode:'bulk'}); }});
     }
 
     if(State.mode==='summary'){
