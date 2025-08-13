@@ -5,7 +5,6 @@
   <!-- Mobile-first, web app e safe areas -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Flashcards JP↔PT — Mobile</title>
   <style>
@@ -49,17 +48,9 @@
   const IS_TOUCH = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
   const IS_MOBILE = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (Math.min(window.innerWidth, window.innerHeight) < 768);
 
-  function fitCanvas(){
-    const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
-    const w = Math.floor(window.innerWidth), h = Math.floor(window.innerHeight);
-    cvs.width = w * dpr; cvs.height = h * dpr;
-    cvs.style.width = w + 'px'; cvs.style.height = h + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-  window.addEventListener('resize', () => { fitCanvas(); updateSizes(); hideMobileInput(); });
-  fitCanvas();
-  updateSizes();
-
+  // =========================
+  //  FIX: declarar C e SIZES antes de usar updateSizes()
+  // =========================
   // Cores
   const C={card:'#121826',accent:'#43b6ff',accent2:'#7cffad',text:'#e7eef7',sub:'#9fb3c8',danger:'#ff6b6b',warn:'#ffd166',stroke:'rgba(255,255,255,0.08)'};
 
@@ -85,6 +76,20 @@
     SIZES.pillH = Math.max(28, Math.floor(base * 0.07));
     SIZES.buttonH = Math.max(44, Math.floor(base * 0.1));
   }
+  // =========================
+
+  function fitCanvas(){
+    const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+    const w = Math.floor(window.innerWidth), h = Math.floor(window.innerHeight);
+    cvs.width = w * dpr; cvs.height = h * dpr;
+    cvs.style.width = w + 'px'; cvs.style.height = h + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  window.addEventListener('resize', () => { fitCanvas(); updateSizes(); hideMobileInput(); });
+  // Chamar após as declarações
+  fitCanvas();
+  updateSizes();
 
   // Utilitários de desenho
   function roundRect(x,y,w,h,r=16){ r=Math.min(r, Math.min(w,h)/2); ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
