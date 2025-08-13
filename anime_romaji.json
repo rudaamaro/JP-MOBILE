@@ -1,735 +1,698 @@
 [
   {
     "romaji": "hajimemashite",
-    "traducao": [
-      "prazer em conhecer"
-    ],
-    "categoria": "Saudações"
+    "pt": "prazer em conhecer",
+    "cat": "saudacao",
+    "kana": "はじめまして"
   },
   {
     "romaji": "ogenki desu ka",
-    "traducao": [
-      "como vai?",
-      "tudo bem?"
-    ],
-    "categoria": "Saudações"
+    "pt": "como vai?; tudo bem?",
+    "cat": "pergunta",
+    "kana": "おげんきですか"
   },
   {
     "romaji": "genki desu",
-    "traducao": [
-      "estou bem"
-    ],
-    "categoria": "Saudações"
+    "pt": "estou bem",
+    "cat": "cotidiano",
+    "kana": "げんきです"
   },
   {
     "romaji": "hisashiburi",
-    "traducao": [
-      "quanto tempo!"
-    ],
-    "categoria": "Saudações"
-  },
-  {
-    "romaji": "otsukaresama",
-    "traducao": [
-      "bom trabalho",
-      "obrigado pelo esforço"
-    ],
-    "categoria": "Saudações"
-  },
-  {
-    "romaji": "omedetou",
-    "traducao": [
-      "parabéns"
-    ],
-    "categoria": "Saudações"
+    "pt": "quanto tempo!",
+    "cat": "saudacao",
+    "kana": "ひさしぶり"
   },
   {
     "romaji": "konnichiwa",
-    "traducao": [
-      "olá",
-      "boa tarde"
-    ],
-    "categoria": "Saudações"
+    "pt": "olá; boa tarde",
+    "cat": "saudacao",
+    "kana": "こんにちは"
   },
   {
     "romaji": "ohayou",
-    "traducao": [
-      "bom dia"
-    ],
-    "categoria": "Saudações"
+    "pt": "bom dia",
+    "cat": "saudacao",
+    "kana": "おはよう"
   },
   {
     "romaji": "konbanwa",
-    "traducao": [
-      "boa noite (cumprimento)"
-    ],
-    "categoria": "Saudações"
+    "pt": "boa noite (cumprimento)",
+    "cat": "saudacao",
+    "kana": "こんばんは"
   },
   {
     "romaji": "oyasumi",
-    "traducao": [
-      "boa noite (antes de dormir)"
-    ],
-    "categoria": "Saudações"
-  },
-  {
-    "romaji": "okaeri",
-    "traducao": [
-      "bem-vindo de volta"
-    ],
-    "categoria": "Saudações"
+    "pt": "boa noite (antes de dormir)",
+    "cat": "despedida",
+    "kana": "おやすみ"
   },
   {
     "romaji": "sayounara",
-    "traducao": [
-      "adeus",
-      "tchau (formal)"
-    ],
-    "categoria": "Saudações"
+    "pt": "adeus; tchau (formal)",
+    "cat": "despedida",
+    "kana": "さようなら"
   },
   {
     "romaji": "ja ne",
-    "traducao": [
-      "tchau (casual)"
-    ],
-    "categoria": "Saudações"
+    "pt": "tchau (casual)",
+    "cat": "despedida",
+    "kana": "じゃね"
   },
   {
     "romaji": "mata ne",
-    "traducao": [
-      "até mais"
-    ],
-    "categoria": "Saudações"
+    "pt": "até mais",
+    "cat": "despedida",
+    "kana": "またね"
   },
   {
     "romaji": "ittekimasu",
-    "traducao": [
-      "estou saindo (de casa/trabalho)"
-    ],
-    "categoria": "Saudações"
+    "pt": "estou saindo (de casa/trabalho)",
+    "cat": "cotidiano",
+    "kana": "いってきます"
   },
   {
     "romaji": "itterasshai",
-    "traducao": [
-      "vá e volte com segurança"
-    ],
-    "categoria": "Saudações"
+    "pt": "vá e volte com segurança",
+    "cat": "cotidiano",
+    "kana": "いってらっしゃい"
   },
   {
     "romaji": "tadaima",
-    "traducao": [
-      "cheguei em casa"
-    ],
-    "categoria": "Saudações"
+    "pt": "cheguei em casa",
+    "cat": "cotidiano",
+    "kana": "ただいま"
   },
   {
     "romaji": "irasshaimase",
-    "traducao": [
-      "bem-vindo! (em lojas)"
-    ],
-    "categoria": "Saudações"
+    "pt": "bem-vindo! (em lojas)",
+    "cat": "loja",
+    "kana": "いらっしゃいませ"
   },
   {
-    "romaji": "gakkari",
-    "traducao": [
-      "desapontado"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "shikata nai",
-    "traducao": [
-      "não tem jeito",
-      "não há o que fazer"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "honki",
-    "traducao": [
-      "sério",
-      "de verdade"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "omoshiroi",
-    "traducao": [
-      "interessante",
-      "engraçado"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "tsumaranai",
-    "traducao": [
-      "chato",
-      "entediante"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "yabai",
-    "traducao": [
-      "perigoso",
-      "incrível (gíria, depende do contexto)"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "kakkoii",
-    "traducao": [
-      "bonito",
-      "estiloso",
-      "maneiro"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "kawaii",
-    "traducao": [
-      "fofo",
-      "bonito (para pessoas/animais/coisas)"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "dareka",
-    "traducao": [
-      "alguém"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "minna",
-    "traducao": [
-      "todos",
-      "todo mundo"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "matte kudasai",
-    "traducao": [
-      "por favor, espere"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "ki o tsukete",
-    "traducao": [
-      "se cuide",
-      "tome cuidado"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "dame da",
-    "traducao": [
-      "não pode",
-      "está errado"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "umai",
-    "traducao": [
-      "gostoso",
-      "bom nisso"
-    ],
-    "categoria": "Expressões"
+    "romaji": "okaeri",
+    "pt": "bem-vindo de volta",
+    "cat": "cotidiano",
+    "kana": "おかえり"
   },
   {
     "romaji": "arigatou",
-    "traducao": [
-      "obrigado",
-      "obrigada"
-    ],
-    "categoria": "Expressões"
+    "pt": "obrigado; obrigada",
+    "cat": "saudacao",
+    "kana": "ありがとう"
   },
   {
     "romaji": "gomen",
-    "traducao": [
-      "desculpa"
-    ],
-    "categoria": "Expressões"
+    "pt": "desculpa",
+    "cat": "saudacao",
+    "kana": "ごめん"
   },
   {
     "romaji": "sumimasen",
-    "traducao": [
-      "com licença",
-      "desculpe"
-    ],
-    "categoria": "Expressões"
+    "pt": "com licença; desculpe",
+    "cat": "saudacao",
+    "kana": "すみません"
   },
   {
-    "romaji": "hai",
-    "traducao": [
-      "sim"
-    ],
-    "categoria": "Expressões"
+    "romaji": "otsukaresama",
+    "pt": "bom trabalho; obrigado pelo esforço",
+    "cat": "cotidiano",
+    "kana": "おつかれさま"
   },
   {
-    "romaji": "un",
-    "traducao": [
-      "sim (casual)"
-    ],
-    "categoria": "Expressões"
+    "romaji": "omedetou",
+    "pt": "parabéns",
+    "cat": "cotidiano",
+    "kana": "おめでとう"
   },
   {
-    "romaji": "iie",
-    "traducao": [
-      "não"
-    ],
-    "categoria": "Expressões"
+    "romaji": "gakkari",
+    "pt": "desapontado",
+    "cat": "sentimento",
+    "kana": "がっかり"
   },
   {
-    "romaji": "uun",
-    "traducao": [
-      "não (casual)"
-    ],
-    "categoria": "Expressões"
+    "romaji": "shikata nai",
+    "pt": "não tem jeito; não há o que fazer",
+    "cat": "reacao",
+    "kana": "しかたない"
   },
   {
-    "romaji": "daijoubu",
-    "traducao": [
-      "tudo bem",
-      "sem problema"
-    ],
-    "categoria": "Expressões"
+    "romaji": "honki",
+    "pt": "sério; de verdade",
+    "cat": "avaliacao",
+    "kana": "ほんき"
+  },
+  {
+    "romaji": "omoshiroi",
+    "pt": "interessante; engraçado",
+    "cat": "avaliacao",
+    "kana": "おもしろい"
+  },
+  {
+    "romaji": "tsumaranai",
+    "pt": "chato; entediante",
+    "cat": "avaliacao",
+    "kana": "つまらない"
+  },
+  {
+    "romaji": "yabai",
+    "pt": "perigoso; incrível (gíria)",
+    "cat": "reacao",
+    "kana": "やばい"
+  },
+  {
+    "romaji": "kakkoii",
+    "pt": "bonito; estiloso; maneiro",
+    "cat": "elogio",
+    "kana": "かっこいい"
+  },
+  {
+    "romaji": "kawaii",
+    "pt": "fofo; bonito",
+    "cat": "elogio",
+    "kana": "かわいい"
   },
   {
     "romaji": "maa maa",
-    "traducao": [
-      "mais ou menos"
-    ],
-    "categoria": "Expressões"
+    "pt": "mais ou menos",
+    "cat": "avaliacao",
+    "kana": "まあまあ"
   },
   {
     "romaji": "betsu ni",
-    "traducao": [
-      "nada demais",
-      "tanto faz"
-    ],
-    "categoria": "Expressões"
+    "pt": "nada demais; tanto faz",
+    "cat": "avaliacao",
+    "kana": "べつに"
   },
   {
     "romaji": "sugoi",
-    "traducao": [
-      "incrível"
-    ],
-    "categoria": "Expressões"
+    "pt": "incrível",
+    "cat": "reacao",
+    "kana": "すごい"
   },
   {
     "romaji": "yatta",
-    "traducao": [
-      "consegui!",
-      "que bom!"
-    ],
-    "categoria": "Expressões"
+    "pt": "consegui!; que bom!",
+    "cat": "reacao",
+    "kana": "やった"
   },
   {
     "romaji": "shouganai",
-    "traducao": [
-      "não tem jeito",
-      "fazer o quê"
-    ],
-    "categoria": "Expressões"
+    "pt": "não tem jeito; fazer o quê",
+    "cat": "reacao",
+    "kana": "しょうがない"
   },
   {
     "romaji": "maji de",
-    "traducao": [
-      "sério?!"
-    ],
-    "categoria": "Expressões"
+    "pt": "sério?!",
+    "cat": "reacao",
+    "kana": "まじで"
   },
   {
-    "romaji": "ganbatte",
-    "traducao": [
-      "boa sorte",
-      "se esforce"
-    ],
-    "categoria": "Expressões"
+    "romaji": "majika",
+    "pt": "sério?! (casual)",
+    "cat": "reacao",
+    "kana": "まじか"
   },
   {
-    "romaji": "hayaku",
-    "traducao": [
-      "rápido"
-    ],
-    "categoria": "Expressões"
+    "romaji": "yappari",
+    "pt": "sabia!; como pensei",
+    "cat": "reacao",
+    "kana": "やっぱり"
   },
   {
-    "romaji": "matte",
-    "traducao": [
-      "espera!"
-    ],
-    "categoria": "Expressões"
+    "romaji": "uso!",
+    "pt": "mentira!; não acredito!",
+    "cat": "reacao",
+    "kana": "うそ！"
   },
   {
-    "romaji": "chotto",
-    "traducao": [
-      "ei",
-      "espera um pouco"
-    ],
-    "categoria": "Expressões"
+    "romaji": "hee",
+    "pt": "sério? (surpresa leve)",
+    "cat": "reacao",
+    "kana": "へえ"
   },
   {
-    "romaji": "nani",
-    "traducao": [
-      "o quê?"
-    ],
-    "categoria": "Expressões"
+    "romaji": "ee?",
+    "pt": "hã?!; o quê?!",
+    "cat": "reacao",
+    "kana": "ええ？"
   },
   {
-    "romaji": "dame",
-    "traducao": [
-      "não pode",
-      "proibido",
-      "pare"
-    ],
-    "categoria": "Expressões"
+    "romaji": "ara",
+    "pt": "oh! (surpresa leve)",
+    "cat": "reacao",
+    "kana": "あら"
   },
   {
-    "romaji": "iya",
-    "traducao": [
-      "não!",
-      "eu não quero!"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "hontou",
-    "traducao": [
-      "é sério?",
-      "de verdade?"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "wakatta",
-    "traducao": [
-      "certo",
-      "entendi"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "shiranai",
-    "traducao": [
-      "não sei"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "dare",
-    "traducao": [
-      "quem?"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "nande",
-    "traducao": [
-      "por quê? (casual)"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "doushite",
-    "traducao": [
-      "por que? (neutro/polido)"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "suki",
-    "traducao": [
-      "gosto"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "kirai",
-    "traducao": [
-      "não gosto",
-      "odeio"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "waa",
-    "traducao": [
-      "uau!"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "abunai",
-    "traducao": [
-      "cuidado!",
-      "perigo!"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "ikou",
-    "traducao": [
-      "vamos!"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "tasukete",
-    "traducao": [
-      "me ajude!",
-      "socorro!"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "onaka suita",
-    "traducao": [
-      "estou com fome"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "nemui",
-    "traducao": [
-      "estou com sono"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "daisuki",
-    "traducao": [
-      "eu gosto muito de você"
-    ],
-    "categoria": "Expressões"
-  },
-  {
-    "romaji": "aishiteru",
-    "traducao": [
-      "eu te amo"
-    ],
-    "categoria": "Expressões"
+    "romaji": "yare yare",
+    "pt": "ai ai...; que saco...",
+    "cat": "reacao",
+    "kana": "やれやれ"
   },
   {
     "romaji": "you",
-    "traducao": [
-      "ei! (casual)"
-    ],
-    "categoria": "Expressões"
+    "pt": "ei! (casual)",
+    "cat": "saudacao",
+    "kana": "よう"
   },
   {
-    "romaji": "ureshii",
-    "traducao": [
-      "feliz"
-    ],
-    "categoria": "Sentimentos"
+    "romaji": "sou desu ne",
+    "pt": "pois é; concordo",
+    "cat": "reacao",
+    "kana": "そうですね"
   },
   {
-    "romaji": "kanashii",
-    "traducao": [
-      "triste"
-    ],
-    "categoria": "Sentimentos"
+    "romaji": "sou ka",
+    "pt": "entendi (casual)",
+    "cat": "reacao",
+    "kana": "そうか"
   },
   {
-    "romaji": "sabishii",
-    "traducao": [
-      "solitário"
-    ],
-    "categoria": "Sentimentos"
+    "romaji": "sou nano?",
+    "pt": "é mesmo?",
+    "cat": "reacao",
+    "kana": "そうなの？"
   },
   {
-    "romaji": "kowai",
-    "traducao": [
-      "assustador",
-      "tenho medo"
-    ],
-    "categoria": "Sentimentos"
+    "romaji": "sou janai",
+    "pt": "não é isso; não é verdade",
+    "cat": "reacao",
+    "kana": "そうじゃない"
   },
   {
-    "romaji": "itai",
-    "traducao": [
-      "dói",
-      "ai!"
-    ],
-    "categoria": "Sentimentos"
+    "romaji": "hontou ni?",
+    "pt": "é sério mesmo?",
+    "cat": "reacao",
+    "kana": "ほんとうに？"
+  },
+  {
+    "romaji": "hontou",
+    "pt": "é sério?; de verdade?",
+    "cat": "reacao",
+    "kana": "ほんとう"
+  },
+  {
+    "romaji": "matte kudasai",
+    "pt": "por favor, espere",
+    "cat": "pedido",
+    "kana": "まってください"
+  },
+  {
+    "romaji": "ki o tsukete",
+    "pt": "se cuide; tome cuidado",
+    "cat": "cuidado",
+    "kana": "きをつけて"
+  },
+  {
+    "romaji": "ganbatte",
+    "pt": "boa sorte; se esforce",
+    "cat": "pedido",
+    "kana": "がんばって"
+  },
+  {
+    "romaji": "hayaku",
+    "pt": "rápido",
+    "cat": "pedido",
+    "kana": "はやく"
+  },
+  {
+    "romaji": "matte",
+    "pt": "espera!",
+    "cat": "pedido",
+    "kana": "まって"
+  },
+  {
+    "romaji": "chotto",
+    "pt": "ei; espera um pouco",
+    "cat": "pedido",
+    "kana": "ちょっと"
+  },
+  {
+    "romaji": "tasukete",
+    "pt": "me ajude!; socorro!",
+    "cat": "cuidado",
+    "kana": "たすけて"
+  },
+  {
+    "romaji": "dame da",
+    "pt": "não pode; está errado",
+    "cat": "cuidado",
+    "kana": "だめだ"
+  },
+  {
+    "romaji": "dame",
+    "pt": "não pode; proibido; pare",
+    "cat": "cuidado",
+    "kana": "だめ"
+  },
+  {
+    "romaji": "wakatta",
+    "pt": "certo; entendi",
+    "cat": "cotidiano",
+    "kana": "わかった"
+  },
+  {
+    "romaji": "shiranai",
+    "pt": "não sei",
+    "cat": "cotidiano",
+    "kana": "しらない"
+  },
+  {
+    "romaji": "hai",
+    "pt": "sim",
+    "cat": "cotidiano",
+    "kana": "はい"
+  },
+  {
+    "romaji": "un",
+    "pt": "sim (casual)",
+    "cat": "cotidiano",
+    "kana": "うん"
+  },
+  {
+    "romaji": "iie",
+    "pt": "não",
+    "cat": "cotidiano",
+    "kana": "いいえ"
+  },
+  {
+    "romaji": "uun",
+    "pt": "não (casual)",
+    "cat": "cotidiano",
+    "kana": "ううん"
+  },
+  {
+    "romaji": "daijoubu",
+    "pt": "tudo bem; sem problema",
+    "cat": "cotidiano",
+    "kana": "だいじょうぶ"
+  },
+  {
+    "romaji": "nani",
+    "pt": "o quê?",
+    "cat": "pergunta",
+    "kana": "なに"
+  },
+  {
+    "romaji": "dare",
+    "pt": "quem?",
+    "cat": "pergunta",
+    "kana": "だれ"
+  },
+  {
+    "romaji": "dareka",
+    "pt": "alguém",
+    "cat": "pergunta",
+    "kana": "だれか"
+  },
+  {
+    "romaji": "minna",
+    "pt": "todos; todo mundo",
+    "cat": "cotidiano",
+    "kana": "みんな"
+  },
+  {
+    "romaji": "nande",
+    "pt": "por quê? (casual)",
+    "cat": "pergunta",
+    "kana": "なんで"
+  },
+  {
+    "romaji": "doushite",
+    "pt": "por quê? (neutro/polido)",
+    "cat": "pergunta",
+    "kana": "どうして"
   },
   {
     "romaji": "nani kore?",
-    "traducao": [
-      "o que é isso?"
-    ],
-    "categoria": "Perguntas"
+    "pt": "o que é isso?",
+    "cat": "pergunta",
+    "kana": "なにこれ？"
   },
   {
     "romaji": "doko",
-    "traducao": [
-      "onde?"
-    ],
-    "categoria": "Perguntas"
+    "pt": "onde?",
+    "cat": "pergunta",
+    "kana": "どこ"
   },
   {
     "romaji": "dou yatte?",
-    "traducao": [
-      "como? (maneira de fazer algo)"
-    ],
-    "categoria": "Perguntas"
+    "pt": "como? (maneira de fazer algo)",
+    "cat": "pergunta",
+    "kana": "どうやって？"
   },
   {
     "romaji": "ikura?",
-    "traducao": [
-      "quanto custa?"
-    ],
-    "categoria": "Perguntas"
+    "pt": "quanto custa?",
+    "cat": "preco",
+    "kana": "いくら？"
   },
   {
-    "romaji": "atsui",
-    "traducao": [
-      "quente (tempo ou objeto)"
-    ],
-    "categoria": "Clima/Temperatura"
+    "romaji": "suki",
+    "pt": "gosto",
+    "cat": "sentimento",
+    "kana": "すき"
   },
   {
-    "romaji": "samui",
-    "traducao": [
-      "frio (tempo)"
-    ],
-    "categoria": "Clima/Temperatura"
+    "romaji": "daisuki",
+    "pt": "eu gosto muito de você",
+    "cat": "sentimento",
+    "kana": "だいすき"
   },
   {
-    "romaji": "tsumetai",
-    "traducao": [
-      "gelado (objeto/bebida)"
-    ],
-    "categoria": "Clima/Temperatura"
+    "romaji": "kirai",
+    "pt": "não gosto; odeio",
+    "cat": "sentimento",
+    "kana": "きらい"
   },
   {
-    "romaji": "atsui desu ne",
-    "traducao": [
-      "está quente, né?"
-    ],
-    "categoria": "Clima/Temperatura"
+    "romaji": "aishiteru",
+    "pt": "eu te amo",
+    "cat": "sentimento",
+    "kana": "あいしてる"
   },
   {
-    "romaji": "samui desu ne",
-    "traducao": [
-      "está frio, né?"
-    ],
-    "categoria": "Clima/Temperatura"
+    "romaji": "waa",
+    "pt": "uau!",
+    "cat": "reacao",
+    "kana": "わあ"
   },
   {
-    "romaji": "yameru",
-    "traducao": [
-      "parar",
-      "desistir"
-    ],
-    "categoria": "Ações"
+    "romaji": "abunai",
+    "pt": "cuidado!; perigo!",
+    "cat": "cuidado",
+    "kana": "あぶない"
+  },
+  {
+    "romaji": "ikou",
+    "pt": "vamos!",
+    "cat": "cotidiano",
+    "kana": "いこう"
   },
   {
     "romaji": "iku",
-    "traducao": [
-      "ir"
-    ],
-    "categoria": "Ações"
+    "pt": "ir",
+    "cat": "verbo",
+    "kana": "いく"
   },
   {
     "romaji": "kuru",
-    "traducao": [
-      "vir"
-    ],
-    "categoria": "Ações"
+    "pt": "vir",
+    "cat": "verbo",
+    "kana": "くる"
+  },
+  {
+    "romaji": "yameru",
+    "pt": "parar; desistir",
+    "cat": "verbo",
+    "kana": "やめる"
   },
   {
     "romaji": "taberu",
-    "traducao": [
-      "comer"
-    ],
-    "categoria": "Ações"
+    "pt": "comer",
+    "cat": "verbo",
+    "kana": "たべる"
   },
   {
     "romaji": "miru",
-    "traducao": [
-      "ver",
-      "assistir"
-    ],
-    "categoria": "Ações"
+    "pt": "ver; assistir",
+    "cat": "verbo",
+    "kana": "みる"
   },
   {
     "romaji": "kiku",
-    "traducao": [
-      "ouvir",
-      "perguntar"
-    ],
-    "categoria": "Ações"
+    "pt": "ouvir; perguntar",
+    "cat": "verbo",
+    "kana": "きく"
   },
   {
     "romaji": "hanasu",
-    "traducao": [
-      "falar",
-      "conversar"
-    ],
-    "categoria": "Ações"
+    "pt": "falar; conversar",
+    "cat": "verbo",
+    "kana": "はなす"
   },
   {
     "romaji": "arau",
-    "traducao": [
-      "lavar"
-    ],
-    "categoria": "Ações"
+    "pt": "lavar",
+    "cat": "verbo",
+    "kana": "あらう"
   },
   {
     "romaji": "hashiru",
-    "traducao": [
-      "correr"
-    ],
-    "categoria": "Ações"
+    "pt": "correr",
+    "cat": "verbo",
+    "kana": "はしる"
   },
   {
     "romaji": "kore",
-    "traducao": [
-      "isto",
-      "isso aqui"
-    ],
-    "categoria": "Objetos/Coisas"
+    "pt": "isto; isso aqui",
+    "cat": "demonstrativo",
+    "kana": "これ"
   },
   {
     "romaji": "sore",
-    "traducao": [
-      "isso aí"
-    ],
-    "categoria": "Objetos/Coisas"
+    "pt": "isso aí",
+    "cat": "demonstrativo",
+    "kana": "それ"
   },
   {
     "romaji": "are",
-    "traducao": [
-      "aquilo"
-    ],
-    "categoria": "Objetos/Coisas"
+    "pt": "aquilo",
+    "cat": "demonstrativo",
+    "kana": "あれ"
   },
   {
     "romaji": "dore",
-    "traducao": [
-      "qual?"
-    ],
-    "categoria": "Objetos/Coisas"
+    "pt": "qual?",
+    "cat": "pergunta",
+    "kana": "どれ"
+  },
+  {
+    "romaji": "atsui",
+    "pt": "quente (tempo ou objeto)",
+    "cat": "clima",
+    "kana": "あつい"
+  },
+  {
+    "romaji": "samui",
+    "pt": "frio (tempo)",
+    "cat": "clima",
+    "kana": "さむい"
+  },
+  {
+    "romaji": "tsumetai",
+    "pt": "gelado (objeto/bebida)",
+    "cat": "clima",
+    "kana": "つめたい"
+  },
+  {
+    "romaji": "atsui desu ne",
+    "pt": "está quente, né?",
+    "cat": "clima",
+    "kana": "あついですね"
+  },
+  {
+    "romaji": "samui desu ne",
+    "pt": "está frio, né?",
+    "cat": "clima",
+    "kana": "さむいですね"
+  },
+  {
+    "romaji": "ureshii",
+    "pt": "feliz",
+    "cat": "sentimento",
+    "kana": "うれしい"
+  },
+  {
+    "romaji": "kanashii",
+    "pt": "triste",
+    "cat": "sentimento",
+    "kana": "かなしい"
+  },
+  {
+    "romaji": "sabishii",
+    "pt": "solitário",
+    "cat": "sentimento",
+    "kana": "さびしい"
+  },
+  {
+    "romaji": "kowai",
+    "pt": "assustador; tenho medo",
+    "cat": "sentimento",
+    "kana": "こわい"
+  },
+  {
+    "romaji": "itai",
+    "pt": "dói; ai!",
+    "cat": "sentimento",
+    "kana": "いたい"
+  },
+  {
+    "romaji": "onaka suita",
+    "pt": "estou com fome",
+    "cat": "comida",
+    "kana": "おなかすいた"
+  },
+  {
+    "romaji": "nemui",
+    "pt": "estou com sono",
+    "cat": "sentimento",
+    "kana": "ねむい"
+  },
+  {
+    "romaji": "iya",
+    "pt": "não!; eu não quero!",
+    "cat": "reacao",
+    "kana": "いや"
+  },
+  {
+    "romaji": "ikimasu",
+    "pt": "eu vou (formal)",
+    "cat": "cotidiano",
+    "kana": "いきます"
+  },
+  {
+    "romaji": "kudasai",
+    "pt": "por favor",
+    "cat": "pedido",
+    "kana": "ください"
+  },
+  {
+    "romaji": "onegai",
+    "pt": "por favor (pedido)",
+    "cat": "pedido",
+    "kana": "おねがい"
+  },
+  {
+    "romaji": "daijoubu desu",
+    "pt": "está tudo bem",
+    "cat": "cotidiano",
+    "kana": "だいじょうぶです"
+  },
+  {
+    "romaji": "wakarimasen",
+    "pt": "não entendo; não sei",
+    "cat": "cotidiano",
+    "kana": "わかりません"
+  },
+  {
+    "romaji": "wakarimashita",
+    "pt": "entendi (formal)",
+    "cat": "cotidiano",
+    "kana": "わかりました"
   },
   {
     "romaji": "takai",
-    "traducao": [
-      "caro",
-      "alto"
-    ],
-    "categoria": "Objetos/Coisas"
+    "pt": "caro; alto",
+    "cat": "preco",
+    "kana": "たかい"
   },
   {
     "romaji": "yasui",
-    "traducao": [
-      "barato"
-    ],
-    "categoria": "Objetos/Coisas"
+    "pt": "barato",
+    "cat": "preco",
+    "kana": "やすい"
   }
 ]
