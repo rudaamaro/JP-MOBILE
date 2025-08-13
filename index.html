@@ -48,8 +48,10 @@
   input.answer.correct{border-color:var(--accent2); box-shadow:0 0 0 3px rgba(124,255,173,.15)}
   input.answer.wrong{border-color:var(--danger); box-shadow:0 0 0 3px rgba(255,107,107,.15)}
   select.select{height:44px; padding:0 12px; border-radius:12px; background:#0f1422; color:#e7eef7; border:2px solid var(--stroke); font-weight:700}
-  .btn{height:52px; padding:0 16px; border-radius:14px; font-weight:800; border:1px solid rgba(255,255,255,.08); background:var(--accent); color:#05121d}
+  .btn{height:52px; padding:0 16px; border-radius:14px; font-weight:800; border:1px solid rgba(255,255,255,.08); background:var(--accent); color:#05121d; cursor:pointer}
   .btn.secondary{background:#1f2937; color:#e7eef7}
+  .btn:disabled{opacity:.5; cursor:not-allowed}
+  .btn:focus, .choice:focus, .audioBtn:focus {outline:3px solid rgba(67,182,255,.6); outline-offset:2px}
   .center{display:flex; justify-content:center; gap:10px; flex-wrap:wrap}
   .helper{color:var(--muted); text-align:center; font-size:13px}
   .section{display:none}
@@ -57,18 +59,23 @@
   textarea.bulk{width:100%; min-height:200px; padding:12px; border-radius:12px; border:1px solid rgba(255,255,255,.08);
     background:#0f1422; color:#e7eef7; font:500 14px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 
+  /* feedback banner */
+  .flash{padding:8px 12px; border-radius:10px; font-weight:800; text-align:center}
+  .flash.ok{background:#063; color:#c6ffde}
+  .flash.err{background:#4a1212; color:#ffc6c6}
+
   /* === LISTA === */
-  .tableWrap{max-width:100%; overflow:auto; border-radius:12px}
+  .tableWrap{max-width:100%; overflow:auto; border-radius:12px; overscroll-behavior:contain}
   table.list{width:100%; border-collapse:separate; border-spacing:0 6px; table-layout:fixed}
   table.list th,table.list td{padding:10px 12px; text-align:left; font-size:14px; word-break:break-word; white-space:normal}
   table.list th{color:var(--muted); font-weight:800}
   table.list tr{background:#0f1422; border:1px solid rgba(255,255,255,.08)}
   table.list tr td:first-child{border-radius:12px 0 0 12px}
   table.list tr td:last-child{border-radius:0 12px 12px 0}
-  .col-idx{width:48px}
+  .col-idx{width:48px; min-width:48px}
   .col-romaji{width:28%}
   .col-kana{width:22%}
-  .col-pt{width:32%}
+  .col-pt{width:32%; overflow-wrap:anywhere}
   .col-cat{width:12%}
   .col-ok,.col-err{width:48px; text-align:right}
 
@@ -136,11 +143,11 @@
         <input id="answer" class="answer" placeholder="ex.: konnichiwa"
           autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"
           inputmode="latin" enterkeyhint="done">
-        <button class="btn" id="btnCheck">Verificar</button>
+        <button class="btn" id="btnCheck" disabled>Verificar</button>
         <button class="btn secondary" id="btnSkip">Pular</button>
       </div>
 
-      <div class="center helper" id="accepted" style="display:none"></div>
+      <div class="center helper" id="accepted" style="display:none" aria-live="polite"></div>
     </div>
   </section>
 
@@ -170,7 +177,7 @@
       <div class="quizActions">
         <button class="btn secondary" id="qNext">Próximo</button>
       </div>
-      <div class="center helper" id="qFeedback" style="display:none"></div>
+      <div class="center helper" id="qFeedback" style="display:none" aria-live="polite"></div>
     </div>
   </section>
 
@@ -232,11 +239,21 @@
   function saveDeck(){localStorage.setItem(LS_DECK, JSON.stringify(deck));}
   function toast(t,ms=1400){const el=document.querySelector('#msg'); el.textContent=t; el.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>el.style.display='none',ms);}
 
+  // banner no topo da carta
+  function flash(msg, ok=true){
+    const card = document.querySelector('#study .card');
+    const n = document.createElement('div');
+    n.className = 'flash ' + (ok?'ok':'err');
+    n.textContent = msg;
+    card.prepend(n);
+    setTimeout(()=>n.remove(), 1200);
+  }
+
   // ===== ÁUDIO =====
   let voices=[]; function loadVoices(){voices=window.speechSynthesis?speechSynthesis.getVoices():[]}
   if('speechSynthesis' in window){speechSynthesis.onvoiceschanged=loadVoices; loadVoices();}
   function romajiToHiragana(input){
-    if(!input) return ''; let s=input.toLowerCase().trim().replace(/[^a-z0-9 ?!.,-]/g,' ').replace(/\s+/g,' ').trim().replace(/nn/g,'n');
+    if(!input) return ''; let s=input.toLowerCase().trim().replace(/[^a-z0-9 ?!.,-]/g,' ').replace(/\s+/g,' ').trim().replace(/nn/g,'n').replace(/n'(?=[^aeiouy])/g,'n');
     const yo={'kya':'きゃ','kyu':'きゅ','kyo':'きょ','gya':'ぎゃ','gyu':'ぎゅ','gyo':'ぎょ','sha':'しゃ','shu':'しゅ','sho':'しょ','ja':'じゃ','ju':'じゅ','jo':'じょ','jya':'じゃ','jyu':'じゅ','jyo':'じょ','cha':'ちゃ','chu':'ちゅ','cho':'ちょ','nya':'にゃ','nyu':'にゅ','nyo':'にょ','hya':'ひゃ','hyu':'ひゅ','hyo':'ひょ','bya':'びゃ','byu':'びゅ','byo':'びょ','pya':'ぴゃ','pyu':'ぴゅ','pyo':'ぴょ','mya':'みゃ','myu':'みゅ','myo':'みょ','rya':'りゃ','ryu':'りゅ','ryo':'りょ'};
     const mp={'a':'あ','i':'い','u':'う','e':'え','o':'お','ka':'か','ki':'き','ku':'く','ke':'け','ko':'こ','ga':'が','gi':'ぎ','gu':'ぐ','ge':'げ','go':'ご','sa':'さ','shi':'し','si':'し','su':'す','se':'せ','so':'そ','za':'ざ','ji':'じ','zi':'じ','zu':'ず','ze':'ぜ','zo':'ぞ','ta':'た','chi':'ち','ti':'ち','tsu':'つ','tu':'つ','te':'て','to':'と','da':'だ','di':'ぢ','du':'づ','de':'で','do':'ど','na':'な','ni':'に','nu':'ぬ','ne':'ね','no':'の','ha':'は','hi':'ひ','fu':'ふ','hu':'ふ','he':'へ','ho':'ほ','ba':'ば','bi':'び','bu':'ぶ','be':'べ','bo':'ぼ','pa':'ぱ','pi':'ぴ','pu':'ぷ','pe':'ぺ','po':'ぽ','ma':'ま','mi':'み','mu':'む','me':'め','mo':'も','ya':'や','yu':'ゆ','yo':'よ','ra':'ら','ri':'り','ru':'る','re':'れ','ro':'ろ','wa':'わ','wo':'を','che':'ちぇ','she':'しぇ','je':'じぇ'};
     let out='',i=0; const vow=c=>/[aeiou]/.test(c), cons=c=>/[bcdfghjklmnpqrstvwxyz]/.test(c);
@@ -262,7 +279,8 @@
     const v=pick('ja-jp')||pick('ja'); if(v) u.voice=v;
     u.lang='ja-JP'; u.rate=0.95; u.pitch=1.0;
     try{speechSynthesis.cancel();}catch(_){}
-    speechSynthesis.speak(u);
+    // debounce leve evita “engasgos”
+    clearTimeout(speakJP._t); speakJP._t=setTimeout(()=>speechSynthesis.speak(u),120);
   }
   function speakPT(text){
     if(!('speechSynthesis' in window)) return;
@@ -271,7 +289,7 @@
     const v=pick('pt-br')||pick('pt-pt')||voices[0]; if(v) u.voice=v;
     u.lang=v?.lang||'pt-BR'; u.rate=1.0; u.pitch=1.0;
     try{speechSynthesis.cancel();}catch(_){}
-    speechSynthesis.speak(u);
+    clearTimeout(speakPT._t); speakPT._t=setTimeout(()=>speechSynthesis.speak(u),120);
   }
 
   // ===== STATE =====
@@ -291,18 +309,36 @@
     });
   }
   function filteredByCategory(list, cat){ const k = cat || State.catFilter; if(k==='todas') return list; return list.filter(c=>(c.cat||'geral')===k); }
-  function randomCard(cat){ const arr=filteredByCategory(deck,cat); return arr.length? arr[Math.floor(Math.random()*arr.length)] : null; }
+  function randomCard(cat){
+    const arr=filteredByCategory(deck,cat);
+    return arr.length? arr[Math.floor(Math.random()*arr.length)] : null;
+  }
 
   // ===== STUDY =====
+  const answer = () => el('#answer');
+  const btnCheck = () => el('#btnCheck');
+  const btnSkip = () => el('#btnSkip');
+
+  function setLocked(lock){
+    answer().readOnly = lock;
+    btnCheck().disabled = lock || !answer().value.trim();
+  }
+
+  function adjustInputMode(){
+    // PT precisa de teclado normal; Romaji usa "latin"
+    const dir = State.direction;
+    answer().setAttribute('inputmode', (dir==='PT2ROMAJI') ? 'latin' : 'text');
+  }
+
   function renderQuestion(){
     const c=State.current; if(!c){ el('#qMain').textContent='Sem cartas nesta categoria.'; return; }
     const dir=State.direction;
     if(dir==='PT2ROMAJI'){ el('#promptLbl').textContent='Tradução (PT-BR)'; el('#helperLbl').innerHTML='Digite o <b>romaji</b> e pressione Verificar'; el('#qMain').textContent=(parsePT(c.pt)[0]||c.pt);}
     if(dir==='ROMAJI2PT'){ el('#promptLbl').textContent='Romaji'; el('#helperLbl').innerHTML='Digite uma tradução em <b>PT-BR</b> que sirva'; el('#qMain').textContent=c.romaji;}
     if(dir==='HIRA2PT'){ el('#promptLbl').textContent='Hiragana'; el('#helperLbl').innerHTML='Digite uma tradução em <b>PT-BR</b> que sirva'; el('#qMain').textContent=c.kana||romajiToHiragana(c.romaji);}
-    el('#answer').value=''; el('#answer').classList.remove('correct','wrong'); el('#accepted').style.display='none';
-    // botão volta a "Pular"
-    const sk=el('#btnSkip'); sk.textContent='Pular'; State.lastCorrect=false;
+    answer().value=''; answer().classList.remove('correct','wrong'); el('#accepted').style.display='none';
+    btnSkip().textContent='Pular'; State.lastCorrect=false;
+    adjustInputMode(); setLocked(false);
   }
   function pickNext(){ State.current = randomCard(); renderQuestion(); }
 
@@ -324,71 +360,76 @@
   // categoria (study)
   el('#catFilter').addEventListener('change',()=>{ State.catFilter = el('#catFilter').value; pickNext(); });
 
+  // estados do botão verificar
+  answer().addEventListener('input', ()=> btnCheck().disabled = !answer().value.trim());
+
   // verificar + pular/próximo
   function checkAnswer(){
     const c=State.current; if(!c) return;
-    const user=normBasic(el('#answer').value); let ok=false, feedback='';
+    const user=normBasic(answer().value); let ok=false, feedback='';
     if(State.direction==='PT2ROMAJI'){
       ok = !!user && user===normBasic(c.romaji);
       feedback = `Romaji correto: <b>${c.romaji}</b> • <small>Traduções: ${parsePT(c.pt).join(' / ')}</small>`;
-    } else { // ROMAJI2PT ou HIRA2PT
+    } else {
       const acc=new Set(parsePT(c.pt)); ok = !!user && acc.has(user);
       feedback = `Aceitas: <small>${[...acc].join(' / ')}</small>`;
     }
-    const ans=el('#answer'); ans.classList.remove('correct','wrong'); ans.classList.add(ok?'correct':'wrong');
+    answer().classList.remove('correct','wrong'); answer().classList.add(ok?'correct':'wrong');
     el('#accepted').innerHTML=feedback; el('#accepted').style.display='block';
-    toast(ok?'✔ Correto!':'✘ Quase!');
-    if(ok){ c.ok++; State.lastCorrect=true; el('#btnSkip').textContent='Próximo'; } else { c.err++; State.lastCorrect=false; el('#btnSkip').textContent='Pular'; }
+    toast(ok?'✔ Correto!':'✘ Quase!'); flash(ok?'Correto!':'Quase...', ok);
+    if(ok){ c.ok++; State.lastCorrect=true; btnSkip().textContent='Próximo'; setLocked(true); } else { c.err++; State.lastCorrect=false; btnSkip().textContent='Pular'; }
     saveDeck();
   }
-  el('#btnCheck').addEventListener('click', checkAnswer);
-  el('#answer').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); checkAnswer(); }});
-  el('#btnSkip').addEventListener('click', ()=>{ pickNext(); });
+  btnCheck().addEventListener('click', checkAnswer);
+
+  // Enter: verifica ou vai ao próximo se já acertou
+  answer().addEventListener('keydown', e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      if(State.lastCorrect) pickNext();
+      else checkAnswer();
+    }
+  });
+
+  btnSkip().addEventListener('click', pickNext);
+
   // áudio study
   el('#speakJP').addEventListener('click', ()=>{ const c=State.current; if(!c) return; const text=c.kana && isKana(c.kana) ? c.kana : c.romaji; speakJP(text); });
   el('#speakPT').addEventListener('click', ()=>{ const c=State.current; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
 
   // ===== QUIZ =====
   function buildChoices(card, dir, cat){
-    // cria 3 erradas + 1 correta, sem repetir
-    const pool=filteredByCategory(deck,cat).filter(c=>c.id!==card.id);
-    function pickWrong(n){
-      const arr=[]; const used=new Set();
-      while(arr.length<n && pool.length){
-        const it=pool[Math.floor(Math.random()*pool.length)];
-        const key = dir==='PT2ROMAJI' ? it.romaji : parsePT(it.pt)[0]||it.pt;
-        if(used.has(key)) continue;
-        used.add(key); arr.push(key);
-      }
-      return arr;
+    // garante 4 opções sempre (completa fora da categoria se precisar)
+    let pool = filteredByCategory(deck,cat).filter(c=>c.id!==card.id);
+    if(pool.length < 3) pool = deck.filter(c=>c.id!==card.id);
+    const val = (it)=> dir==='PT2ROMAJI' ? it.romaji : (parsePT(it.pt)[0]||it.pt);
+    const correct = val(card);
+    const used=new Set([correct]);
+    const opts=[];
+    while(opts.length<3 && pool.length){
+      const it=pool[Math.floor(Math.random()*pool.length)], k=val(it);
+      if(!used.has(k)){ used.add(k); opts.push(k); }
     }
-    const correct = dir==='PT2ROMAJI' ? card.romaji : (parsePT(card.pt)[0]||card.pt);
-    const wrong = pickWrong(3);
-    const all = wrong.concat(correct);
-    // embaralha
-    for(let i=all.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [all[i],all[j]]=[all[j],all[i]];}
+    const all=[...opts, correct].sort(()=>Math.random()-0.5);
     return {options:all, correct};
   }
   function renderQuiz(){
     const c=Quiz.current; if(!c){ el('#qQuestion').textContent='Sem cartas nesta categoria.'; el('#choices').innerHTML=''; return;}
     const dir=Quiz.direction, cat=Quiz.cat;
-    // pergunta
     if(dir==='PT2ROMAJI'){ el('#qPrompt').textContent='Tradução (PT-BR)'; el('#qQuestion').textContent=(parsePT(c.pt)[0]||c.pt); }
     if(dir==='ROMAJI2PT'){ el('#qPrompt').textContent='Romaji'; el('#qQuestion').textContent=c.romaji; }
     if(dir==='HIRA2PT'){ el('#qPrompt').textContent='Hiragana'; el('#qQuestion').textContent=c.kana||romajiToHiragana(c.romaji); }
 
-    // choices
     const {options, correct}=buildChoices(c, dir, cat);
-    Quiz.choices = options;
     const wrap=el('#choices'); wrap.innerHTML='';
-    options.forEach(text=>{
-      const b=document.createElement('button'); b.className='choice'; b.textContent=text;
+    options.forEach((text,idx)=>{
+      const b=document.createElement('button'); b.className='choice'; b.textContent=text; b.setAttribute('tabindex','0');
       b.addEventListener('click', ()=>{
+        if(b.disabled) return;
         const isCorrect = text===correct;
         b.classList.add(isCorrect?'correct':'wrong');
-        if(isCorrect){ c.ok++; toast('✔ Correto!'); } else { c.err++; toast('✘ Quase!'); }
+        if(isCorrect){ c.ok++; toast('✔ Correto!'); flash('Correto!',true); } else { c.err++; toast('✘ Quase!'); flash('Quase...',false); }
         saveDeck();
-        // desabilita e revela correta
         [...wrap.children].forEach(btn=>{
           btn.disabled=true;
           if(btn.textContent===correct) btn.classList.add('correct');
@@ -398,14 +439,20 @@
     });
     el('#qFeedback').style.display='none';
   }
-  function startQuizRound(){
-    Quiz.current = randomCard(Quiz.cat);
-    renderQuiz();
-  }
-  // eventos quiz
+  function startQuizRound(){ Quiz.current = randomCard(Quiz.cat); renderQuiz(); }
   els('input[name="qdir"]').forEach(r=>{ r.addEventListener('change',()=>{ Quiz.direction=r.value; renderQuiz(); }); });
   el('#qCat').addEventListener('change',()=>{ Quiz.cat=el('#qCat').value; startQuizRound(); });
   el('#qNext').addEventListener('click', startQuizRound);
+
+  // atalhos 1–4 para o quiz
+  window.addEventListener('keydown', (e)=>{
+    const k = Number(e.key);
+    if(el('#quiz').classList.contains('active') && k>=1 && k<=4){
+      const btn = el('#choices')?.children[k-1];
+      if(btn && !btn.disabled) btn.click();
+    }
+  });
+
   // áudio quiz
   el('#qSpeakJP').addEventListener('click', ()=>{ const c=Quiz.current; if(!c) return; const text=c.kana&&isKana(c.kana)?c.kana:c.romaji; speakJP(text); });
   el('#qSpeakPT').addEventListener('click', ()=>{ const c=Quiz.current; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
@@ -486,7 +533,6 @@
     deck = migrate(deck) || seed(defaultDeck);
     await hydrateFromJson();
     refreshCategoriesUI();
-    // primeira carta (study) e primeira pergunta (quiz)
     State.current = randomCard();
     renderQuestion();
     Quiz.cat='todas'; startQuizRound();
