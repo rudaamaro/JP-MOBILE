@@ -1,136 +1,714 @@
 [
-  {"romaji":"konnichiwa","pt":"olá; boa tarde"},
-  {"romaji":"ohayou","pt":"bom dia"},
-  {"romaji":"ohayou gozaimasu","pt":"bom dia"},
-  {"romaji":"konbanwa","pt":"boa noite"},
-  {"romaji":"oyasumi","pt":"boa noite; bons sonhos"},
-  {"romaji":"arigatou","pt":"obrigado; obrigada"},
-  {"romaji":"arigatou gozaimasu","pt":"muito obrigado; muito obrigada"},
-  {"romaji":"dou itashimashite","pt":"de nada"},
-  {"romaji":"sumimasen","pt":"desculpa; com licença"},
-  {"romaji":"gomen","pt":"foi mal; desculpa"},
-  {"romaji":"gomen nasai","pt":"desculpe-me"},
-  {"romaji":"onegaishimasu","pt":"por favor"},
-  {"romaji":"itadakimasu","pt":"bom apetite"},
-  {"romaji":"gochisousama","pt":"obrigado pela refeição"},
-  {"romaji":"sayounara","pt":"tchau; adeus"},
-  {"romaji":"ja ne","pt":"até mais"},
-  {"romaji":"mata ne","pt":"até depois"},
-  {"romaji":"genki?","pt":"tudo bem?"},
-  {"romaji":"genki desu","pt":"estou bem"},
-  {"romaji":"daijoubu","pt":"tá tudo bem; sem problemas"},
-  {"romaji":"yabai","pt":"tenso; perigoso; incrível"},
-  {"romaji":"sugoi","pt":"incrível"},
-  {"romaji":"kakkoii","pt":"maneiro; estiloso"},
-  {"romaji":"kawaii","pt":"fofo; fofa"},
-  {"romaji":"urusai","pt":"calado; barulhento"},
-  {"romaji":"baka","pt":"idiota; bobo"},
-  {"romaji":"hentai","pt":"pervertido"},
-  {"romaji":"ecchi","pt":"safadeza; pervertido"},
-  {"romaji":"tsundere","pt":"tsundere"},
-  {"romaji":"yandere","pt":"yandere"},
-  {"romaji":"senpai","pt":"senpai; veterano"},
-  {"romaji":"kouhai","pt":"calouro; novato"},
-  {"romaji":"sensei","pt":"professor; mestre"},
-  {"romaji":"onnichan","pt":"irmão mais velho"},
-  {"romaji":"oneechan","pt":"irmã mais velha"},
-  {"romaji":"otouto","pt":"irmão mais novo"},
-  {"romaji":"imouto","pt":"irmã mais nova"},
-  {"romaji":"chichioya","pt":"pai"},
-  {"romaji":"hahaoya","pt":"mãe"},
-  {"romaji":"ojiisan","pt":"avô; senhor"},
-  {"romaji":"obaasan","pt":"avó; senhora"},
-  {"romaji":"nakama","pt":"companheiro; aliado"},
-  {"romaji":"tomodachi","pt":"amigo; amiga"},
-  {"romaji":"koibito","pt":"namorado; namorada"},
-  {"romaji":"aishiteru","pt":"eu te amo"},
-  {"romaji":"suki","pt":"gosto de você; gostar"},
-  {"romaji":"daisuki","pt":"adoro; gosto muito"},
-  {"romaji":"kiraichanai","pt":"não odeio; tanto faz"},
-  {"romaji":"gambatte","pt":"boa sorte; faça o seu melhor"},
-  {"romaji":"ganbarimasu","pt":"vou me esforçar"},
-  {"romaji":"omae","pt":"você (informal/áspero)"},
-  {"romaji":"kimi","pt":"você (casual)"},
-  {"romaji":"anata","pt":"você"},
-  {"romaji":"watashi","pt":"eu (neutro)"},
-  {"romaji":"boku","pt":"eu (masc. casual)"},
-  {"romaji":"ore","pt":"eu (masc. informal)"},
-  {"romaji":"kisama","pt":"seu… (ofensivo)"},
-  {"romaji":"temee","pt":"você (agressivo)"},
-  {"romaji":"mahou","pt":"magia"},
-  {"romaji":"maou","pt":"rei demônio"},
-  {"romaji":"yuusha","pt":"herói"},
-  {"romaji":"taima","pt":"exorcismo; banir demônios"},
-  {"romaji":"shinigami","pt":"deus da morte"},
-  {"romaji":"yokai","pt":"espírito; monstro"},
-  {"romaji":"oni","pt":"ogro; demônio"},
-  {"romaji":"kami","pt":"deus; divindade"},
-  {"romaji":"tsuki","pt":"lua"},
-  {"romaji":"taiyou","pt":"sol"},
-  {"romaji":"hoshi","pt":"estrela"},
-  {"romaji":"kaze","pt":"vento"},
-  {"romaji":"mizu","pt":"água"},
-  {"romaji":"hi","pt":"fogo"},
-  {"romaji":"tsuchi","pt":"terra"},
-  {"romaji":"yuki","pt":"neve"},
-  {"romaji":"koori","pt":"gelo"},
-  {"romaji":"kage","pt":"sombra"},
-  {"romaji":"hikari","pt":"luz"},
-  {"romaji":"yami","pt":"escuridão"},
-  {"romaji":"ken","pt":"espada"},
-  {"romaji":"yari","pt":"lança"},
-  {"romaji":"yumi","pt":"arco"},
-  {"romaji":"tate","pt":"escudo"},
-  {"romaji":"tama","pt":"bala; esfera"},
-  {"romaji":"potion","pt":"poção"},
-  {"romaji":"elixir","pt":"elixir"},
-  {"romaji":"alchemist","pt":"alquimista"},
-  {"romaji":"guildo","pt":"guilda"},
-  {"romaji":"adobenchaa","pt":"aventureiro"},
-  {"romaji":"dungeon","pt":"masmorra"},
-  {"romaji":"questo","pt":"missão; quest"},
-  {"romaji":"party","pt":"grupo; equipe"},
-  {"romaji":"level up","pt":"subir de nível"},
-  {"romaji":"skill","pt":"habilidade"},
-  {"romaji":"mana","pt":"mana"},
-  {"romaji":"buffu","pt":"buff; melhoria"},
-  {"romaji":"debaffu","pt":"debuff; penalidade"},
-  {"romaji":"heal","pt":"cura"},
-  {"romaji":"status","pt":"status; atributos"},
-  {"romaji":"drop","pt":"drop; item"},
-  {"romaji":"rare","pt":"raro"},
-  {"romaji":"legend","pt":"lendário"},
-  {"romaji":"gacha","pt":"gacha"},
-  {"romaji":"isekai","pt":"outro mundo"},
-  {"romaji":"tensei","pt":"reencarnação"},
-  {"romaji":"saikyou","pt":"o mais forte; overpower"},
-  {"romaji":"cheat","pt":"trapaça; hack"},
-  {"romaji":"tsuyoi","pt":"forte"},
-  {"romaji":"yowai","pt":"fraco"},
-  {"romaji":"senryaku","pt":"estratégia"},
-  {"romaji":"takutiku","pt":"tática"},
-  {"romaji":"kakkei","pt":"formação (batalha)"},
-  {"romaji":"sense","pt":"sentido; percepção"},
-  {"romaji":"keikaku","pt":"plano"},
-  {"romaji":"unmei","pt":"destino"},
-  {"romaji":"kizuna","pt":"laços; vínculo"},
-  {"romaji":"nakama","pt":"companheiros"},
-  {"romaji":"seishun","pt":"juventude"},
-  {"romaji":"banzai","pt":"viva"},
-  {"romaji":"yatta","pt":"conseguimos; deu certo"},
-  {"romaji":"itai","pt":"dói; ai"},
-  {"romaji":"mazui","pt":"ruim (gosto); situação ruim"},
-  {"romaji":"oishii","pt":"gostoso; saboroso"},
-  {"romaji":"umae","pt":"hábil; bom nisso"},
-  {"romaji":"hayai","pt":"rápido; cedo"},
-  {"romaji":"osoi","pt":"lento; tarde"},
-  {"romaji":"takai","pt":"alto; caro"},
-  {"romaji":"yasui","pt":"barato"},
-  {"romaji":"kirei","pt":"bonito; limpo"},
-  {"romaji":"kitanai","pt":"sujo"},
-  {"romaji":"kowai","pt":"assustador"},
-  {"romaji":"omoshiroi","pt":"engraçado; interessante"},
-  {"romaji":"tsumaranai","pt":"chato; entediante"},
-  {"romaji":"baka mitai","pt":"que idiotice"},
-  {"romaji":"omae wa mou shindeiru","pt":"você já está morto"}
+  {
+    "romaji": "hajimemashite",
+    "pt": [
+      "prazer em conhecer"
+    ]
+  },
+  {
+    "romaji": "ogenki desu ka",
+    "pt": [
+      "como vai?",
+      "tudo bem?"
+    ]
+  },
+  {
+    "romaji": "genki desu",
+    "pt": [
+      "estou bem"
+    ]
+  },
+  {
+    "romaji": "hisashiburi",
+    "pt": [
+      "quanto tempo!"
+    ]
+  },
+  {
+    "romaji": "otsukaresama",
+    "pt": [
+      "bom trabalho",
+      "obrigado pelo esforço"
+    ]
+  },
+  {
+    "romaji": "omedetou",
+    "pt": [
+      "parabéns"
+    ]
+  },
+  {
+    "romaji": "gakkari",
+    "pt": [
+      "desapontado"
+    ]
+  },
+  {
+    "romaji": "shikata nai",
+    "pt": [
+      "não tem jeito",
+      "não há o que fazer"
+    ]
+  },
+  {
+    "romaji": "honki",
+    "pt": [
+      "sério",
+      "de verdade"
+    ]
+  },
+  {
+    "romaji": "omoshiroi",
+    "pt": [
+      "interessante",
+      "engraçado"
+    ]
+  },
+  {
+    "romaji": "tsumaranai",
+    "pt": [
+      "chato",
+      "entediante"
+    ]
+  },
+  {
+    "romaji": "yabai",
+    "pt": [
+      "perigoso",
+      "incrível (gíria, depende do contexto)"
+    ]
+  },
+  {
+    "romaji": "kakkoii",
+    "pt": [
+      "bonito",
+      "estiloso",
+      "maneiro"
+    ]
+  },
+  {
+    "romaji": "kawaii",
+    "pt": [
+      "fofo",
+      "bonito (para pessoas/animais/coisas)"
+    ]
+  },
+  {
+    "romaji": "dareka",
+    "pt": [
+      "alguém"
+    ]
+  },
+  {
+    "romaji": "minna",
+    "pt": [
+      "todos",
+      "todo mundo"
+    ]
+  },
+  {
+    "romaji": "matte kudasai",
+    "pt": [
+      "por favor, espere"
+    ]
+  },
+  {
+    "romaji": "ki o tsukete",
+    "pt": [
+      "se cuide",
+      "tome cuidado"
+    ]
+  },
+  {
+    "romaji": "dame da",
+    "pt": [
+      "não pode",
+      "está errado"
+    ]
+  },
+  {
+    "romaji": "umai",
+    "pt": [
+      "gostoso",
+      "bom nisso"
+    ]
+  },
+  {
+    "romaji": "konnichiwa",
+    "pt": [
+      "olá",
+      "boa tarde"
+    ]
+  },
+  {
+    "romaji": "ohayou",
+    "pt": [
+      "bom dia"
+    ]
+  },
+  {
+    "romaji": "konbanwa",
+    "pt": [
+      "boa noite (cumprimento)"
+    ]
+  },
+  {
+    "romaji": "oyasumi",
+    "pt": [
+      "boa noite (antes de dormir)"
+    ]
+  },
+  {
+    "romaji": "arigatou",
+    "pt": [
+      "obrigado",
+      "obrigada"
+    ]
+  },
+  {
+    "romaji": "gomen",
+    "pt": [
+      "desculpa"
+    ]
+  },
+  {
+    "romaji": "sumimasen",
+    "pt": [
+      "com licença",
+      "desculpe"
+    ]
+  },
+  {
+    "romaji": "hai",
+    "pt": [
+      "sim"
+    ]
+  },
+  {
+    "romaji": "un",
+    "pt": [
+      "sim (casual)"
+    ]
+  },
+  {
+    "romaji": "iie",
+    "pt": [
+      "não"
+    ]
+  },
+  {
+    "romaji": "uun",
+    "pt": [
+      "não (casual)"
+    ]
+  },
+  {
+    "romaji": "daijoubu",
+    "pt": [
+      "tudo bem",
+      "sem problema"
+    ]
+  },
+  {
+    "romaji": "maa maa",
+    "pt": [
+      "mais ou menos"
+    ]
+  },
+  {
+    "romaji": "betsu ni",
+    "pt": [
+      "nada demais",
+      "tanto faz"
+    ]
+  },
+  {
+    "romaji": "sugoi",
+    "pt": [
+      "incrível"
+    ]
+  },
+  {
+    "romaji": "yatta",
+    "pt": [
+      "consegui!",
+      "que bom!"
+    ]
+  },
+  {
+    "romaji": "shouganai",
+    "pt": [
+      "não tem jeito",
+      "fazer o quê"
+    ]
+  },
+  {
+    "romaji": "maji de",
+    "pt": [
+      "sério?!"
+    ]
+  },
+  {
+    "romaji": "ganbatte",
+    "pt": [
+      "boa sorte",
+      "se esforce"
+    ]
+  },
+  {
+    "romaji": "okaeri",
+    "pt": [
+      "bem-vindo de volta"
+    ]
+  },
+  {
+    "romaji": "hayaku",
+    "pt": [
+      "rápido"
+    ]
+  },
+  {
+    "romaji": "matte",
+    "pt": [
+      "espera!"
+    ]
+  },
+  {
+    "romaji": "chotto",
+    "pt": [
+      "ei",
+      "espera um pouco"
+    ]
+  },
+  {
+    "romaji": "nani",
+    "pt": [
+      "o quê?"
+    ]
+  },
+  {
+    "romaji": "dame",
+    "pt": [
+      "não pode",
+      "proibido",
+      "pare"
+    ]
+  },
+  {
+    "romaji": "iya",
+    "pt": [
+      "não!",
+      "eu não quero!"
+    ]
+  },
+  {
+    "romaji": "hontou",
+    "pt": [
+      "é sério?",
+      "de verdade?"
+    ]
+  },
+  {
+    "romaji": "wakatta",
+    "pt": [
+      "certo",
+      "entendi"
+    ]
+  },
+  {
+    "romaji": "shiranai",
+    "pt": [
+      "não sei"
+    ]
+  },
+  {
+    "romaji": "dare",
+    "pt": [
+      "quem?"
+    ]
+  },
+  {
+    "romaji": "nande",
+    "pt": [
+      "por quê? (casual)"
+    ]
+  },
+  {
+    "romaji": "doushite",
+    "pt": [
+      "por que? (neutro/polido)"
+    ]
+  },
+  {
+    "romaji": "suki",
+    "pt": [
+      "gosto"
+    ]
+  },
+  {
+    "romaji": "kirai",
+    "pt": [
+      "não gosto",
+      "odeio"
+    ]
+  },
+  {
+    "romaji": "waa",
+    "pt": [
+      "uau!"
+    ]
+  },
+  {
+    "romaji": "abunai",
+    "pt": [
+      "cuidado!",
+      "perigo!"
+    ]
+  },
+  {
+    "romaji": "ikou",
+    "pt": [
+      "vamos!"
+    ]
+  },
+  {
+    "romaji": "tasukete",
+    "pt": [
+      "me ajude!",
+      "socorro!"
+    ]
+  },
+  {
+    "romaji": "onaka suita",
+    "pt": [
+      "estou com fome"
+    ]
+  },
+  {
+    "romaji": "nemui",
+    "pt": [
+      "estou com sono"
+    ]
+  },
+  {
+    "romaji": "daisuki",
+    "pt": [
+      "eu gosto muito de você"
+    ]
+  },
+  {
+    "romaji": "aishiteru",
+    "pt": [
+      "eu te amo"
+    ]
+  },
+  {
+    "romaji": "you",
+    "pt": [
+      "ei! (casual)"
+    ]
+  },
+  {
+    "romaji": "sayounara",
+    "pt": [
+      "adeus",
+      "tchau (formal)"
+    ]
+  },
+  {
+    "romaji": "ja ne",
+    "pt": [
+      "tchau (casual)"
+    ]
+  },
+  {
+    "romaji": "mata ne",
+    "pt": [
+      "até mais"
+    ]
+  },
+  {
+    "romaji": "ittekimasu",
+    "pt": [
+      "estou saindo (de casa/trabalho)"
+    ]
+  },
+  {
+    "romaji": "itterasshai",
+    "pt": [
+      "vá e volte com segurança"
+    ]
+  },
+  {
+    "romaji": "tadaima",
+    "pt": [
+      "cheguei em casa"
+    ]
+  },
+  {
+    "romaji": "irasshaimase",
+    "pt": [
+      "bem-vindo! (em lojas)"
+    ]
+  },
+  {
+    "romaji": "hontou ni?",
+    "pt": [
+      "é sério mesmo?"
+    ]
+  },
+  {
+    "romaji": "sou desu ne",
+    "pt": [
+      "pois é",
+      "concordo"
+    ]
+  },
+  {
+    "romaji": "sou ka",
+    "pt": [
+      "entendi (casual)"
+    ]
+  },
+  {
+    "romaji": "sou nano?",
+    "pt": [
+      "é mesmo?"
+    ]
+  },
+  {
+    "romaji": "sou janai",
+    "pt": [
+      "não é isso",
+      "não é verdade"
+    ]
+  },
+  {
+    "romaji": "yappari",
+    "pt": [
+      "sabia!",
+      "como pensei"
+    ]
+  },
+  {
+    "romaji": "uso!",
+    "pt": [
+      "mentira!",
+      "não acredito!"
+    ]
+  },
+  {
+    "romaji": "majika",
+    "pt": [
+      "sério?! (casual)"
+    ]
+  },
+  {
+    "romaji": "hee",
+    "pt": [
+      "sério? (surpresa leve)"
+    ]
+  },
+  {
+    "romaji": "ee?",
+    "pt": [
+      "hã?!",
+      "o quê?! (espantado)"
+    ]
+  },
+  {
+    "romaji": "ara",
+    "pt": [
+      "oh! (surpresa leve)"
+    ]
+  },
+  {
+    "romaji": "yare yare",
+    "pt": [
+      "ai ai...",
+      "que saco..."
+    ]
+  },
+  {
+    "romaji": "atsui",
+    "pt": [
+      "quente (tempo ou objeto)"
+    ]
+  },
+  {
+    "romaji": "samui",
+    "pt": [
+      "frio (tempo)"
+    ]
+  },
+  {
+    "romaji": "tsumetai",
+    "pt": [
+      "gelado (objeto/bebida)"
+    ]
+  },
+  {
+    "romaji": "atsui desu ne",
+    "pt": [
+      "está quente, né?"
+    ]
+  },
+  {
+    "romaji": "samui desu ne",
+    "pt": [
+      "está frio, né?"
+    ]
+  },
+  {
+    "romaji": "ureshii",
+    "pt": [
+      "feliz"
+    ]
+  },
+  {
+    "romaji": "kanashii",
+    "pt": [
+      "triste"
+    ]
+  },
+  {
+    "romaji": "sabishii",
+    "pt": [
+      "solitário"
+    ]
+  },
+  {
+    "romaji": "kowai",
+    "pt": [
+      "assustador",
+      "tenho medo"
+    ]
+  },
+  {
+    "romaji": "itai",
+    "pt": [
+      "dói",
+      "ai!"
+    ]
+  },
+  {
+    "romaji": "yameru",
+    "pt": [
+      "parar",
+      "desistir"
+    ]
+  },
+  {
+    "romaji": "iku",
+    "pt": [
+      "ir"
+    ]
+  },
+  {
+    "romaji": "kuru",
+    "pt": [
+      "vir"
+    ]
+  },
+  {
+    "romaji": "taberu",
+    "pt": [
+      "comer"
+    ]
+  },
+  {
+    "romaji": "miru",
+    "pt": [
+      "ver",
+      "assistir"
+    ]
+  },
+  {
+    "romaji": "kiku",
+    "pt": [
+      "ouvir",
+      "perguntar"
+    ]
+  },
+  {
+    "romaji": "hanasu",
+    "pt": [
+      "falar",
+      "conversar"
+    ]
+  },
+  {
+    "romaji": "arau",
+    "pt": [
+      "lavar"
+    ]
+  },
+  {
+    "romaji": "hashiru",
+    "pt": [
+      "correr"
+    ]
+  },
+  {
+    "romaji": "kore",
+    "pt": [
+      "isto",
+      "isso aqui"
+    ]
+  },
+  {
+    "romaji": "sore",
+    "pt": [
+      "isso aí"
+    ]
+  },
+  {
+    "romaji": "are",
+    "pt": [
+      "aquilo"
+    ]
+  },
+  {
+    "romaji": "dore",
+    "pt": [
+      "qual?"
+    ]
+  },
+  {
+    "romaji": "nani kore?",
+    "pt": [
+      "o que é isso?"
+    ]
+  },
+  {
+    "romaji": "doko",
+    "pt": [
+      "onde?"
+    ]
+  },
+  {
+    "romaji": "dou yatte?",
+    "pt": [
+      "como? (maneira de fazer algo)"
+    ]
+  },
+  {
+    "romaji": "ikura?",
+    "pt": [
+      "quanto custa?"
+    ]
+  },
+  {
+    "romaji": "takai",
+    "pt": [
+      "caro",
+      "alto"
+    ]
+  },
+  {
+    "romaji": "yasui",
+    "pt": [
+      "barato"
+    ]
+  }
 ]
