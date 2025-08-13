@@ -12,6 +12,7 @@
       --bg:#0b0f14; --card:#111827; --muted:#9fb3c8; --text:#e7eef7;
       --accent:#43b6ff; --accent2:#7cffad; --danger:#ff6b6b; --warn:#ffd166; --stroke:#223047;
       --radius:16px; --maxw:860px;
+      --ok:#24d37b; --err:#ff5252;
     }
     *{box-sizing:border-box}
     html,body{height:100%; margin:0; background:var(--bg); font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;}
@@ -49,12 +50,16 @@
     input.answer{
       flex:1 1 320px; max-width:560px; height:52px; background:#0f1422; border:2px solid var(--stroke);
       border-radius:14px; padding:0 14px; color:var(--text); font-size:18px; font-weight:700; outline:none;
+      transition: border-color .15s, box-shadow .15s, background-color .15s;
     }
     input.answer:focus{ border-color:var(--accent) }
+    /* feedback visual */
+    input.answer.ok{ border-color:var(--ok); box-shadow:0 0 0 4px rgba(36,211,123,.2); background:rgba(36,211,123,.06); }
+    input.answer.err{ border-color:var(--err); box-shadow:0 0 0 4px rgba(255,82,82,.15); background:rgba(255,82,82,.06); }
     select.select{ height:44px; padding:0 12px; border-radius:12px; background:#0f1422; color:#e7eef7;
       border:2px solid var(--stroke); font-weight:700 }
     .btn{ height:52px; padding:0 16px; border-radius:14px; font-weight:800; border:1px solid rgba(255,255,255,.08);
-      background:var(--accent); color:#05121d; }
+      background:var(--accent); color:#05121d; cursor:pointer; }
     .btn.secondary{ background:#1f2937; color:#e7eef7 }
     .btn.warn{ background:var(--warn); color:#2a1b00 }
     .btn.good{ background:var(--accent2); color:#04210f }
@@ -78,7 +83,7 @@
       position:fixed; left:12px; right:12px; bottom:calc(12px + env(safe-area-inset-bottom));
       background:rgba(0,0,0,.55); color:#e7eef7; border:1px solid rgba(255,255,255,.15);
       border-radius:12px; padding:10px 12px; font-weight:700; text-align:center;
-      max-width:var(--maxw); margin:0 auto;
+      max-width:var(--maxw); margin:0 auto; z-index:5;
     }
     button, input, textarea, select { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
   </style>
@@ -128,13 +133,13 @@
           <input id="answer" class="answer" placeholder="ex.: konnichiwa"
             autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"
             inputmode="latin" enterkeyhint="done">
-          <button class="btn" id="btnCheck">Verificar</button>
+          <button class="btn" id="btnCheck" type="button">Verificar</button>
         </div>
 
         <div class="center" id="afterCheck" style="display:none">
-          <button class="btn danger" id="bHard">Difícil (1)</button>
-          <button class="btn warn"   id="bMed">Médio (2)</button>
-          <button class="btn good"   id="bEasy">Fácil (3)</button>
+          <button class="btn danger" id="bHard" type="button">Difícil (1)</button>
+          <button class="btn warn"   id="bMed"  type="button">Médio (2)</button>
+          <button class="btn good"   id="bEasy" type="button">Fácil (3)</button>
         </div>
 
         <div class="center helper" id="accepted" style="display:none"></div>
@@ -150,7 +155,7 @@
           <input id="inPT"     class="answer" placeholder="traduções PT (ex.: obrigado; obrigada)">
           <input id="inKana"   class="answer" placeholder="hiragana (opcional) ex.: ありがとう">
           <input id="inCat"    class="answer" placeholder="categoria (ex.: saudacao)">
-          <button class="btn" id="btnAdd">Adicionar</button>
+          <button class="btn" id="btnAdd" type="button">Adicionar</button>
         </div>
         <div class="helper">Dica: separe sinônimos em PT por <b>;</b>. Hiragana é opcional — se não preencher, eu converto do romaji só para o áudio.</div>
       </div>
@@ -159,8 +164,8 @@
         <div class="helper">Formato: <code>romaji ; tradução1 ; tradução2 ; #categoria ; ひらがな(opcional)</code></div>
         <textarea class="bulk" id="bulk" placeholder="konnichiwa ; olá ; boa tarde ; #saudacao ; こんにちは&#10;arigatou ; obrigado ; obrigada ; #saudacao ; ありがとう"></textarea>
         <div class="center">
-          <button class="btn secondary" id="btnParse">Pré-visualizar</button>
-          <button class="btn" id="btnImport">Adicionar tudo</button>
+          <button class="btn secondary" id="btnParse" type="button">Pré-visualizar</button>
+          <button class="btn" id="btnImport" type="button">Adicionar tudo</button>
         </div>
         <div id="preview" class="helper"></div>
       </div>
@@ -172,8 +177,8 @@
         <div class="prompt">Cartas (toque para remover) • Importar/Exportar JSON</div>
         <div class="center" style="gap:8px">
           <input type="file" id="fileIn" accept=".json" style="display:none">
-          <button class="btn secondary" id="btnImportFile">Importar JSON</button>
-          <button class="btn secondary" id="btnExport">Exportar JSON</button>
+          <button class="btn secondary" id="btnImportFile" type="button">Importar JSON</button>
+          <button class="btn secondary" id="btnExport" type="button">Exportar JSON</button>
         </div>
         <table class="list" id="table"></table>
       </div>
@@ -188,7 +193,7 @@
   const DATA_URL = './anime_romaji.json';
 
   // ======= STORAGE & HELPERS =======
-  const LS_DECK = 'romajiDeck_v6'; // bump pra v6 por causa do novo campo 'kana'
+  const LS_DECK = 'romajiDeck_v6';
   const LS_STATS = 'romajiStats_v3';
 
   const defaultDeck = [
@@ -208,7 +213,7 @@
       .replace(/[\p{P}\p{S}]/gu,' ')
       .replace(/\s+/g,' ').trim();
   const parsePT = pt => (pt||'').split(/[|;,\n]/).map(normBasic).filter(Boolean);
-  const isKana = s => /[\u3040-\u309f\u30a0-\u30ff]/.test(s||''); // hiragana+katakana (aceitamos mas priorizamos hiragana)
+  const isKana = s => /[\u3040-\u309f\u30a0-\u30ff]/.test(s||'');
 
   function seed(list){
     const today = toISO();
@@ -217,7 +222,7 @@
       romaji:String(romaji||'').toLowerCase().trim(),
       pt:String(pt||'').toLowerCase().trim(),
       cat:String(cat||'geral').toLowerCase().trim(),
-      kana:'', // novo campo
+      kana:'',
       due: today, ef:2.5, ivl:0, reps:0, ok:0, err:0
     }));
   }
@@ -271,7 +276,6 @@
     speechSynthesis.onvoiceschanged = loadVoices; loadVoices();
   }
 
-  // conversão romaji -> HIRAGANA (não usa katakana)
   function romajiToHiragana(input){
     if(!input) return "";
     let s = input.toLowerCase().trim();
@@ -350,7 +354,6 @@
 
   function speakJP(text){
     if(!('speechSynthesis' in window)) return;
-    // se já veio em kana, usa; senão converte romaji -> hiragana
     const kana = isKana(text) ? text : romajiToHiragana(text);
     if(!kana) return;
     const u = new SpeechSynthesisUtterance(kana);
@@ -358,8 +361,7 @@
     const v = pick('ja-jp') || pick('ja');
     if(v) u.voice = v;
     u.lang = 'ja-JP';
-    u.rate = 0.95;
-    u.pitch = 1.0;
+    u.rate = 0.95; u.pitch = 1.0;
     try{ speechSynthesis.cancel(); }catch(_){}
     speechSynthesis.speak(u);
   }
@@ -394,7 +396,7 @@
   const el = s => document.querySelector(s);
   const els = s => [...document.querySelectorAll(s)];
   const toastEl = el('#msg');
-  function toast(t, ms=1400){ toastEl.textContent=t; toastEl.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>{toastEl.style.display='none'}, ms); }
+  function toast(t, ms=1200){ toastEl.textContent=t; toastEl.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>{toastEl.style.display='none'}, ms); }
 
   function updateModeToggle(){
     el('#toggleMode').textContent = (State.studyMode==='REVIEW' ? 'Revisão' : 'Treino ∞');
@@ -488,9 +490,17 @@
     if(!State.trainPool.length) buildTrainPool();
     return State.trainPool[Math.floor(Math.random()*State.trainPool.length)] || null;
   }
+
+  function resetAnswerVisual(){
+    const a = el('#answer');
+    a.classList.remove('ok','err');
+    el('#accepted').style.display='none';
+    el('#afterCheck').style.display='none';
+  }
+
   function pickNext(){
     State.current = (State.studyMode==='REVIEW') ? pickFromReview() : pickFromTrain();
-    el('#answer').value='';
+    el('#answer').value=''; resetAnswerVisual();
     if(State.current){
       if(State.direction==='PT2ROMAJI'){
         const opts = parsePT(State.current.pt);
@@ -498,8 +508,6 @@
       }else{
         el('#qMain').textContent = State.current.romaji;
       }
-      el('#accepted').style.display='none';
-      el('#afterCheck').style.display='none';
     } else {
       el('#qMain').textContent = (State.studyMode==='REVIEW')
         ? 'Sem cartas “devidas” nesta categoria. Use Treino ∞.'
@@ -521,6 +529,8 @@
       feedback = `Romaji: <b>${State.current.romaji}</b> • <small>Traduções aceitas: ${[...acc].join(' / ')}</small>`;
     }
     el('#accepted').innerHTML = feedback; el('#accepted').style.display='block'; el('#afterCheck').style.display='flex';
+    el('#answer').classList.toggle('ok', ok);
+    el('#answer').classList.toggle('err', !ok);
     toast(ok? '✔ Correto! Agora marque a dificuldade.' : '✘ Quase! Confirme e marque a dificuldade.');
     el('#afterCheck').dataset.ok = ok ? '1' : '0';
     if(State.studyMode==='TRAIN'){
@@ -562,6 +572,15 @@
     speakPT(txt);
   });
 
+  // ======= AÇÕES (FIX: registrar handlers do Verificar/Enter e dificuldade) =======
+  document.getElementById('btnCheck').addEventListener('click', checkAnswer);       // <— estava faltando
+  document.getElementById('answer').addEventListener('keydown', e=>{
+    if(e.key==='Enter'){ e.preventDefault(); checkAnswer(); }
+  });
+  document.getElementById('bHard').addEventListener('click', ()=>grade(0));
+  document.getElementById('bMed').addEventListener('click',  ()=>grade(1));
+  document.getElementById('bEasy').addEventListener('click', ()=>grade(2));
+
   // ======= ADD / BULK =======
   function parseBulk(text){
     const out=[];
@@ -570,13 +589,8 @@
       const parts=line.split(/\t|\s*;\s*/).map(s=>s.trim()).filter(Boolean);
       if(parts.length<2) return;
       let cat='', kana='';
-      // último token pode ser categoria (#) e/ou hiragana
-      if(parts.length && /[\u3040-\u309f]/.test(parts[parts.length-1])) { // HIRAGANA apenas
-        kana = parts.pop();
-      }
-      if(parts.length && parts[parts.length-1].startsWith('#')) {
-        cat = parts.pop().slice(1);
-      }
+      if(parts.length && /[\u3040-\u309f]/.test(parts[parts.length-1])) { kana = parts.pop(); }
+      if(parts.length && parts[parts.length-1].startsWith('#')) { cat = parts.pop().slice(1); }
       const [romaji, ...rest] = parts;
       out.push({romaji, pt: rest.join(';'), cat, kana});
     });
@@ -585,7 +599,7 @@
   function addCard(r,p,cat,kana){
     const rom = normBasic(r), pt = normBasic(p);
     const c = String(cat||'geral').toLowerCase().trim() || 'geral';
-    const kanaClean = String(kana||'').trim(); // preserva kana
+    const kanaClean = String(kana||'').trim();
     if(!rom || !pt) return false;
     if(deck.some(x=>normBasic(x.romaji)===rom)) return false;
     deck.push({
@@ -626,7 +640,7 @@
     const t = document.getElementById('table'); t.innerHTML='';
     const head = `<tr><th>#</th><th>Romaji</th><th>Hiragana</th><th>Traduções</th><th>Cat</th><th>Próx.</th><th>✓</th><th>✗</th></tr>`;
     t.insertAdjacentHTML('beforeend', head);
-    deck.slice().sort((a,b)=> (a.romaji>b.romaji?1:-1)).forEach((c,i)=>{
+    deck.slice().sort((a,b)=>(a.romaji>b.romaji?1:-1)).forEach((c,i)=>{
       const tr = document.createElement('tr');
       tr.innerHTML = `<td>${i+1}</td><td>${c.romaji}</td><td>${c.kana||''}</td><td>${c.pt}</td><td>${c.cat||'geral'}</td><td>${c.due||''}</td><td>${c.ok||0}</td><td>${c.err||0}</td>`;
       tr.addEventListener('click', ()=>{ deck = deck.filter(x=>x.id!==c.id); saveDeck(); renderTable(); refreshCategoriesUI(); buildTrainPool(); toast('Removido.'); });
@@ -657,7 +671,7 @@
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'anime_romaji.json'; a.click(); URL.revokeObjectURL(a.href);
   });
 
-  // ======= CARREGAR DO SEU JSON (GitHub Pages) =======
+  // ======= CARREGAR DO JSON =======
   async function hydrateFromJson(){
     try{
       const res = await fetch(DATA_URL, {cache:'no-store'});
