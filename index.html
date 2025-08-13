@@ -51,7 +51,7 @@
       border-radius:14px; padding:0 14px; color:var(--text); font-size:18px; font-weight:700; outline:none;
     }
     input.answer:focus{ border-color:var(--accent) }
-    select.select{ height:44px; padding:0 12px; border-radius:12px; background:#0f1422; color:var(--text);
+    select.select{ height:44px; padding:0 12px; border-radius:12px; background:#0f1422; color:#e7eef7;
       border:2px solid var(--stroke); font-weight:700 }
     .btn{ height:52px; padding:0 16px; border-radius:14px; font-weight:800; border:1px solid rgba(255,255,255,.08);
       background:var(--accent); color:#05121d; }
@@ -118,7 +118,7 @@
 
         <div class="prompt" id="promptLbl">Tradução (PT-BR)</div>
         <div class="qRow">
-          <button title="Ouvir Romaji" class="audioBtn" id="speakRomaji">🔊 JP</button>
+          <button title="Ouvir Japonês" class="audioBtn" id="speakRomaji">🔊 JP</button>
           <div class="question" id="qMain">—</div>
           <button title="Ouvir Português" class="audioBtn" id="speakPT">🔊 PT</button>
         </div>
@@ -147,16 +147,17 @@
         <div class="prompt">Adicionar novo card</div>
         <div class="inputRow">
           <input id="inRomaji" class="answer" placeholder="romaji (ex.: arigatou)" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false">
-          <input id="inPT" class="answer" placeholder="traduções PT (ex.: obrigado; obrigada)">
-          <input id="inCat" class="answer" placeholder="categoria (ex.: saudacao)">
+          <input id="inPT"     class="answer" placeholder="traduções PT (ex.: obrigado; obrigada)">
+          <input id="inKana"   class="answer" placeholder="hiragana (opcional) ex.: ありがとう">
+          <input id="inCat"    class="answer" placeholder="categoria (ex.: saudacao)">
           <button class="btn" id="btnAdd">Adicionar</button>
         </div>
-        <div class="helper">Dica: separe sinônimos em PT por <b>;</b></div>
+        <div class="helper">Dica: separe sinônimos em PT por <b>;</b>. Hiragana é opcional — se não preencher, eu converto do romaji só para o áudio.</div>
       </div>
       <div class="card">
         <div class="prompt">Importar em massa (colar lista)</div>
-        <div class="helper">Formato: <code>romaji ; tradução1 ; tradução2 ; #categoria</code> (categoria opcional, iniciando com <code>#</code>)</div>
-        <textarea class="bulk" id="bulk" placeholder="konnichiwa ; olá ; boa tarde ; #saudacao&#10;arigatou ; obrigado ; obrigada ; #saudacao"></textarea>
+        <div class="helper">Formato: <code>romaji ; tradução1 ; tradução2 ; #categoria ; ひらがな(opcional)</code></div>
+        <textarea class="bulk" id="bulk" placeholder="konnichiwa ; olá ; boa tarde ; #saudacao ; こんにちは&#10;arigatou ; obrigado ; obrigada ; #saudacao ; ありがとう"></textarea>
         <div class="center">
           <button class="btn secondary" id="btnParse">Pré-visualizar</button>
           <button class="btn" id="btnImport">Adicionar tudo</button>
@@ -178,17 +179,16 @@
       </div>
     </section>
 
-    <div class="kudos">Feito para iOS/Safari • Salva no navegador • Direção PT↔Romaji • Áudio • Filtro por categoria • Modo Revisão/Treino no topo • Carrega <code>anime_romaji.json</code></div>
+    <div class="kudos">Feito para iOS/Safari • Salva no navegador • Direção PT↔Romaji • Áudio (hiragana prioritário) • Filtro por categoria • Modo Revisão/Treino • Carrega <code>anime_romaji.json</code></div>
     <div class="msg" id="msg" style="display:none"></div>
   </div>
 
   <script>
   // ======= CONFIG =======
-  // Se o site estiver no GitHub Pages com anime_romaji.json na raiz, este caminho funciona:
   const DATA_URL = './anime_romaji.json';
 
   // ======= STORAGE & HELPERS =======
-  const LS_DECK = 'romajiDeck_v5';
+  const LS_DECK = 'romajiDeck_v6'; // bump pra v6 por causa do novo campo 'kana'
   const LS_STATS = 'romajiStats_v3';
 
   const defaultDeck = [
@@ -208,6 +208,7 @@
       .replace(/[\p{P}\p{S}]/gu,' ')
       .replace(/\s+/g,' ').trim();
   const parsePT = pt => (pt||'').split(/[|;,\n]/).map(normBasic).filter(Boolean);
+  const isKana = s => /[\u3040-\u309f\u30a0-\u30ff]/.test(s||''); // hiragana+katakana (aceitamos mas priorizamos hiragana)
 
   function seed(list){
     const today = toISO();
@@ -216,6 +217,7 @@
       romaji:String(romaji||'').toLowerCase().trim(),
       pt:String(pt||'').toLowerCase().trim(),
       cat:String(cat||'geral').toLowerCase().trim(),
+      kana:'', // novo campo
       due: today, ef:2.5, ivl:0, reps:0, ok:0, err:0
     }));
   }
@@ -226,6 +228,7 @@
       romaji: String(c.romaji||'').toLowerCase().trim(),
       pt: String(c.pt||'').toLowerCase().trim(),
       cat: String(c.cat||'geral').toLowerCase().trim(),
+      kana: String(c.kana || c.hiragana || '').trim(),
       due: c.due || today, ef: typeof c.ef==='number'?c.ef:2.5,
       ivl: c.ivl||0, reps: c.reps||0, ok:c.ok||0, err:c.err||0
     }));
@@ -261,156 +264,116 @@
     card.reps++; card.due = addDays(toISO(), card.ivl);
   }
 
-// ======= ÁUDIO (iOS fix: romaji -> hiragana) =======
-let voices = [];
-function loadVoices(){ voices = window.speechSynthesis ? speechSynthesis.getVoices() : []; }
-if ('speechSynthesis' in window){
-  speechSynthesis.onvoiceschanged = loadVoices; loadVoices();
-}
+  // ======= ÁUDIO (romaji -> hiragana quando necessário) =======
+  let voices = [];
+  function loadVoices(){ voices = window.speechSynthesis ? speechSynthesis.getVoices() : []; }
+  if ('speechSynthesis' in window){
+    speechSynthesis.onvoiceschanged = loadVoices; loadVoices();
+  }
 
-// conversão romaji -> hiragana (básico, cobre 99% do seu deck)
-function romajiToHiragana(input){
-  if(!input) return "";
-  let s = input.toLowerCase().trim();
+  // conversão romaji -> HIRAGANA (não usa katakana)
+  function romajiToHiragana(input){
+    if(!input) return "";
+    let s = input.toLowerCase().trim();
+    s = s.replace(/[^a-z0-9 ?!.,-]/g, ' ').replace(/\s+/g,' ').trim();
+    s = s.replace(/nn/g, 'n');
 
-  // normaliza espaços/pontuação
-  s = s.replace(/[^a-zA-Z0-9 ?!.,-]/g, ' ')
-       .replace(/\s+/g,' ')
-       .trim();
+    const youon = {
+      'kya':'きゃ','kyu':'きゅ','kyo':'きょ',
+      'gya':'ぎゃ','gyu':'ぎゅ','gyo':'ぎょ',
+      'sha':'しゃ','shu':'しゅ','sho':'しょ',
+      'ja':'じゃ','ju':'じゅ','jo':'じょ',
+      'jya':'じゃ','jyu':'じゅ','jyo':'じょ',
+      'cha':'ちゃ','chu':'ちゅ','cho':'ちょ',
+      'nya':'にゃ','nyu':'にゅ','nyo':'にょ',
+      'hya':'ひゃ','hyu':'ひゅ','hyo':'ひょ',
+      'bya':'びゃ','byu':'びゅ','byo':'びょ',
+      'pya':'ぴゃ','pyu':'ぴゅ','pyo':'ぴょ',
+      'mya':'みゃ','myu':'みゅ','myo':'みょ',
+      'rya':'りゃ','ryu':'りゅ','ryo':'りょ'
+    };
+    const map = {
+      'a':'あ','i':'い','u':'う','e':'え','o':'お',
+      'ka':'か','ki':'き','ku':'く','ke':'け','ko':'こ',
+      'ga':'が','gi':'ぎ','gu':'ぐ','ge':'げ','go':'ご',
+      'sa':'さ','shi':'し','si':'し','su':'す','se':'せ','so':'そ',
+      'za':'ざ','ji':'じ','zi':'じ','zu':'ず','ze':'ぜ','zo':'ぞ',
+      'ta':'た','chi':'ち','ti':'ち','tsu':'つ','tu':'つ','te':'て','to':'と',
+      'da':'だ','di':'ぢ','du':'づ','de':'で','do':'ど',
+      'na':'な','ni':'に','nu':'ぬ','ne':'ね','no':'の',
+      'ha':'は','hi':'ひ','fu':'ふ','hu':'ふ','he':'へ','ho':'ほ',
+      'ba':'ば','bi':'び','bu':'ぶ','be':'べ','bo':'ぼ',
+      'pa':'ぱ','pi':'ぴ','pu':'ぷ','pe':'ぺ','po':'ぽ',
+      'ma':'ま','mi':'み','mu':'む','me':'め','mo':'も',
+      'ya':'や','yu':'ゆ','yo':'よ',
+      'ra':'ら','ri':'り','ru':'る','re':'れ','ro':'ろ',
+      'wa':'わ','wo':'を',
+      'che':'ちぇ','she':'しぇ','je':'じぇ'
+    };
 
-  // casos especiais comuns
-  s = s.replace(/nn/g, 'n');    // trata "nn" como ん
-  // alongamentos simples (não perfeito, mas ajuda naturalidade)
-  // deixa "ou" e "uu" como estão (おう/うう saem automaticamente pelo parser de mora)
+    let out = '';
+    let i = 0;
+    const isVowel = c => /[aeiou]/.test(c);
+    const isConsonant = c => /[bcdfghjklmnpqrstvwxyz]/.test(c);
 
-  // tabelas
-  const youon = {
-    'kya':'きゃ','kyu':'きゅ','kyo':'きょ',
-    'gya':'ぎゃ','gyu':'ぎゅ','gyo':'ぎょ',
-    'sha':'しゃ','shu':'しゅ','sho':'しょ',
-    'ja':'じゃ','ju':'じゅ','jo':'じょ',
-    'jya':'じゃ','jyu':'じゅ','jyo':'じょ',
-    'cha':'ちゃ','chu':'ちゅ','cho':'ちょ',
-    'nya':'にゃ','nyu':'にゅ','nyo':'にょ',
-    'hya':'ひゃ','hyu':'ひゅ','hyo':'ひょ',
-    'bya':'びゃ','byu':'びゅ','byo':'びょ',
-    'pya':'ぴゃ','pyu':'ぴゅ','pyo':'ぴょ',
-    'mya':'みゃ','myu':'みゅ','myo':'みょ',
-    'rya':'りゃ','ryu':'りゅ','ryo':'りょ'
-  };
-  const map = {
-    'a':'あ','i':'い','u':'う','e':'え','o':'お',
-    'ka':'か','ki':'き','ku':'く','ke':'け','ko':'こ',
-    'ga':'が','gi':'ぎ','gu':'ぐ','ge':'げ','go':'ご',
-    'sa':'さ','shi':'し','si':'し','su':'す','se':'せ','so':'そ',
-    'za':'ざ','ji':'じ','zi':'じ','zu':'ず','ze':'ぜ','zo':'ぞ',
-    'ta':'た','chi':'ち','ti':'ち','tsu':'つ','tu':'つ','te':'て','to':'と',
-    'da':'だ','di':'ぢ','du':'づ','de':'で','do':'ど',
-    'na':'な','ni':'に','nu':'ぬ','ne':'ね','no':'の',
-    'ha':'は','hi':'ひ','fu':'ふ','hu':'ふ','he':'へ','ho':'ほ',
-    'ba':'ば','bi':'び','bu':'ぶ','be':'べ','bo':'ぼ',
-    'pa':'ぱ','pi':'ぴ','pu':'ぷ','pe':'ぺ','po':'ぽ',
-    'ma':'ま','mi':'み','mu':'む','me':'め','mo':'も',
-    'ya':'や','yu':'ゆ','yo':'よ',
-    'ra':'ら','ri':'り','ru':'る','re':'れ','ro':'ろ',
-    'wa':'わ','wo':'を',
-    // palavras comuns que vêm “ocidentalizadas” (mantém naturalidade)
-    'che':'ちぇ','she':'しぇ','je':'じぇ'
-  };
+    while(i < s.length){
+      if(/\s/.test(s[i])){ out += ' '; i++; continue; }
+      if(/[?!.,-]/.test(s[i])){ out += s[i]; i++; continue; }
 
-  // tokenização greedy
-  let out = '';
-  let i = 0;
-  const isVowel = c => /[aeiou]/.test(c);
-  const isConsonant = c => /[bcdfghjklmnpqrstvwxyz]/.test(c);
-
-  while(i < s.length){
-    // espaços e pontuação leves
-    if(/\s/.test(s[i])){ out += ' '; i++; continue; }
-    if(/[?!.,-]/.test(s[i])){ out += s[i]; i++; continue; }
-
-    // sokuon (pequeno っ) para consoante duplicada (exceto 'n')
-    if(i+1 < s.length && s[i] === s[i+1] && isConsonant(s[i]) && s[i] !== 'n'){
-      out += 'っ'; i++; continue;
-    }
-
-    // ん antes de consoante ou fim
-    if(s[i] === 'n'){
-      const nxt = s[i+1] || '';
-      if(!nxt || (!isVowel(nxt) && nxt !== 'y')){
-        out += 'ん'; i++; continue;
+      if(i+1 < s.length && s[i] === s[i+1] && isConsonant(s[i]) && s[i] !== 'n'){
+        out += 'っ'; i++; continue;
       }
+
+      if(s[i] === 'n'){
+        const nxt = s[i+1] || '';
+        if(!nxt || (!isVowel(nxt) && nxt !== 'y')){ out += 'ん'; i++; continue; }
+      }
+
+      const tri = s.slice(i, i+3);
+      if(youon[tri]){ out += youon[tri]; i += 3; continue; }
+
+      const triMap = map[tri];
+      if(triMap){ out += triMap; i += 3; continue; }
+      const bi = s.slice(i, i+2);
+      const biMap = map[bi];
+      if(biMap){ out += biMap; i += 2; continue; }
+      const one = s[i];
+      const oneMap = map[one];
+      if(oneMap){ out += oneMap; i += 1; continue; }
+
+      out += s[i];
+      i++;
     }
 
-    // youon (3 letras)
-    const tri = s.slice(i, i+3);
-    if(youon[tri]){ out += youon[tri]; i += 3; continue; }
-
-    // kana “normais” (3, 2, 1)
-    const triMap = map[tri];
-    if(triMap){ out += triMap; i += 3; continue; }
-    const bi = s.slice(i, i+2);
-    const biMap = map[bi];
-    if(biMap){ out += biMap; i += 2; continue; }
-    const one = s[i];
-    const oneMap = map[one];
-    if(oneMap){ out += oneMap; i += 1; continue; }
-
-    // fallback: mantém letra (evita travar)
-    out += s[i];
-    i++;
+    return out.replace(/\s{2,}/g,' ').trim();
   }
 
-  // “ou” após お vira おう naturalmente por map + sequência; apenas compacta múltiplos espaços
-  return out.replace(/\s{2,}/g,' ').trim();
-}
-
-// fala japonês usando ja-JP e texto em hiragana
-function speakJP(romaji){
-  if(!('speechSynthesis' in window)) return;
-  const kana = romajiToHiragana(romaji);
-  if(!kana) return;
-  const u = new SpeechSynthesisUtterance(kana);
-  // tenta voz japonesa; no iOS às vezes só funciona se NÃO setar voice, apenas lang
-  const pick = (pref)=> voices.find(v=>v.lang && v.lang.toLowerCase().startsWith(pref));
-  const v = pick('ja-jp') || pick('ja');
-  if(v) u.voice = v;
-  u.lang = 'ja-JP';
-  u.rate = 0.95;
-  u.pitch = 1.0;
-  // “desengasga” no iOS se havia outra fala em andamento
-  try{ speechSynthesis.cancel(); }catch(_){}
-  speechSynthesis.speak(u);
-}
-
-// fala PT (sem mudanças)
-function speakPT(texto){
-  if(!('speechSynthesis' in window)) return;
-  const u = new SpeechSynthesisUtterance(texto);
-  const pick = (pref)=> voices.find(v=>v.lang && v.lang.toLowerCase().startsWith(pref));
-  const v = pick('pt-br') || pick('pt-pt') || voices[0];
-  if(v) u.voice = v;
-  u.lang = v?.lang || 'pt-BR';
-  u.rate = 1.0; u.pitch = 1.0;
-  try{ speechSynthesis.cancel(); }catch(_){}
-  speechSynthesis.speak(u);
-}
-
-// ——— substitua os listeners antigos por estes:
-document.getElementById('speakRomaji')?.addEventListener('click', ()=>{
-  const c = State.current; if(!c) return;
-  speakJP(c.romaji);
-});
-document.getElementById('speakPT')?.addEventListener('click', ()=>{
-  const c = State.current; if(!c) return;
-  let txt='';
-  if(State.direction==='PT2ROMAJI'){
-    txt = document.getElementById('qMain').textContent || parsePT(c.pt)[0] || c.pt;
-  } else {
-    txt = (parsePT(c.pt)[0] || c.pt);
+  function speakJP(text){
+    if(!('speechSynthesis' in window)) return;
+    // se já veio em kana, usa; senão converte romaji -> hiragana
+    const kana = isKana(text) ? text : romajiToHiragana(text);
+    if(!kana) return;
+    const u = new SpeechSynthesisUtterance(kana);
+    const pick = (pref)=> voices.find(v=>v.lang && v.lang.toLowerCase().startsWith(pref));
+    const v = pick('ja-jp') || pick('ja');
+    if(v) u.voice = v;
+    u.lang = 'ja-JP';
+    u.rate = 0.95;
+    u.pitch = 1.0;
+    try{ speechSynthesis.cancel(); }catch(_){}
+    speechSynthesis.speak(u);
   }
-  speakPT(txt);
-});
+  function speakPT(texto){
+    if(!('speechSynthesis' in window)) return;
+    const u = new SpeechSynthesisUtterance(texto);
+    const pick = (pref)=> voices.find(v=>v.lang && v.lang.toLowerCase().startsWith(pref));
+    const v = pick('pt-br') || pick('pt-pt') || voices[0];
+    if(v) u.voice = v;
+    u.lang = v?.lang || 'pt-BR';
+    u.rate = 1.0; u.pitch = 1.0;
+    try{ speechSynthesis.cancel(); }catch(_){}
+    speechSynthesis.speak(u);
+  }
 
   // ======= STATE =======
   let deck = loadDeckLS();
@@ -433,7 +396,6 @@ document.getElementById('speakPT')?.addEventListener('click', ()=>{
   const toastEl = el('#msg');
   function toast(t, ms=1400){ toastEl.textContent=t; toastEl.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>{toastEl.style.display='none'}, ms); }
 
-  // Top toggle (Revisão/Treino)
   function updateModeToggle(){
     el('#toggleMode').textContent = (State.studyMode==='REVIEW' ? 'Revisão' : 'Treino ∞');
   }
@@ -442,7 +404,6 @@ document.getElementById('speakPT')?.addEventListener('click', ()=>{
     updateModeToggle(); buildTrainPool(); pickNext();
   });
 
-  // Tabs
   els('.tab').forEach(b=>{
     b.addEventListener('click', ()=>{
       els('.tab').forEach(x=>x.classList.remove('active'));
@@ -456,7 +417,6 @@ document.getElementById('speakPT')?.addEventListener('click', ()=>{
     });
   });
 
-  // Direção
   els('input[name="dir"]').forEach(r=>{
     r.addEventListener('change', ()=>{
       State.direction = r.value;
@@ -465,7 +425,6 @@ document.getElementById('speakPT')?.addEventListener('click', ()=>{
     });
   });
 
-  // Categoria
   el('#catFilter').addEventListener('change', ()=>{
     State.catFilter = el('#catFilter').value;
     buildTrainPool();
@@ -586,89 +545,114 @@ document.getElementById('speakPT')?.addEventListener('click', ()=>{
     pickNext();
   }
 
-  // Áudio
-  el('#speakRomaji').addEventListener('click', ()=>{
-    const c = State.current; if(!c) return; speak(c.romaji, 'ja-JP');
-  });
-  el('#speakPT').addEventListener('click', ()=>{
+  // ======= ÁUDIO (botões) =======
+  document.getElementById('speakRomaji')?.addEventListener('click', ()=>{
     const c = State.current; if(!c) return;
-    let txt=''; if(State.direction==='PT2ROMAJI'){ txt = el('#qMain').textContent || parsePT(c.pt)[0] || c.pt; }
-    else { txt = (parsePT(c.pt)[0] || c.pt); }
-    speak(txt, 'pt-BR');
+    const textJA = c.kana && isKana(c.kana) ? c.kana : c.romaji;
+    speakJP(textJA);
   });
-
-  // Ações
-  el('#btnCheck').addEventListener('click', checkAnswer);
-  el('#answer').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); checkAnswer(); }});
-  el('#bHard').addEventListener('click', ()=>grade(0));
-  el('#bMed').addEventListener('click',  ()=>grade(1));
-  el('#bEasy').addEventListener('click', ()=>grade(2));
+  document.getElementById('speakPT')?.addEventListener('click', ()=>{
+    const c = State.current; if(!c) return;
+    let txt='';
+    if(State.direction==='PT2ROMAJI'){
+      txt = document.getElementById('qMain').textContent || parsePT(c.pt)[0] || c.pt;
+    } else {
+      txt = (parsePT(c.pt)[0] || c.pt);
+    }
+    speakPT(txt);
+  });
 
   // ======= ADD / BULK =======
   function parseBulk(text){
-    const out=[]; (text||'').split(/\r?\n/).forEach(line=>{
+    const out=[];
+    (text||'').split(/\r?\n/).forEach(line=>{
       line=line.trim(); if(!line) return;
       const parts=line.split(/\t|\s*;\s*/).map(s=>s.trim()).filter(Boolean);
       if(parts.length<2) return;
-      let cat=''; if(parts[parts.length-1].startsWith('#')) cat = parts.pop().slice(1);
-      const [romaji, ...rest] = parts; out.push({romaji, pt: rest.join(';'), cat});
-    }); return out;
+      let cat='', kana='';
+      // último token pode ser categoria (#) e/ou hiragana
+      if(parts.length && /[\u3040-\u309f]/.test(parts[parts.length-1])) { // HIRAGANA apenas
+        kana = parts.pop();
+      }
+      if(parts.length && parts[parts.length-1].startsWith('#')) {
+        cat = parts.pop().slice(1);
+      }
+      const [romaji, ...rest] = parts;
+      out.push({romaji, pt: rest.join(';'), cat, kana});
+    });
+    return out;
   }
-  function addCard(r,p,cat){
-    const rom = normBasic(r), pt = normBasic(p); const c = String(cat||'geral').toLowerCase().trim() || 'geral';
+  function addCard(r,p,cat,kana){
+    const rom = normBasic(r), pt = normBasic(p);
+    const c = String(cat||'geral').toLowerCase().trim() || 'geral';
+    const kanaClean = String(kana||'').trim(); // preserva kana
     if(!rom || !pt) return false;
     if(deck.some(x=>normBasic(x.romaji)===rom)) return false;
-    deck.push({id:String(Date.now()+Math.random()*9999), romaji:rom, pt:pt, cat:c, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0});
+    deck.push({
+      id:String(Date.now()+Math.random()*9999),
+      romaji:rom, pt:pt, cat:c, kana:kanaClean,
+      due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0
+    });
     return true;
   }
-  el('#btnAdd').addEventListener('click', ()=>{
-    const ok = addCard(el('#inRomaji').value, el('#inPT').value, el('#inCat').value);
+  document.getElementById('btnAdd').addEventListener('click', ()=>{
+    const ok = addCard(
+      document.getElementById('inRomaji').value,
+      document.getElementById('inPT').value,
+      document.getElementById('inCat').value,
+      document.getElementById('inKana').value
+    );
     if(!ok){ toast('Preencha corretamente ou evite duplicar romaji'); return; }
-    saveDeck(); el('#inRomaji').value=''; el('#inPT').value=''; el('#inCat').value='';
+    saveDeck();
+    document.getElementById('inRomaji').value='';
+    document.getElementById('inPT').value='';
+    document.getElementById('inKana').value='';
+    document.getElementById('inCat').value='';
     refreshCategoriesUI(); buildTrainPool(); toast('Card adicionado!');
   });
-  el('#btnParse').addEventListener('click', ()=>{
-    const arr = parseBulk(el('#bulk').value);
-    el('#preview').innerHTML = arr.length ? `Pronto para importar: <b>${arr.length}</b> linha(s).` : 'Nada válido encontrado.';
+  document.getElementById('btnParse').addEventListener('click', ()=>{
+    const arr = parseBulk(document.getElementById('bulk').value);
+    document.getElementById('preview').innerHTML = arr.length ? `Pronto para importar: <b>${arr.length}</b> linha(s).` : 'Nada válido encontrado.';
   });
-  el('#btnImport').addEventListener('click', ()=>{
-    const arr = parseBulk(el('#bulk').value); if(!arr.length){ toast('Nada válido para importar'); return; }
-    let added=0, skipped=0; for(const it of arr){ if(addCard(it.romaji, it.pt, it.cat)) added++; else skipped++; }
+  document.getElementById('btnImport').addEventListener('click', ()=>{
+    const arr = parseBulk(document.getElementById('bulk').value); if(!arr.length){ toast('Nada válido para importar'); return; }
+    let added=0, skipped=0; for(const it of arr){ if(addCard(it.romaji, it.pt, it.cat, it.kana)) added++; else skipped++; }
     saveDeck(); refreshCategoriesUI(); buildTrainPool();
-    toast(`Importados: ${added}. Ignorados: ${skipped}.`); el('#bulk').value=''; el('#preview').textContent='';
+    toast(`Importados: ${added}. Ignorados: ${skipped}.`); document.getElementById('bulk').value=''; document.getElementById('preview').textContent='';
   });
 
   // ======= LISTA + IMPORT/EXPORT =======
   function renderTable(){
-    const t = el('#table'); t.innerHTML='';
-    const head = `<tr><th>#</th><th>Romaji</th><th>Traduções</th><th>Cat</th><th>Próx.</th><th>✓</th><th>✗</th></tr>`;
+    const t = document.getElementById('table'); t.innerHTML='';
+    const head = `<tr><th>#</th><th>Romaji</th><th>Hiragana</th><th>Traduções</th><th>Cat</th><th>Próx.</th><th>✓</th><th>✗</th></tr>`;
     t.insertAdjacentHTML('beforeend', head);
     deck.slice().sort((a,b)=> (a.romaji>b.romaji?1:-1)).forEach((c,i)=>{
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${i+1}</td><td>${c.romaji}</td><td>${c.pt}</td><td>${c.cat||'geral'}</td><td>${c.due||''}</td><td>${c.ok||0}</td><td>${c.err||0}</td>`;
+      tr.innerHTML = `<td>${i+1}</td><td>${c.romaji}</td><td>${c.kana||''}</td><td>${c.pt}</td><td>${c.cat||'geral'}</td><td>${c.due||''}</td><td>${c.ok||0}</td><td>${c.err||0}</td>`;
       tr.addEventListener('click', ()=>{ deck = deck.filter(x=>x.id!==c.id); saveDeck(); renderTable(); refreshCategoriesUI(); buildTrainPool(); toast('Removido.'); });
       t.appendChild(tr);
     });
   }
-  el('#btnImportFile').addEventListener('click', ()=> el('#fileIn').click());
-  el('#fileIn').addEventListener('change', async (ev)=>{
+  document.getElementById('btnImportFile').addEventListener('click', ()=> document.getElementById('fileIn').click());
+  document.getElementById('fileIn').addEventListener('change', async (ev)=>{
     const f = ev.target.files?.[0]; if(!f) return;
     try{
       const text = await f.text(); const data = JSON.parse(text);
-      if(!Array.isArray(data)) throw new Error('JSON precisa ser array [{romaji,pt,cat?}]');
+      if(!Array.isArray(data)) throw new Error('JSON precisa ser array [{romaji,pt,cat?,kana?}]');
       let added=0; const have = new Set(deck.map(c=>normBasic(c.romaji)));
       data.forEach((obj,i)=>{
         const r = normBasic(obj.romaji), p = normBasic(obj.pt), c = String(obj.cat||'geral').toLowerCase();
+        const k = String(obj.kana || obj.hiragana || '').trim();
         if(!r || !p || have.has(r)) return;
-        deck.push({id:String(Date.now()+i), romaji:r, pt:p, cat:c, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0});
+        deck.push({id:String(Date.now()+i), romaji:r, pt:p, cat:c, kana:k, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0});
         have.add(r); added++;
       });
       saveDeck(); renderTable(); refreshCategoriesUI(); buildTrainPool();
       toast(`Importados do arquivo: ${added}.`);
     }catch(e){ console.error(e); toast('Falha ao importar JSON'); }
   });
-  el('#btnExport').addEventListener('click', ()=>{
-    const data = deck.map(({romaji,pt,cat})=>({romaji,pt,cat}));
+  document.getElementById('btnExport').addEventListener('click', ()=>{
+    const data = deck.map(({romaji,pt,cat,kana})=>({romaji,pt,cat,kana}));
     const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'anime_romaji.json'; a.click(); URL.revokeObjectURL(a.href);
   });
@@ -682,10 +666,12 @@ document.getElementById('speakPT')?.addEventListener('click', ()=>{
         if(Array.isArray(data)){
           let added=0, have = new Set(deck.map(c=>normBasic(c.romaji)));
           data.forEach((obj,i)=>{
-            const r = normBasic(obj.romaji), p = Array.isArray(obj.pt)? obj.pt.join(';') : String(obj.pt||'');
-            const c = String(obj.cat||'geral').toLowerCase();
+            const r = normBasic(obj.romaji),
+                  p = Array.isArray(obj.pt)? obj.pt.join(';') : String(obj.pt||''),
+                  c = String(obj.cat||'geral').toLowerCase(),
+                  k = String(obj.kana || obj.hiragana || '').trim();
             if(!r || !p || have.has(r)) return;
-            deck.push({id:String(Date.now()+i), romaji:r, pt:normBasic(p), cat:c, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0});
+            deck.push({id:String(Date.now()+i), romaji:r, pt:normBasic(p), cat:c, kana:k, due:toISO(), ef:2.5, ivl:0, reps:0, ok:0, err:0});
             have.add(r); added++;
           });
           if(added) saveDeck();
@@ -697,7 +683,8 @@ document.getElementById('speakPT')?.addEventListener('click', ()=>{
   // ======= INIT =======
   (async function init(){
     if(!deck) deck = seed(defaultDeck);
-    await hydrateFromJson();      // lê o seu anime_romaji.json hospedado
+    else deck = migrate(deck);
+    await hydrateFromJson();
     applyDirectionLabels();
     refreshCategoriesUI();
     buildTrainPool();
