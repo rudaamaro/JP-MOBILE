@@ -907,26 +907,68 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
          <td class="col-ok" style="text-align:right">'+(c.ok||0)+'</td>\
          <td class="col-err" style="text-align:right">'+(c.err||0)+'</td>';
       tr.title='Toque para remover';
-      tr.addEventListener('click',()=>{ deck=deck.filter(x=>x.id!==c.id); saveDeck(); renderTable(); refreshCategoriesUI(); toast('Removido.'); invalidateCycles();});
-      t.appendChild(tr);
-    });
+      tr.addEventListener('click', async () => {
+  const uid = auth.currentUser?.uid;
+
+  // 1) remove do array local
+  deck = deck.filter(x => x.id !== c.id);
+
+  // 2) apaga o documento no Firestore
+  if (uid) {
+    await deleteCard(uid, c.id);
+    await markDeletedRomaji(uid, normBasic(c.romaji)); // evita reimportar do JSON
   }
+
+  // 3) mantém o cache local em sincronia
+  await saveDeck();
+
+  // 4) UI
+  renderTable();
+  refreshCategoriesUI();
+  toast('Removido.');
+  invalidateCycles();
+});
+
+// ✅ mantenha isto!
+t.appendChild(tr);
+
 
   // ===== JSON remoto opcional =====
   async function hydrateFromJson(){
-    try{
-      const res=await fetch(DATA_URL,{cache:'no-store'}); if(!res.ok) return;
-      const data=await res.json(); if(!Array.isArray(data)) return;
-      let added=0; const have=new Set(deck.map(c=>normBasic(c.romaji)));
-      const now = Date.now();
-      data.forEach((obj,i)=>{
-        const r=normBasic(obj.romaji), p=Array.isArray(obj.pt)?obj.pt.join(';'):String(obj.pt||''), c=String(obj.cat||'geral').toLowerCase(), k=String(obj.kana||obj.hiragana||'').trim();
-        if(!r||!p||have.has(r)) return;
-        deck.push({id:String(now+i), romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k, ok:0, err:0, ease:2.5, interval:0, due:now, rf:false, rfLast:0}); have.add(r); added++;
+  try{
+    // se você guarda o UID em alguma variável global/state, use-a aqui
+    const uid = window.CURRENT_UID || (window.User && User.uid) || null;
+    const deleted = uid ? await getDeletedRomajiSet(uid) : new Set();
+
+    const res = await fetch(DATA_URL,{cache:'no-store'});
+    if(!res.ok) return;
+    const data = await res.json();
+    if(!Array.isArray(data)) return;
+
+    let added=0;
+    const have = new Set(deck.map(c => normBasic(c.romaji)));
+    const now = Date.now();
+
+    for(const obj of data){
+      const r = normBasic(obj.romaji);
+      if(!r) continue;
+      if(have.has(r)) continue;         // já tenho
+      if(deleted.has(r)) continue;      // o usuário já decidiu remover
+      const p = Array.isArray(obj.pt) ? obj.pt.join(';') : String(obj.pt||'');
+      const c = String(obj.cat||'geral').toLowerCase();
+      const k = String(obj.kana||obj.hiragana||'').trim();
+
+      deck.push({
+        id:String(now + Math.random()*100000),
+        romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k,
+        ok:0, err:0, ease:2.5, interval:0, due:now, rf:false, rfLast:0
       });
-      if(added){ saveDeck(); refreshCategoriesUI(); }
-    }catch(e){}
-  }
+      have.add(r);
+      added++;
+    }
+    if(added){ saveDeck(); refreshCategoriesUI(); invalidateCycles(); }
+  }catch(e){}
+}
 
   // ===== INIT =====
   (async function init(){
