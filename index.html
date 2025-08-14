@@ -889,11 +889,34 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     saveDeck(); ['#inRomaji','#inPT','#inKana','#inCat'].forEach(s=>el(s).value=''); refreshCategoriesUI(); toast('Card adicionado!'); invalidateCycles();
   });
   el('#btnParse').addEventListener('click', ()=>{ const arr=parseBulk(el('#bulk').value); el('#preview').innerHTML = arr.length?'Pronto para importar: <b>'+arr.length+'</b> linha(s).':'Nada válido.'; });
-  el('#btnImport').addEventListener('click', ()=>{
-    const arr=parseBulk(el('#bulk').value); if(!arr.length){toast('Nada válido'); return;}
-    let added=0,skipped=0; for(const it of arr){ if(addCard(it.romaji,it.pt,it.cat,it.kana)) added++; else skipped++; }
-    saveDeck(); refreshCategoriesUI(); toast('Importados: '+added+'. Ignorados: '+skipped+'.'); el('#bulk').value=''; el('#preview').textContent=''; invalidateCycles();
-  });
+  el('#btnImport').addEventListener('click', async ()=>{
+  const arr = parseBulk(el('#bulk').value);
+  if(!arr.length){ toast('Nada válido'); return; }
+
+  let added = 0, skipped = 0;
+  const newCards = [];
+
+  for(const it of arr){
+    if(addCard(it.romaji, it.pt, it.cat, it.kana)){
+      added++;
+      newCards.push(deck[deck.length - 1]); // acabou de entrar
+    } else {
+      skipped++;
+    }
+  }
+
+  if (added) {
+    // upsert apenas os recém-adicionados
+    await upsertMany(window.CURRENT_UID, newCards);
+    cacheDeck(window.CURRENT_UID, deck);
+  }
+
+  refreshCategoriesUI();
+  toast('Importados: '+added+'. Ignorados: '+skipped+'.');
+  el('#bulk').value=''; el('#preview').textContent='';
+  invalidateCycles();
+});
+
 
   // ===== LISTA =====
   function renderTable(){
