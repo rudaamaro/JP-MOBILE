@@ -33,7 +33,7 @@
   header{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px}
   .brand{font-weight:800; color:var(--text); font-size:18px}
 
-  /* AGORA 5 abas (inclui Reforço) */
+  /* 5 abas (inclui Reforço) */
   .tabs{display:grid; grid-template-columns:repeat(5,1fr); gap:8px}
   .tab{padding:10px 12px; text-align:center; background:var(--pill); color:var(--text);
     border-radius:999px; border:1px solid rgba(255,255,255,.06); font-weight:700}
@@ -162,7 +162,6 @@
       </div>
 
       <div class="center helper" id="accepted" style="display:none" aria-live="polite"></div>
-      <div class="center helper" id="dueTimer" style="display:none"></div>
     </div>
   </section>
 
@@ -195,7 +194,7 @@
     </div>
   </section>
 
-  <!-- NOVO: REFORÇO -->
+  <!-- NOVO: REFORÇO (sem timer) -->
   <section class="section" id="reinforce">
     <div class="card">
       <div class="row">
@@ -218,10 +217,10 @@
         <input id="rAnswer" class="answer" placeholder="sua resposta…" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" inputmode="latin" enterkeyhint="done">
         <button class="btn" id="rCheck" disabled>Verificar</button>
         <button class="btn secondary" id="rSkip">Pular</button>
+        <button class="btn" id="rLearned" title="Remover do reforço">Aprendido</button>
       </div>
 
       <div class="center helper" id="rAccepted" style="display:none" aria-live="polite"></div>
-      <div class="center helper" id="rTimer" style="display:none"></div>
     </div>
   </section>
 
@@ -275,8 +274,6 @@
 <script>
   // ===== CONFIG =====
   const DATA_URL = './anime_romaji.json';
-  const SHORT_STEPS_MIN = [1, 3, 6]; // 1min > 3min > 6min
-  const RF_TARGET = 3;               // precisa de 3 acertos no reforço para sair
 
   // ===== HELPERS / STORAGE =====
   const LS_DECK = 'romajiDeck_v8';
@@ -291,7 +288,7 @@
   const parsePT = pt => (pt||'').split(/[|;,\n]/).map(normBasic).filter(Boolean);
   const isKana = s => /[\u3040-\u309f\u30a0-\u30ff]/.test(s||'');
 
-  // Levenshtein simples
+  // Levenshtein simples (tolerância a erro leve)
   function lev(a,b){
     const m=a.length, n=b.length;
     if(m===0) return n; if(n===0) return m;
@@ -321,8 +318,7 @@
       kana:String(kana||'').trim(),
       ok:0,err:0,
       ease:2.5, interval:0, due:now,
-      shortIdx:0,
-      rfCount:0, rfLast:0
+      rf:false, rfLast:0
     }));
   }
   function migrate(arr){
@@ -337,9 +333,7 @@
       ease: (typeof c.ease==='number' && c.ease>0) ? c.ease : 2.5,
       interval: (typeof c.interval==='number') ? c.interval : 0,
       due: (typeof c.due==='number') ? c.due : now,
-      shortIdx: (typeof c.shortIdx==='number') ? c.shortIdx : 0,
-      rfCount: (typeof c.rfCount==='number') ? c.rfCount : 0,
-      rfLast:  (typeof c.rfLast==='number')  ? c.rfLast  : 0
+      rf: !!c.rf, rfLast: (typeof c.rfLast==='number') ? c.rfLast : 0
     }));
   }
   function loadDeckLS(){ try{ const raw=JSON.parse(localStorage.getItem(LS_DECK)); if(Array.isArray(raw)) return migrate(raw);}catch(e){} return null;}
@@ -355,7 +349,7 @@
     setTimeout(()=>n.remove(), 1200);
   }
 
- // ===== SONS (Web Audio)
+ // ===== SONS (Web Audio) =====
 let ACTX = null, SFX_BUS = null;
 async function ensureAudio(){
   if(!ACTX){
@@ -407,14 +401,12 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   if('speechSynthesis' in window){ speechSynthesis.onvoiceschanged = refreshVoices; }
 
   function pickVoice(prefList){
-    refreshVoices();
-    const lower = x => (x.lang||'').toLowerCase();
+    const lower = v => (v.lang||'').toLowerCase();
     for(const pref of prefList){
-      const v = voices.find(v=> lower(v).startsWith(pref));
-      if(v) return v;
+      const chosen = voices.find(v=> lower(v).startsWith(pref));
+      if(chosen) return chosen;
     }
-    const any = voices.find(v=> prefList.some(p=>lower(v).startsWith(p.slice(0,2))));
-    return any || null;
+    return voices.find(v=> prefList.some(p=>lower(v).startsWith(p.slice(0,2)))) || null;
   }
   function speak(text, prefs, rate=1.0, pitch=1.0){
     if(!('speechSynthesis' in window) || !text) return;
@@ -504,7 +496,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   let deck = loadDeckLS() || seed(defaultDeck);
   const State = { modeTab:'study', direction:'PT2ROMAJI', catFilter:'todas', current:null, lastCorrect:false };
   const Quiz = { direction:'PT2ROMAJI', cat:'todas', current:null, choices:[] };
-  const Reinforce = { direction:'PT2ROMAJI', current:null };
+  const Reinforce = { direction:'PT2ROMAJI', idx:0, order:[] };
 
   // ===== UI helpers =====
   const el = s => document.querySelector(s);
@@ -523,26 +515,20 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   function filteredByCategory(list, cat){ const k = cat || State.catFilter; if(k==='todas') return list; return list.filter(c=>(c.cat||'geral')===k); }
   function shuffle(a){ const arr=a.slice(); for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
 
-  // ====== SRS (agendamento)
-  function applyShortSchedule(card){
-    // agenda próximo devido usando 1,3,6min progressivo
-    const idx = Math.min(card.shortIdx||0, SHORT_STEPS_MIN.length-1);
-    const minutes = SHORT_STEPS_MIN[idx];
-    card.shortIdx = Math.min(idx+1, SHORT_STEPS_MIN.length-1);
-    card.due = Date.now() + minutes*60*1000;
-  }
+  // ===== SRS básico (sem timers curtos) =====
   function rateCard(card, correct){
     if(!correct){
-      applyShortSchedule(card);
-      // entra/volta no reforço
-      card.rfCount = RF_TARGET;
+      // erro: zera intervalo e torna devido agora
+      card.interval = 0;
+      card.due = Date.now();
+      // manda para o reforço
+      card.rf = true;
       card.rfLast = Date.now();
       return;
     }
-    // acerto: volta pro SRS normal e zera passos curtos
-    card.shortIdx = 0;
+    // acerto normal
     const q = 4; // SM-2 simplificado
-    card.ease = Math.max(1.3, (card.ease||2.5) + (0.1 - (4 - q) * (0.08 + (4 - q)*0.02)));
+    card.ease = Math.max(1.3, (card.ease||2.5) + 0.1);
     if(card.interval === 0){ card.interval = 1; }
     else if(card.interval === 1){ card.interval = 3; }
     else { card.interval = Math.round(card.interval * card.ease); }
@@ -627,43 +613,15 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     box.append(span, small); box.style.display='block';
   }
 
-  // Cronômetro Study
-  let dueTimerInt = null;
-  function mmss(ms){
-    const s = Math.max(0, Math.floor(ms/1000));
-    const m = Math.floor(s/60);
-    const r = s%60;
-    return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
-  }
-  function showDueTimer(ts, elId){
-    const box = el(elId);
-    clearInterval(dueTimerInt);
-    if(!box) return;
-    function tick(){
-      const left = ts - Date.now();
-      if(left <= 0){
-        box.textContent = '⏱ disponível novamente';
-        clearInterval(dueTimerInt);
-        setTimeout(()=>{ box.style.display='none'; }, 1000);
-        return;
-      }
-      box.textContent = '⏱ volta em ' + mmss(left);
-    }
-    box.style.display='block';
-    tick();
-    dueTimerInt = setInterval(tick, 1000);
-  }
-  function hideDueTimer(){ clearInterval(dueTimerInt); el('#dueTimer').style.display='none'; }
-
   function renderQuestion(){
-    const c=State.current; if(!c){ el('#qMain').textContent='Sem cartas nesta categoria.'; hideDueTimer(); return; }
+    const c=State.current; if(!c){ el('#qMain').textContent='Sem cartas nesta categoria.'; return; }
     const dir=State.direction;
     if(dir==='PT2ROMAJI'){ el('#promptLbl').textContent='Tradução (PT-BR)'; el('#helperLbl').innerHTML='Digite o <b>romaji</b> e pressione Verificar'; el('#qMain').textContent=(parsePT(c.pt)[0]||c.pt); }
     if(dir==='ROMAJI2PT'){ el('#promptLbl').textContent='Romaji'; el('#helperLbl').innerHTML='Digite uma tradução em <b>PT-BR</b> que sirva'; el('#qMain').textContent=c.romaji; }
     if(dir==='HIRA2PT'){ el('#promptLbl').textContent='Hiragana'; el('#helperLbl').innerHTML='Digite uma tradução em <b>PT-BR</b> que sirva'; el('#qMain').textContent=c.kana||romajiToHiragana(c.romaji); }
     answer().value=''; answer().classList.remove('correct','wrong'); renderAccepted(false, []);
     btnSkip().textContent='Pular'; State.lastCorrect=false;
-    adjustInputMode(); setLocked(false); hideDueTimer();
+    adjustInputMode(); setLocked(false);
   }
   function pickNext(){
     State.current = nextFromCycle('study', State.catFilter);
@@ -711,13 +669,10 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
 
     if (ok) {
       c.ok++; State.lastCorrect = true; btnSkip().textContent = 'Próximo'; setLocked(true);
-      rateCard(c, true); toast('✔ Correto!'); flash('Correto!', true); hideDueTimer();
-      // se este card estava no reforço, um acerto fora do reforço também ajuda
-      if(c.rfCount>0){ c.rfCount = Math.max(0, c.rfCount-1); c.rfLast = Date.now(); }
+      rateCard(c, true); toast('✔ Correto!'); flash('Correto!', true);
     } else {
       c.err++; State.lastCorrect = false; btnSkip().textContent = 'Pular';
       rateCard(c, false); toast('✘ Quase!'); flash('Quase...', false);
-      showDueTimer(c.due, '#dueTimer');
     }
 
     saveDeck();
@@ -770,13 +725,8 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
 
         if(isCorrect){
           c.ok++; rateCard(c,true); toast('✔ Correto!'); flash('Correto!',true);
-          if(c.rfCount>0){ c.rfCount=Math.max(0,c.rfCount-1); c.rfLast=Date.now(); }
-          el('#qFeedback').style.display='none';
         } else {
           c.err++; rateCard(c,false); toast('✘ Quase!');  flash('Quase...',false);
-          const left = c.due - Date.now();
-          el('#qFeedback').textContent = '⏱ volta em ' + mmss(left);
-          el('#qFeedback').style.display='block';
         }
         saveDeck();
 
@@ -797,18 +747,21 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   el('#qCat').addEventListener('change',()=>{ Quiz.cat=el('#qCat').value; startQuizRound(); });
   el('#qNext').addEventListener('click', startQuizRound);
 
-  // ===== REFORÇO =====
+  // ===== REFORÇO (infinito, com botão Aprendido) =====
   function rfList(){
-    // itens com rfCount>0, ordenados por due (curtinho) e pelo mais recente erro
-    const now = Date.now();
-    return deck
-      .filter(c => (c.rfCount||0) > 0)
-      .sort((a,b)=>{
-        const ad = (a.due||0) - now, bd = (b.due||0) - now;
-        if(ad<=0 && bd>0) return -1; if(bd<=0 && ad>0) return 1;
-        if(ad!==bd) return ad-bd;
-        return (b.rfLast||0) - (a.rfLast||0);
-      });
+    return deck.filter(c => !!c.rf);
+  }
+  function rfRebuildOrder(){
+    Reinforce.order = shuffle(rfList().map(c=>c.id));
+    Reinforce.idx = 0;
+  }
+  function rfNext(){
+    const list = rfList();
+    if(list.length===0){ Reinforce.order=[]; Reinforce.idx=0; return null; }
+    if(Reinforce.order.length===0) rfRebuildOrder();
+    if(Reinforce.idx >= Reinforce.order.length){ rfRebuildOrder(); }
+    const id = Reinforce.order[Reinforce.idx++];
+    return deck.find(c=>c.id===id) || list[0] || null;
   }
   function rfAdjustInputMode(){
     el('#rAnswer').setAttribute('inputmode', (Reinforce.direction==='PT2ROMAJI') ? 'latin' : 'text');
@@ -823,57 +776,34 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     box.append(span, small); box.style.display='block';
   }
 
-  let rTimerInt=null;
-  function rShowTimer(ts){
-    clearInterval(rTimerInt);
-    const box = el('#rTimer'); if(!box) return;
-    function tick(){
-      const left = ts - Date.now();
-      if(left<=0){ box.textContent='⏱ disponível'; clearInterval(rTimerInt); return; }
-      box.textContent = '⏱ volta em ' + mmss(left);
-    }
-    box.style.display='block'; tick();
-    rTimerInt=setInterval(tick,1000);
-  }
-  function rHideTimer(){ clearInterval(rTimerInt); el('#rTimer').style.display='none'; }
-
+  let RCurrent = null;
   function renderReinforce(){
     const list = rfList();
     el('#rfInfo').textContent = list.length ? `No reforço: ${list.length} carta(s)` : 'Sem itens no reforço 🎉';
-    Reinforce.current = list[0] || null;
+    RCurrent = rfNext();
 
-    const c = Reinforce.current;
     const qEl = el('#rQuestion');
-    if(!c){ qEl.textContent='Não há itens no reforço 🎉'; el('#rAnswer').value=''; rHideTimer(); el('#rCheck').disabled=true; return; }
+    if(!RCurrent){ qEl.textContent='Não há itens no reforço 🎉'; el('#rAnswer').value=''; el('#rCheck').disabled=true; return; }
 
     const dir=Reinforce.direction;
-    if(dir==='PT2ROMAJI'){ el('#rPrompt').textContent='Reforço — Tradução (PT-BR)'; qEl.textContent=(parsePT(c.pt)[0]||c.pt); }
-    if(dir==='ROMAJI2PT'){ el('#rPrompt').textContent='Reforço — Romaji'; qEl.textContent=c.romaji; }
-    if(dir==='HIRA2PT'){ el('#rPrompt').textContent='Reforço — Hiragana'; qEl.textContent=c.kana||romajiToHiragana(c.romaji); }
+    if(dir==='PT2ROMAJI'){ el('#rPrompt').textContent='Reforço — Tradução (PT-BR)'; qEl.textContent=(parsePT(RCurrent.pt)[0]||RCurrent.pt); }
+    if(dir==='ROMAJI2PT'){ el('#rPrompt').textContent='Reforço — Romaji'; qEl.textContent=RCurrent.romaji; }
+    if(dir==='HIRA2PT'){ el('#rPrompt').textContent='Reforço — Hiragana'; qEl.textContent=RCurrent.kana||romajiToHiragana(RCurrent.romaji); }
 
     el('#rAnswer').value=''; el('#rAnswer').classList.remove('correct','wrong');
     rRenderAccepted(false, []);
-
     rfAdjustInputMode();
     el('#rCheck').disabled=true;
-
-    // painel “repetições restantes”
-    const remain = c.rfCount||0;
-    el('#rfInfo').textContent = `No reforço: ${list.length} • Repetições desta: ${remain}`;
-
-    // timer se ainda não due
-    const left = (c.due||0) - Date.now();
-    if(left>0) rShowTimer(c.due); else rHideTimer();
   }
-  function startReinforceRound(){ renderReinforce(); }
+  function startReinforceRound(){ rfRebuildOrder(); renderReinforce(); }
 
   els('input[name="rdir"]').forEach(r=>{ r.addEventListener('change',()=>{ Reinforce.direction=r.value; renderReinforce(); }); });
   el('#rAnswer').addEventListener('input', ()=> el('#rCheck').disabled = !el('#rAnswer').value.trim());
-  el('#rSpeakJP').addEventListener('click', ()=>{ const c=Reinforce.current; if(!c) return; const text=c.kana && isKana(c.kana) ? c.kana : c.romaji; speakJP(text); });
-  el('#rSpeakPT').addEventListener('click', ()=>{ const c=Reinforce.current; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
+  el('#rSpeakJP').addEventListener('click', ()=>{ const c=RCurrent; if(!c) return; const text=c.kana && isKana(c.kana) ? c.kana : c.romaji; speakJP(text); });
+  el('#rSpeakPT').addEventListener('click', ()=>{ const c=RCurrent; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
 
   function rCheck(){
-    const c = Reinforce.current; if(!c) return;
+    const c = RCurrent; if(!c) return;
     const user = normBasic(el('#rAnswer').value);
     let ok=false, details=[];
 
@@ -893,24 +823,25 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
 
     ensureAudio().then(()=> playSFX(ok?'ok':'err', 280));
 
-    if(ok){
-      c.ok++; c.rfCount = Math.max(0,(c.rfCount||0)-1); c.rfLast=Date.now();
-      // se zerou o reforço, agenda pelo SRS normal (pequeno empurrão)
-      if(c.rfCount===0){ rateCard(c, true); }
-      toast('✔ Reforço: acerto!');
-    }else{
-      c.err++; c.rfCount = RF_TARGET; c.rfLast=Date.now();
-      applyShortSchedule(c); // volta pro curto 1→3→6
-      toast('✘ Reforço: vamos fixar!');
-      rShowTimer(c.due);
-    }
+    if(ok){ c.ok++; toast('✔ Reforço: acerto!'); }
+    else  { c.err++; toast('✘ Reforço: vamos fixar!'); c.rf = true; c.rfLast = Date.now(); } // mantém no reforço
     saveDeck();
+
+    // Vai para a próxima (loop infinito)
+    renderReinforce();
   }
   el('#rCheck').addEventListener('click', rCheck);
   el('#rAnswer').addEventListener('keydown', e=>{
     if(e.key==='Enter'){ e.preventDefault(); rCheck(); }
   });
   el('#rSkip').addEventListener('click', renderReinforce);
+  el('#rLearned').addEventListener('click', ()=>{
+    const c = RCurrent; if(!c) return;
+    c.rf = false; c.rfLast = Date.now();
+    saveDeck();
+    toast('Removido do reforço!');
+    renderReinforce();
+  });
 
   // ===== ADD / BULK =====
   function parseBulk(text){
@@ -927,7 +858,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   function addCard(r,p,cat,kana){
     const rom=normBasic(r), pt=normBasic(p), c=(cat||'geral').toLowerCase().trim()||'geral', k=String(kana||'').trim();
     if(!rom||!pt) return false; if(deck.some(x=>normBasic(x.romaji)===rom)) return false;
-    deck.push({id:String(Date.now()+Math.random()*9999), romaji:rom, pt:pt, cat:c, kana:k, ok:0, err:0, ease:2.5, interval:0, due:Date.now(), shortIdx:0, rfCount:0, rfLast:0}); return true;
+    deck.push({id:String(Date.now()+Math.random()*9999), romaji:rom, pt:pt, cat:c, kana:k, ok:0, err:0, ease:2.5, interval:0, due:Date.now(), rf:false, rfLast:0}); return true;
   }
   el('#btnAdd').addEventListener('click', ()=>{
     const ok = addCard(el('#inRomaji').value, el('#inPT').value, el('#inCat').value, el('#inKana').value);
@@ -980,7 +911,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
       data.forEach((obj,i)=>{
         const r=normBasic(obj.romaji), p=Array.isArray(obj.pt)?obj.pt.join(';'):String(obj.pt||''), c=String(obj.cat||'geral').toLowerCase(), k=String(obj.kana||obj.hiragana||'').trim();
         if(!r||!p||have.has(r)) return;
-        deck.push({id:String(now+i), romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k, ok:0, err:0, ease:2.5, interval:0, due:now, shortIdx:0, rfCount:0, rfLast:0}); have.add(r); added++;
+        deck.push({id:String(now+i), romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k, ok:0, err:0, ease:2.5, interval:0, due:now, rf:false, rfLast:0}); have.add(r); added++;
       });
       if(added){ saveDeck(); refreshCategoriesUI(); }
     }catch(e){}
