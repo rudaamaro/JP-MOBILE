@@ -501,8 +501,8 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   el('#accepted').innerHTML = feedback;
   el('#accepted').style.display = 'block';
 
-  // *** SFX IMEDIATO (não usar setTimeout aqui) ***
-  if (ok) { sfxOK(); } else { sfxERR(); }
+  // SFX imediato (usa WebAudio que você já tem)
+  playSFX(ok ? 'ok' : 'err');
 
   // resto do fluxo
   if (ok) {
@@ -522,6 +522,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
 
   saveDeck();
 }
+
 
   btnCheck().addEventListener('click', checkAnswer);
   answer().addEventListener('keydown', e=>{
