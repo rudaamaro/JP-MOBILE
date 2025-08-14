@@ -30,9 +30,10 @@
     overflow:auto; overscroll-behavior:contain;
   }
   header,.card,.tabs,.section{width:100%; max-width:var(--maxw)}
-  header{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px; flex-wrap:wrap}
+  header{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px}
   .brand{font-weight:800; color:var(--text); font-size:18px}
 
+  /* 5 abas (inclui Reforço) */
   .tabs{display:grid; grid-template-columns:repeat(5,1fr); gap:8px}
   .tab{padding:10px 12px; text-align:center; background:var(--pill); color:var(--text);
     border-radius:999px; border:1px solid rgba(255,255,255,.06); font-weight:700}
@@ -119,20 +120,13 @@
 <div class="app" id="app">
   <header>
     <div class="brand">Flashcards — Romaji ↔ PT</div>
-
-    <!-- NOVO: seletor de conteúdo -->
-    <div class="seg" aria-label="Conteúdo" id="contentSeg">
-      <input id="cWords" type="radio" name="content" value="words" checked><label for="cWords">Palavras</label>
-      <input id="cPhrases" type="radio" name="content" value="phrases"><label for="cPhrases">Frases</label>
-    </div>
-
     <div class="helper" id="streak">Streak: 0</div>
   </header>
 
   <div class="tabs">
     <button class="tab active" data-tab="study">Estudar</button>
     <button class="tab" data-tab="quiz">Quiz</button>
-    <button class="tab" data-tab="reinforce">Reforço</button>
+    <button class="tab" data-tab="reinforce">Reforço</button><!-- NOVA ABA -->
     <button class="tab" data-tab="add">+</button>
     <button class="tab" data-tab="list">Lista</button>
   </div>
@@ -200,6 +194,7 @@
     </div>
   </section>
 
+  <!-- NOVO: REFORÇO (sem timer) -->
   <section class="section" id="reinforce">
     <div class="card">
       <div class="row">
@@ -278,34 +273,22 @@
 
 <script>
   // ===== CONFIG =====
-  const DATA_URLS = {
-    words:   './anime_romaji.json', // existente
-    phrases: './frases.json'        // novo (apenas frases)
-  };
+  const DATA_URL = './anime_romaji.json';
 
   // ===== HELPERS / STORAGE =====
-  const LS_WORDS   = 'romajiDeck_words_v1';
-  const LS_PHRASES = 'romajiDeck_phrases_v1';
-  const Content = { kind: 'words' }; // 'words' | 'phrases'
-  function currentLSKey(){ return Content.kind === 'phrases' ? LS_PHRASES : LS_WORDS; }
-
+  const LS_DECK = 'romajiDeck_v8';
   const defaultDeck = [
     ["konnichiwa","olá; boa tarde","geral","こんにちは"],
     ["ohayou","bom dia","geral","おはよう"],
     ["konbanwa","boa noite (cumprimento)","geral","こんばんは"]
   ];
-  const defaultPhrases = [
-    ["hajimemashite. yoroshiku onegaishimasu.","prazer em conhecer; conto com você","frases","はじめまして。よろしくおねがいします。"],
-    ["daijoubu desu ka?","você está bem?","frases","だいじょうぶですか？"]
-  ];
-
   const normBasic = s => (s||'').toLowerCase().normalize('NFD')
     .replace(/[\u0300-\u036f]/g,'').replace(/\([^)]*\)/g,' ')
     .replace(/[\p{P}\p{S}]/gu,' ').replace(/\s+/g,' ').trim();
   const parsePT = pt => (pt||'').split(/[|;,\n]/).map(normBasic).filter(Boolean);
   const isKana = s => /[\u3040-\u309f\u30a0-\u30ff]/.test(s||'');
 
-  // Levenshtein simples
+  // Levenshtein simples (tolerância a erro leve)
   function lev(a,b){
     const m=a.length, n=b.length;
     if(m===0) return n; if(n===0) return m;
@@ -353,15 +336,9 @@
       rf: !!c.rf, rfLast: (typeof c.rfLast==='number') ? c.rfLast : 0
     }));
   }
-  function loadDeckLSKey(key){
-    try{
-      const raw=JSON.parse(localStorage.getItem(key));
-      if(Array.isArray(raw)) return migrate(raw);
-    }catch(e){}
-    return null;
-  }
-  function saveDeck(){ localStorage.setItem(currentLSKey(), JSON.stringify(deck)); }
-  function toast(t,ms=1400){ const el=document.querySelector('#msg'); el.textContent=t; el.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>el.style.display='none',ms); }
+  function loadDeckLS(){ try{ const raw=JSON.parse(localStorage.getItem(LS_DECK)); if(Array.isArray(raw)) return migrate(raw);}catch(e){} return null;}
+  function saveDeck(){ localStorage.setItem(LS_DECK, JSON.stringify(deck));}
+  function toast(t,ms=1400){ const el=document.querySelector('#msg'); el.textContent=t; el.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>el.style.display='none',ms);}
 
   function flash(msg, ok=true){
     const card = document.querySelector('#study .card');
@@ -372,48 +349,48 @@
     setTimeout(()=>n.remove(), 1200);
   }
 
-  // ===== SONS (Web Audio) =====
-  let ACTX = null, SFX_BUS = null;
-  async function ensureAudio(){
-    if(!ACTX){
-      ACTX = new (window.AudioContext || window.webkitAudioContext)();
-      SFX_BUS = ACTX.createGain();
-      SFX_BUS.gain.value = 1.0;
-      SFX_BUS.connect(ACTX.destination);
+ // ===== SONS (Web Audio) =====
+let ACTX = null, SFX_BUS = null;
+async function ensureAudio(){
+  if(!ACTX){
+    ACTX = new (window.AudioContext || window.webkitAudioContext)();
+    SFX_BUS = ACTX.createGain();
+    SFX_BUS.gain.value = 1.0;
+    SFX_BUS.connect(ACTX.destination);
+  }
+  if(ACTX.state === 'suspended'){
+    try{ await ACTX.resume(); }catch(_){}
+  }
+}
+function blip(freq, t0, dur, type='sine', gain=0.06){
+  if(!ACTX) return;
+  const o = ACTX.createOscillator();
+  const g = ACTX.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, t0);
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
+  g.gain.linearRampToValueAtTime(0, t0 + dur);
+  o.connect(g); g.connect(SFX_BUS);
+  o.start(t0);
+  o.stop(t0 + dur + 0.02);
+}
+function vibrateOk(){ navigator.vibrate?.(15); }
+function vibrateErr(){ navigator.vibrate?.([10,40,10]); }
+function playSFX(kind, delayMs=0){
+  ensureAudio().then(()=>{
+    const base = ACTX.currentTime + (delayMs/1000);
+    if(kind === 'ok'){
+      blip(880,  base + 0.00, 0.10, 'triangle', 0.06);
+      blip(1320, base + 0.09, 0.10, 'triangle', 0.05);
+    }else{
+      blip(300, base + 0.00, 0.12, 'sawtooth', 0.07);
+      blip(220, base + 0.10, 0.12, 'sawtooth', 0.06);
     }
-    if(ACTX.state === 'suspended'){
-      try{ await ACTX.resume(); }catch(_){}
-    }
-  }
-  function blip(freq, t0, dur, type='sine', gain=0.06){
-    if(!ACTX) return;
-    const o = ACTX.createOscillator();
-    const g = ACTX.createGain();
-    o.type = type;
-    o.frequency.setValueAtTime(freq, t0);
-    g.gain.setValueAtTime(0, t0);
-    g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
-    g.gain.linearRampToValueAtTime(0, t0 + dur);
-    o.connect(g); g.connect(SFX_BUS);
-    o.start(t0);
-    o.stop(t0 + dur + 0.02);
-  }
-  function vibrateOk(){ navigator.vibrate?.(15); }
-  function vibrateErr(){ navigator.vibrate?.([10,40,10]); }
-  function playSFX(kind, delayMs=0){
-    ensureAudio().then(()=>{
-      const base = ACTX.currentTime + (delayMs/1000);
-      if(kind === 'ok'){
-        blip(880,  base + 0.00, 0.10, 'triangle', 0.06);
-        blip(1320, base + 0.09, 0.10, 'triangle', 0.05);
-      }else{
-        blip(300, base + 0.00, 0.12, 'sawtooth', 0.07);
-        blip(220, base + 0.10, 0.12, 'sawtooth', 0.06);
-      }
-    });
-    if(kind==='ok') vibrateOk(); else vibrateErr();
-  }
-  window.addEventListener('pointerdown', ensureAudio, {once:true});
+  });
+  if(kind==='ok') vibrateOk(); else vibrateErr();
+}
+window.addEventListener('pointerdown', ensureAudio, {once:true});
 
   // ===== ÁUDIO DE FALA (TTS) =====
   let voices = [];
@@ -501,6 +478,7 @@
       if(oneM){ out += oneM; i++; continue; }
       out += s[i]; i++;
     }
+    // alongamento + partículas
     out = out.replace(/ou/g,'おう').replace(/oo/g,'おお');
     out = out.replace(/\bha\b/g,'は').replace(/\bhe\b/g,'へ').replace(/\bwo\b/g,'を');
     return out.replace(/\s{2,}/g,' ').trim();
@@ -515,11 +493,7 @@
   }
 
   // ===== STATE =====
-  // Dois decks físicos; "deck" aponta para o conteúdo ativo
-  let deckWords   = null;
-  let deckPhrases = null;
-  let deck        = null;
-
+  let deck = loadDeckLS() || seed(defaultDeck);
   const State = { modeTab:'study', direction:'PT2ROMAJI', catFilter:'todas', current:null, lastCorrect:false };
   const Quiz = { direction:'PT2ROMAJI', cat:'todas', current:null, choices:[] };
   const Reinforce = { direction:'PT2ROMAJI', idx:0, order:[] };
@@ -541,15 +515,19 @@
   function filteredByCategory(list, cat){ const k = cat || State.catFilter; if(k==='todas') return list; return list.filter(c=>(c.cat||'geral')===k); }
   function shuffle(a){ const arr=a.slice(); for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
 
-  // ===== SRS básico =====
+  // ===== SRS básico (sem timers curtos) =====
   function rateCard(card, correct){
     if(!correct){
+      // erro: zera intervalo e torna devido agora
       card.interval = 0;
       card.due = Date.now();
+      // manda para o reforço
       card.rf = true;
       card.rfLast = Date.now();
       return;
     }
+    // acerto normal
+    const q = 4; // SM-2 simplificado
     card.ease = Math.max(1.3, (card.ease||2.5) + 0.1);
     if(card.interval === 0){ card.interval = 1; }
     else if(card.interval === 1){ card.interval = 3; }
@@ -599,6 +577,7 @@
   const btnCheck = () => el('#btnCheck');
   const btnSkip = () => el('#btnSkip');
 
+  // Mobile: evitar pulo
   function preventFocusScroll(input){
     if(!input) return;
     input.addEventListener('touchstart', () => {
@@ -768,9 +747,14 @@
   el('#qCat').addEventListener('change',()=>{ Quiz.cat=el('#qCat').value; startQuizRound(); });
   el('#qNext').addEventListener('click', startQuizRound);
 
-  // ===== REFORÇO =====
-  function rfList(){ return deck.filter(c => !!c.rf); }
-  function rfRebuildOrder(){ Reinforce.order = shuffle(rfList().map(c=>c.id)); Reinforce.idx = 0; }
+  // ===== REFORÇO (infinito, com botão Aprendido) =====
+  function rfList(){
+    return deck.filter(c => !!c.rf);
+  }
+  function rfRebuildOrder(){
+    Reinforce.order = shuffle(rfList().map(c=>c.id));
+    Reinforce.idx = 0;
+  }
   function rfNext(){
     const list = rfList();
     if(list.length===0){ Reinforce.order=[]; Reinforce.idx=0; return null; }
@@ -779,7 +763,9 @@
     const id = Reinforce.order[Reinforce.idx++];
     return deck.find(c=>c.id===id) || list[0] || null;
   }
-  function rfAdjustInputMode(){ el('#rAnswer').setAttribute('inputmode', (Reinforce.direction==='PT2ROMAJI') ? 'latin' : 'text'); }
+  function rfAdjustInputMode(){
+    el('#rAnswer').setAttribute('inputmode', (Reinforce.direction==='PT2ROMAJI') ? 'latin' : 'text');
+  }
   function rRenderAccepted(ok, detailsArr){
     const box = el('#rAccepted'); box.innerHTML='';
     if(!detailsArr || !detailsArr.length){ box.style.display='none'; return; }
@@ -838,9 +824,10 @@
     ensureAudio().then(()=> playSFX(ok?'ok':'err', 280));
 
     if(ok){ c.ok++; toast('✔ Reforço: acerto!'); }
-    else  { c.err++; toast('✘ Reforço: vamos fixar!'); c.rf = true; c.rfLast = Date.now(); }
+    else  { c.err++; toast('✘ Reforço: vamos fixar!'); c.rf = true; c.rfLast = Date.now(); } // mantém no reforço
     saveDeck();
 
+    // Vai para a próxima (loop infinito)
     renderReinforce();
   }
   el('#rCheck').addEventListener('click', rCheck);
@@ -914,12 +901,10 @@
     });
   }
 
-  // ===== JSON remoto por conteúdo =====
-  async function hydrateFromJsonFor(kind){
-    const url = DATA_URLS[kind];
-    if (!url) return;
+  // ===== JSON remoto opcional =====
+  async function hydrateFromJson(){
     try{
-      const res=await fetch(url,{cache:'no-store'}); if(!res.ok) return;
+      const res=await fetch(DATA_URL,{cache:'no-store'}); if(!res.ok) return;
       const data=await res.json(); if(!Array.isArray(data)) return;
       let added=0; const have=new Set(deck.map(c=>normBasic(c.romaji)));
       const now = Date.now();
@@ -928,72 +913,46 @@
         if(!r||!p||have.has(r)) return;
         deck.push({id:String(now+i), romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k, ok:0, err:0, ease:2.5, interval:0, due:now, rf:false, rfLast:0}); have.add(r); added++;
       });
-      if(added){ saveDeck(); refreshCategoriesUI(); invalidateCycles(); }
+      if(added){ saveDeck(); refreshCategoriesUI(); }
     }catch(e){}
   }
 
-  // ===== Troca de conteúdo (Palavras/Frases) =====
-  els('input[name="content"]').forEach(radio=>{
-    radio.addEventListener('change', async ()=>{
-      const newKind = radio.value; // 'words' | 'phrases'
-      if (Content.kind === newKind) return;
-      Content.kind = newKind;
-
-      // Redireciona ponteiro do deck
-      deck = (Content.kind === 'phrases') ? deckPhrases : deckWords;
-
-      refreshCategoriesUI();
-      invalidateCycles();
-
-      // Reidrata do JSON correspondente (falha segura)
-      await hydrateFromJsonFor(Content.kind);
-
-      // Atualiza UI conforme aba ativa
-      if (State.modeTab === 'study') { State.current = nextFromCycle('study', State.catFilter); renderQuestion(); }
-      if (State.modeTab === 'quiz')  { startQuizRound(); }
-      if (State.modeTab === 'reinforce') { startReinforceRound(); }
-      if (State.modeTab === 'list')  { renderTable(); }
-    });
-  });
-
   // ===== INIT =====
   (async function init(){
-    // Carrega dois conjuntos separados
-    deckWords   = loadDeckLSKey(LS_WORDS)   || seed(defaultDeck);
-    deckPhrases = loadDeckLSKey(LS_PHRASES) || seed(defaultPhrases);
-
-    // Conteúdo inicial: palavras
-    Content.kind = 'words';
-    deck = deckWords;
-
-    // Hidrata ambos (não bloqueante)
-    hydrateFromJsonFor('words');
-    hydrateFromJsonFor('phrases');
-
+    deck = migrate(deck) || seed(defaultDeck);
+    await hydrateFromJson();
     refreshCategoriesUI();
-    State.current = nextFromCycle('study', State.catFilter);
+    State.current = nextFromCycle('study', State.catFilter)
     renderQuestion();
     Quiz.cat='todas'; startQuizRound();
     startReinforceRound();
   })();
 
-  // ===== PWA (opcional) =====
+  // ===== PWA (opcional, falha segura) =====
   if('serviceWorker' in navigator){
     navigator.serviceWorker.register('./sw.js').catch(()=>{ /* ok se não existir */ });
   }
 </script>
 
 <!--
-Crie também frases.json no mesmo diretório:
+Modelos opcionais para PWA:
 
-frases.json
-[
-  { "romaji": "hajimemashite. yoroshiku onegaishimasu.", "pt": "prazer em conhecer; conto com você", "cat": "saudacao", "kana": "はじめまして。よろしくおねがいします。" },
-  { "romaji": "daijoubu desu ka?", "pt": "você está bem?", "cat": "cotidiano", "kana": "だいじょうぶですか？" },
-  { "romaji": "mizu o kudasai.", "pt": "água, por favor", "cat": "restaurante", "kana": "みずをください。" },
-  { "romaji": "sumimasen, toire wa doko desu ka?", "pt": "com licença, onde fica o banheiro?", "cat": "cotidiano", "kana": "すみません、トイレはどこですか？" },
-  { "romaji": "eigo ga wakarimasu ka?", "pt": "você entende inglês?", "cat": "viagem", "kana": "えいごがわかりますか？" }
-]
+manifest.json
+{
+  "name": "Flashcards JP↔PT",
+  "short_name": "JP-PT",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0b0f14",
+  "theme_color": "#0b0f14",
+  "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+}
+
+sw.js
+const CACHE='jppt-v1';
+const ASSETS=['.', 'index.html','manifest.json','icon-192.png'];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
+self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))});
 -->
 </body>
 </html>
