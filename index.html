@@ -282,7 +282,15 @@
 
 <script type="module">
 import { onAuthState, signOutUser } from './auth.js'; // ADDED
-import { loadUserDeck, saveUserDeck, migrateFromLocalStorage } from './store.js'; // ADDED
+import {
+  loadUserDeck,
+  saveUserDeck,
+  migrateFromLocalStorage,
+  deleteCard,               // +++
+  markDeletedRomaji,        // +++
+  getDeletedRomajiSet       // +++
+} from './store.js';
+
   // ===== CONFIG =====
   const DATA_URL = './anime_romaji.json';
 
