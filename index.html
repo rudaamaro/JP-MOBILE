@@ -264,40 +264,53 @@
     setTimeout(()=>n.remove(), 1200);
   }
 
-  // ===== SONS (Web Audio) =====
-  let ACTX = null;
-  async function ensureAudio(){
-    if(!ACTX){
-      ACTX = new (window.AudioContext || window.webkitAudioContext)();
+ // ===== SONS (Web Audio) — estável e com envelope =====
+let ACTX = null, SFX_BUS = null;
+
+async function ensureAudio(){
+  if(!ACTX){
+    ACTX = new (window.AudioContext || window.webkitAudioContext)();
+    SFX_BUS = ACTX.createGain();
+    SFX_BUS.gain.value = 0.9;
+    SFX_BUS.connect(ACTX.destination);
+  }
+  if(ACTX.state === 'suspended'){
+    try{ await ACTX.resume(); }catch(_){}
+  }
+}
+
+// gera um beep com ataque/decay pra não "cortar"
+function blip(freq, t0, dur, type='sine', gain=0.06){
+  if(!ACTX) return;
+  const o = ACTX.createOscillator();
+  const g = ACTX.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, t0);
+  // envelope
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
+  g.gain.linearRampToValueAtTime(0, t0 + dur);
+  o.connect(g); g.connect(SFX_BUS);
+  o.start(t0);
+  o.stop(t0 + dur + 0.02);
+}
+
+// toca "ok" ou "err" com atraso opcional (ms)
+function playSFX(kind, delayMs=0){
+  ensureAudio().then(()=>{
+    const base = ACTX.currentTime + (delayMs/1000);
+    if(kind === 'ok'){
+      blip(880,  base + 0.00, 0.10, 'triangle', 0.06);
+      blip(1320, base + 0.09, 0.10, 'triangle', 0.05);
+    }else{ // 'err'
+      blip(300, base + 0.00, 0.12, 'sawtooth', 0.07);
+      blip(220, base + 0.10, 0.12, 'sawtooth', 0.06);
     }
-    if(ACTX.state === 'suspended'){ try{ await ACTX.resume(); }catch(_){ } }
-  }
-  function tone(freq=880, dur=0.12, type='sine', gain=0.06, when=0){
-    if(!ACTX) return;
-    const t = ACTX.currentTime + when;
-    const osc = ACTX.createOscillator();
-    const g = ACTX.createGain();
-    osc.type = type;
-    osc.frequency.value = freq;
-    g.gain.value = gain;
-    osc.connect(g); g.connect(ACTX.destination);
-    osc.start(t);
-    osc.stop(t + dur);
-  }
-  function sfxOK(){
-    ensureAudio().then(()=>{
-      tone(880, 0.09, 'triangle', 0.07, 0);
-      tone(1320,0.10, 'triangle', 0.06, 0.07);
-    });
-  }
-  function sfxERR(){
-    ensureAudio().then(()=>{
-      tone(220, 0.10, 'sawtooth', 0.08, 0);
-      tone(180, 0.12, 'sawtooth', 0.07, 0.09);
-    });
-  }
-  // desbloqueia o áudio no primeiro toque
-  window.addEventListener('pointerdown', ensureAudio, {once:true});
+  });
+}
+
+// “desbloqueia” o áudio no primeiro toque
+window.addEventListener('pointerdown', ensureAudio, {once:true});
 
   // ===== ÁUDIO DE FALA (TTS) =====
   let voices = [];
@@ -462,21 +475,50 @@
   answer().addEventListener('input', ()=> btnCheck().disabled = !answer().value.trim());
 
   function checkAnswer(){
-    const c=State.current; if(!c) return;
-    const user=normBasic(answer().value); let ok=false, feedback='';
-    if(State.direction==='PT2ROMAJI'){
-      ok = !!user && user===normBasic(c.romaji);
-      feedback = '<span class="okText">Romaji correto: <b>'+c.romaji+'</b></span> • <small class="okText">Traduções: '+parsePT(c.pt).join(' / ')+'</small>';
-    } else {
-      const acc=new Set(parsePT(c.pt)); ok = !!user && acc.has(user);
-      feedback = '<span class="okText">Aceitas:</span> <small class="okText">'+[...acc].join(' / ')+'</small>';
-    }
-    answer().classList.remove('correct','wrong'); answer().classList.add(ok?'correct':'wrong');
-    el('#accepted').innerHTML=feedback; el('#accepted').style.display='block';
-    if(ok){ sfxOK(); c.ok++; State.lastCorrect=true; btnSkip().textContent='Próximo'; setLocked(true); toast('✔ Correto!'); flash('Correto!',true); }
-    else  { sfxERR(); c.err++; State.lastCorrect=false; btnSkip().textContent='Pular'; toast('✘ Quase!');  flash('Quase...',false); }
-    saveDeck();
+  const c = State.current; 
+  if(!c) return;
+
+  const user = normBasic(answer().value); 
+  let ok = false, feedback = '';
+
+  if(State.direction==='PT2ROMAJI'){
+    ok = !!user && user === normBasic(c.romaji);
+    feedback = '<span class="okText">Romaji correto: <b>'+c.romaji+
+               '</b></span> • <small class="okText">Traduções: '+
+               parsePT(c.pt).join(' / ')+'</small>';
+  } else {
+    const acc = new Set(parsePT(c.pt)); 
+    ok = !!user && acc.has(user);
+    feedback = '<span class="okText">Aceitas:</span> <small class="okText">'+
+               [...acc].join(' / ')+'</small>';
   }
+
+  answer().classList.remove('correct','wrong'); 
+  answer().classList.add(ok ? 'correct' : 'wrong');
+
+  el('#accepted').innerHTML = feedback; 
+  el('#accepted').style.display = 'block';
+
+  // Áudio de resultado com pequeno atraso para evitar corte
+  if(ok){ 
+    setTimeout(()=>playSFX('ok'), 120);
+    c.ok++; 
+    State.lastCorrect = true;  
+    btnSkip().textContent = 'Próximo'; 
+    setLocked(true); 
+    toast('✔ Correto!'); 
+    flash('Correto!', true); 
+  } else { 
+    setTimeout(()=>playSFX('err'), 120);
+    c.err++; 
+    State.lastCorrect = false; 
+    btnSkip().textContent = 'Pular';  
+    toast('✘ Quase!');  
+    flash('Quase...', false); 
+  }
+
+  saveDeck();
+}
   btnCheck().addEventListener('click', checkAnswer);
   answer().addEventListener('keydown', e=>{
     if(e.key==='Enter'){ e.preventDefault(); if(State.lastCorrect) pickNext(); else checkAnswer(); }
@@ -513,17 +555,32 @@
     options.forEach(text=>{
       const b=document.createElement('button'); b.className='choice'; b.textContent=text; b.setAttribute('tabindex','0');
       b.addEventListener('click', ()=>{
-        if(b.disabled) return;
-        if(dir==='ROMAJI2PT'){ speakPT(text); } else { const jp = c.kana && isKana(c.kana) ? c.kana : c.romaji; speakJP(jp); }
-        const isCorrect = text===correct;
-        b.classList.add(isCorrect?'correct':'wrong');
-        if(isCorrect){ sfxOK(); c.ok++; toast('✔ Correto!'); flash('Correto!',true); } else { sfxERR(); c.err++; toast('✘ Quase!'); flash('Quase...',false); }
-        saveDeck();
-        [...wrap.children].forEach(btn=>{
-          btn.disabled=true;
-          if(btn.textContent===correct) btn.classList.add('correct');
-        });
-      });
+  if(b.disabled) return;
+
+  // 1) Fala a opção escolhida (TTS)
+  if(dir==='ROMAJI2PT'){ speakPT(text); }
+  else {
+    const jp = c.kana && isKana(c.kana) ? c.kana : c.romaji;
+    speakJP(jp);
+  }
+
+  // 2) Marca correto/errado
+  const isCorrect = text===correct;
+  b.classList.add(isCorrect?'correct':'wrong');
+
+  // 3) Toca SFX **depois** de um pequeno delay para não sobrepor o TTS
+  playSFX(isCorrect ? 'ok' : 'err', 280);
+
+  if(isCorrect){ c.ok++; toast('✔ Correto!'); flash('Correto!',true); }
+  else        { c.err++; toast('✘ Quase!');  flash('Quase...',false); }
+  saveDeck();
+
+  // trava os botões e destaca a correta
+  [...wrap.children].forEach(btn=>{
+    btn.disabled = true;
+    if(btn.textContent===correct) btn.classList.add('correct');
+  });
+});
       wrap.appendChild(b);
     });
     el('#qFeedback').style.display='none';
