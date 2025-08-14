@@ -270,6 +270,11 @@
   <section class="section" id="list">
     <div class="card">
       <div class="prompt">Cartas (toque para remover)</div>
+      <div class="row" style="justify-content:flex-end;gap:8px;margin:6px 0">
+        <span class="helper" id="pendingLbl" style="margin-right:auto">Alterações pendentes: 0</span>
+        <button class="btn secondary small" id="btnDiscard" title="Descartar alterações locais">Descartar</button>
+        <button class="btn small" id="btnSync" title="Enviar alterações ao servidor">Atualizar</button>
+      </div>
       <div class="tableWrap">
         <table class="list" id="table"></table>
       </div>
@@ -286,12 +291,11 @@ import {
   loadUserDeck,
   saveUserDeck,
   migrateFromLocalStorage,
-  deleteCard,
-  markDeletedRomaji,
   getDeletedRomajiSet,
-  upsertCard,           // NOVO
-  upsertMany,           // NOVO (usado no hydrate/import)
-  cacheDeck             // NOVO
+  upsertMany,
+  cacheDeck,
+  deleteMany,
+  markDeletedRomajiMany
 } from './store.js';
 
 
@@ -517,6 +521,21 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
 
   // ===== STATE =====
   let deck = []; // ADDED
+  // Alterações pendentes para enviar no "Atualizar"
+  const Pending = {
+    deletions: new Set(),   // ids
+    tombs: new Set(),       // romaji normalizado
+    upserts: new Set()      // ids que mudaram (ok/err/ease/due, novos etc.)
+  };
+  function refreshPending(){
+    const n = Pending.deletions.size + Pending.tombs.size + Pending.upserts.size;
+    const lbl = document.getElementById('pendingLbl');
+    if(lbl) lbl.textContent = `Alterações pendentes: ${n}`;
+  }
+  function queueUpsert(id){
+    if(id) Pending.upserts.add(String(id));
+    refreshPending();
+  }
   const State = { modeTab:'study', direction:'PT2ROMAJI', catFilter:'todas', current:null, lastCorrect:false };
   const Quiz = { direction:'PT2ROMAJI', cat:'todas', current:null, choices:[] };
   const Reinforce = { direction:'PT2ROMAJI', idx:0, order:[] };
@@ -698,7 +717,8 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
       rateCard(c, false); toast('✘ Quase!'); flash('Quase...', false);
     }
 
-    saveDeck();
+    cacheDeck(window.CURRENT_UID, deck);
+    queueUpsert(c.id);
   }
 
   btnCheck().addEventListener('click', checkAnswer);
@@ -751,7 +771,8 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
         } else {
           c.err++; rateCard(c,false); toast('✘ Quase!');  flash('Quase...',false);
         }
-        saveDeck();
+        cacheDeck(window.CURRENT_UID, deck);
+        queueUpsert(c.id);
 
         [...wrap.children].forEach(btn=>{
           btn.disabled = true;
@@ -848,7 +869,8 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
 
     if(ok){ c.ok++; toast('✔ Reforço: acerto!'); }
     else  { c.err++; toast('✘ Reforço: vamos fixar!'); c.rf = true; c.rfLast = Date.now(); } // mantém no reforço
-    saveDeck();
+    cacheDeck(window.CURRENT_UID, deck);
+    queueUpsert(c.id);
 
     // Vai para a próxima (loop infinito)
     renderReinforce();
@@ -861,7 +883,8 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   el('#rLearned').addEventListener('click', ()=>{
     const c = RCurrent; if(!c) return;
     c.rf = false; c.rfLast = Date.now();
-    saveDeck();
+    cacheDeck(window.CURRENT_UID, deck);
+    queueUpsert(c.id);
     toast('Removido do reforço!');
     renderReinforce();
   });
@@ -886,7 +909,12 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   el('#btnAdd').addEventListener('click', ()=>{
     const ok = addCard(el('#inRomaji').value, el('#inPT').value, el('#inCat').value, el('#inKana').value);
     if(!ok){toast('Preencha corretamente ou evite duplicar romaji'); return;}
-    saveDeck(); ['#inRomaji','#inPT','#inKana','#inCat'].forEach(s=>el(s).value=''); refreshCategoriesUI(); toast('Card adicionado!'); invalidateCycles();
+    cacheDeck(window.CURRENT_UID, deck);
+    queueUpsert(deck[deck.length - 1].id);
+    ['#inRomaji','#inPT','#inKana','#inCat'].forEach(s=>el(s).value='');
+    refreshCategoriesUI();
+    toast('Card adicionado!');
+    invalidateCycles();
   });
   el('#btnParse').addEventListener('click', ()=>{ const arr=parseBulk(el('#bulk').value); el('#preview').innerHTML = arr.length?'Pronto para importar: <b>'+arr.length+'</b> linha(s).':'Nada válido.'; });
   el('#btnImport').addEventListener('click', async ()=>{
@@ -906,8 +934,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   }
 
   if (added) {
-    // upsert apenas os recém-adicionados
-    await upsertMany(window.CURRENT_UID, newCards);
+    newCards.forEach(c => queueUpsert(c.id));
     cacheDeck(window.CURRENT_UID, deck);
   }
 
@@ -945,23 +972,20 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
       tr.addEventListener('click', async () => {
   const uid = window.CURRENT_UID;
 
-  // 1) remove do array local
+  // 1) marca como pendente para apagar
+  Pending.deletions.add(c.id);
+  Pending.tombs.add(normBasic(c.romaji));
+
+  // 2) remove localmente
   deck = deck.filter(x => x.id !== c.id);
-
-  // 2) apaga no Firestore e marca “não reimportar”
-  if (uid) {
-    await deleteCard(uid, c.id);
-    await markDeletedRomaji(uid, normBasic(c.romaji));
-  }
-
-  // 3) atualiza apenas o cache local (NENHUM write maciço)
   cacheDeck(uid, deck);
 
-  // 4) UI
+  // 3) UI
   renderTable();
   refreshCategoriesUI();
-  toast('Removido.');
+  toast('Marcado para remover. Clique em Atualizar para enviar.');
   invalidateCycles();
+  refreshPending();
 });
                    // <-- fecha o addEventListener
 
@@ -1008,12 +1032,8 @@ t.appendChild(tr);       // <-- ainda dentro do forEach
     }
 
     if (added) {
-      if (uid) {
-        await upsertMany(uid, addedCards); // só os novos
-        cacheDeck(uid, deck);
-      } else {
-        localStorage.setItem(LS_DECK, JSON.stringify(deck));
-      }
+      addedCards.forEach(c => queueUpsert(c.id));
+      cacheDeck(uid, deck);
       refreshCategoriesUI();
       invalidateCycles();
     }
@@ -1052,6 +1072,44 @@ t.appendChild(tr);       // <-- ainda dentro do forEach
   });
 })();
 
+// Envia todas as alterações pendentes
+document.getElementById('btnSync').addEventListener('click', async ()=>{
+  const uid = window.CURRENT_UID;
+  if(!uid){ toast('Você precisa estar logado.'); return; }
+
+  try{
+    // 1) upserts (cards tocados/novos)
+    const upsertList = deck.filter(c => Pending.upserts.has(String(c.id)));
+    if (upsertList.length) await upsertMany(uid, upsertList);
+
+    // 2) deletes
+    const delIds = [...Pending.deletions];
+    if (delIds.length) await deleteMany(uid, delIds);
+
+    // 3) tombstones (para não reimportar)
+    const tombs = [...Pending.tombs];
+    if (tombs.length) await markDeletedRomajiMany(uid, tombs);
+
+    Pending.deletions.clear();
+    Pending.tombs.clear();
+    Pending.upserts.clear();
+
+    refreshPending();
+    toast('Sincronizado com o servidor!');
+  }catch(e){
+    console.error(e);
+    toast('Erro ao sincronizar.');
+  }
+});
+
+// Descarta alterações locais (não desfaz remoções no array já alterado)
+document.getElementById('btnDiscard').addEventListener('click', ()=>{
+  Pending.deletions.clear();
+  Pending.tombs.clear();
+  Pending.upserts.clear();
+  refreshPending();
+  toast('Alterações pendentes descartadas.');
+});
 
   // ===== PWA (opcional, falha segura) =====
   if('serviceWorker' in navigator){
