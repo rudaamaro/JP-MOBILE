@@ -972,10 +972,9 @@ t.appendChild(tr);       // <-- ainda dentro do forEach
 }                        // <-- fecha a função renderTable()
 
   // ===== JSON remoto opcional =====
-  async function hydrateFromJson(){
+ async function hydrateFromJson(){
   try{
-    // se você guarda o UID em alguma variável global/state, use-a aqui
-    const uid = window.CURRENT_UID || (window.User && User.uid) || null;
+    const uid = window.CURRENT_UID || null;
     const deleted = uid ? await getDeletedRomajiSet(uid) : new Set();
 
     const res = await fetch(DATA_URL,{cache:'no-store'});
@@ -983,51 +982,76 @@ t.appendChild(tr);       // <-- ainda dentro do forEach
     const data = await res.json();
     if(!Array.isArray(data)) return;
 
-    let added=0;
+    let added = 0;
+    const addedCards = [];
     const have = new Set(deck.map(c => normBasic(c.romaji)));
     const now = Date.now();
 
     for(const obj of data){
       const r = normBasic(obj.romaji);
       if(!r) continue;
-      if(have.has(r)) continue;         // já tenho
-      if(deleted.has(r)) continue;      // o usuário já decidiu remover
+      if(have.has(r)) continue;        // já tenho
+      if(deleted.has(r)) continue;     // usuário removeu
       const p = Array.isArray(obj.pt) ? obj.pt.join(';') : String(obj.pt||'');
       const c = String(obj.cat||'geral').toLowerCase();
       const k = String(obj.kana||obj.hiragana||'').trim();
 
-      deck.push({
+      const card = {
         id:String(now + Math.random()*100000),
         romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k,
         ok:0, err:0, ease:2.5, interval:0, due:now, rf:false, rfLast:0
-      });
+      };
+      deck.push(card);
+      addedCards.push(card);
       have.add(r);
       added++;
     }
-    if(added){ saveDeck(); refreshCategoriesUI(); invalidateCycles(); }
+
+    if (added) {
+      if (uid) {
+        await upsertMany(uid, addedCards); // só os novos
+        cacheDeck(uid, deck);
+      } else {
+        localStorage.setItem(LS_DECK, JSON.stringify(deck));
+      }
+      refreshCategoriesUI();
+      invalidateCycles();
+    }
   }catch(e){}
 }
 
   // ===== INIT =====
   (async function init(){
-    onAuthState(async user=>{ // ADDED
-      if(!user){ window.location.href = './login.html'; return; } // ADDED
-      const uid = user.uid; // ADDED
-      window.CURRENT_UID = uid;
-      const shortEmail = (user.email||'').split('@')[0]; // ADDED
-      document.getElementById('userEmail').textContent = 'Olá, ' + shortEmail; // ADDED
-      document.getElementById('btnSignOut').addEventListener('click', async ()=>{ await signOutUser(); window.location.href='./login.html';}); // ADDED
-      await migrateFromLocalStorage(uid); // ADDED
-      deck = await loadUserDeck(uid); // ADDED
-      if(!deck.length){ deck = seed(defaultDeck); await saveUserDeck(uid, deck); } // ADDED
-      await hydrateFromJson();
-      refreshCategoriesUI();
-      State.current = nextFromCycle('study', State.catFilter)
-      renderQuestion();
-      Quiz.cat='todas'; startQuizRound();
-      startReinforceRound();
-    }); // ADDED
-  })();
+  onAuthState(async user=>{
+    if(!user){ window.location.href = './login.html'; return; }
+    const uid = user.uid;
+    window.CURRENT_UID = uid;                       // <--- IMPORTANTE
+
+    const shortEmail = (user.email||'').split('@')[0];
+    document.getElementById('userEmail').textContent = 'Olá, ' + shortEmail;
+    document.getElementById('btnSignOut').addEventListener('click', async ()=>{
+      await signOutUser();
+      window.location.href='./login.html';
+    });
+
+    await migrateFromLocalStorage(uid);
+    deck = await loadUserDeck(uid);
+
+    if(!deck.length){
+      deck = seed(defaultDeck);
+      await saveUserDeck(uid, deck);               // ok (seed único)
+    }
+
+    await hydrateFromJson();
+    refreshCategoriesUI();
+
+    State.current = nextFromCycle('study', State.catFilter);
+    renderQuestion();
+    Quiz.cat='todas'; startQuizRound();
+    startReinforceRound();
+  });
+})();
+
 
   // ===== PWA (opcional, falha segura) =====
   if('serviceWorker' in navigator){
