@@ -831,15 +831,6 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     }catch(e){}
   }
 
-  // ===== Atalhos de teclado (Study)
-  window.addEventListener('keydown', (e)=>{
-    if(State.modeTab==='study'){
-      if(e.key==='v') btnCheck().click();
-      if(e.key==='s') btnSkip().click();
-      if(e.key==='j') el('#speakJP').click();
-      if(e.key==='p') el('#speakPT').click();
-    }
-  });
 
   // ===== INIT =====
   (async function init(){
