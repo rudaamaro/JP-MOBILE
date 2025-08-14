@@ -6,6 +6,9 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <link rel="manifest" href="manifest.json"><!-- opcional; falha segura se ausente -->
 <title>Flashcards (Romaji ↔ PT)</title>
+<script type="module" src="./firebase-config.js"></script> <!-- ADDED -->
+<script type="module" src="./auth.js"></script> <!-- ADDED -->
+<script type="module" src="./store.js"></script> <!-- ADDED -->
 <style>
   :root{
     color-scheme: dark;
@@ -32,6 +35,7 @@
   header,.card,.tabs,.section{width:100%; max-width:var(--maxw)}
   header{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px}
   .brand{font-weight:800; color:var(--text); font-size:18px}
+  .account{display:flex; align-items:center; gap:8px; color:var(--muted); font-weight:700} /* ADDED */
 
   /* 5 abas (inclui Reforço) */
   .tabs{display:grid; grid-template-columns:repeat(5,1fr); gap:8px}
@@ -65,6 +69,7 @@
 
   .btn{height:52px; padding:0 16px; border-radius:14px; font-weight:800; border:1px solid rgba(255,255,255,.08); background:var(--duo); color:#05121d; cursor:pointer}
   .btn.secondary{background:#1f2937; color:#e7eef7}
+  .btn.small{height:32px; padding:0 12px;} /* ADDED */
   .btn:disabled{opacity:.5; cursor:not-allowed}
   .btn:focus, .choice:focus, .audioBtn:focus {outline:3px solid rgba(67,182,255,.6); outline-offset:2px}
 
@@ -120,7 +125,11 @@
 <div class="app" id="app">
   <header>
     <div class="brand">Flashcards — Romaji ↔ PT</div>
-    <div class="helper" id="streak">Streak: 0</div>
+    <div class="account"> <!-- ADDED -->
+      <div class="helper" id="streak">Streak: 0</div>
+      <span id="userEmail"></span> <!-- ADDED -->
+      <button id="btnSignOut" class="btn secondary small">Sair</button> <!-- ADDED -->
+    </div> <!-- ADDED -->
   </header>
 
   <div class="tabs">
@@ -271,7 +280,9 @@
   <div class="msg" id="msg" style="display:none"></div>
 </div>
 
-<script>
+<script type="module"> <!-- ADDED -->
+import { onAuthState, signOutUser } from './auth.js'; // ADDED
+import { loadUserDeck, saveUserDeck, migrateFromLocalStorage } from './store.js'; // ADDED
   // ===== CONFIG =====
   const DATA_URL = './anime_romaji.json';
 
@@ -493,7 +504,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   }
 
   // ===== STATE =====
-  let deck = loadDeckLS() || seed(defaultDeck);
+  let deck = []; // ADDED
   const State = { modeTab:'study', direction:'PT2ROMAJI', catFilter:'todas', current:null, lastCorrect:false };
   const Quiz = { direction:'PT2ROMAJI', cat:'todas', current:null, choices:[] };
   const Reinforce = { direction:'PT2ROMAJI', idx:0, order:[] };
@@ -919,13 +930,23 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
 
   // ===== INIT =====
   (async function init(){
-    deck = migrate(deck) || seed(defaultDeck);
-    await hydrateFromJson();
-    refreshCategoriesUI();
-    State.current = nextFromCycle('study', State.catFilter)
-    renderQuestion();
-    Quiz.cat='todas'; startQuizRound();
-    startReinforceRound();
+    onAuthState(async user=>{ // ADDED
+      if(!user){ window.location.href = './login.html'; return; } // ADDED
+      const uid = user.uid; // ADDED
+      const shortEmail = (user.email||'').split('@')[0]; // ADDED
+      document.getElementById('userEmail').textContent = 'Olá, ' + shortEmail; // ADDED
+      document.getElementById('btnSignOut').addEventListener('click', async ()=>{ await signOutUser(); window.location.href='./login.html';}); // ADDED
+      await migrateFromLocalStorage(uid); // ADDED
+      deck = await loadUserDeck(uid); // ADDED
+      if(!deck.length){ deck = seed(defaultDeck); await saveUserDeck(uid, deck); } // ADDED
+      saveDeck = () => saveUserDeck(uid, deck); // ADDED
+      await hydrateFromJson();
+      refreshCategoriesUI();
+      State.current = nextFromCycle('study', State.catFilter)
+      renderQuestion();
+      Quiz.cat='todas'; startQuizRound();
+      startReinforceRound();
+    }); // ADDED
   })();
 
   // ===== PWA (opcional, falha segura) =====
