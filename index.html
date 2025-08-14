@@ -1229,29 +1229,40 @@ function startReinforceRound(){ rStartSession(); }
   })();
 
   // ===== SYNC (Atualizar / Descartar) =====
-  document.getElementById('btnSync').addEventListener('click', async ()=>{
-    const uid = window.CURRENT_UID;
-    if(!uid){ toast('Você precisa estar logado.'); return; }
-    try{
-      const upsertList = deck.filter(c => Pending.upserts.has(String(c.id)));
-      if (upsertList.length) await upsertMany(uid, upsertList);
+  document.getElementById('btnSync').addEventListener('click', async (ev)=>{
+  const btn = ev.currentTarget;
+  const uid = window.CURRENT_UID;
+  if(!uid){ toast('Você precisa estar logado.'); return; }
 
-      const delIds = [...Pending.deletions];
-      if (delIds.length) await deleteMany(uid, delIds);
+  btn.disabled = true;
 
-      const tombs = [...Pending.tombs];
-      if (tombs.length) await markDeletedRomajiMany(uid, tombs);
+  const upsertList = deck.filter(c => Pending.upserts.has(String(c.id)));
+  const delIds     = [...Pending.deletions];
+  const tombs      = [...Pending.tombs];
 
-      Pending.deletions.clear();
-      Pending.tombs.clear();
-      Pending.upserts.clear();
-      refreshPending();
-      toast('Sincronizado com o servidor!');
-    }catch(e){
-      console.error(e);
-      toast('Erro ao sincronizar.');
+  try{
+    if (upsertList.length) await upsertMany(uid, upsertList);
+    if (delIds.length)     await deleteMany(uid, delIds);
+    if (tombs.length)      await markDeletedRomajiMany(uid, tombs);
+
+    Pending.deletions.clear();
+    Pending.tombs.clear();
+    Pending.upserts.clear();
+    toast('Sincronizado com o servidor!');
+  }catch(e){
+    console.error(e);
+    if(e?.code === 'resource-exhausted'){
+      toast('Limite de cota do Firestore atingido. Suas mudanças ficaram salvas neste dispositivo; tente sincronizar mais tarde.');
+    }else{
+      toast('Erro ao sincronizar: ' + (e?.message || 'desconhecido'));
     }
-  });
+  }finally{
+    refreshPending();
+    renderTable(); // refaz a tabela com os valores OK/ERR já atualizados localmente
+    btn.disabled = false;
+  }
+});
+
 
   document.getElementById('btnDiscard').addEventListener('click', ()=>{
     Pending.deletions.clear();
