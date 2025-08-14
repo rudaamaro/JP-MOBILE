@@ -1,10 +1,10 @@
 export const firebaseConfig = {
-  apiKey: "___API_KEY___",
-  authDomain: "___AUTH_DOMAIN___",
-  projectId: "___PROJECT_ID___",
-  storageBucket: "___STORAGE_BUCKET___",
-  messagingSenderId: "___SENDER_ID___",
-  appId: "___APP_ID___"
+  apiKey: "AIzaSyA89u1JP_rg6sWYWWobFB5Bg5JFaho1u7M",
+  authDomain: "flashcards-jp-pt.firebaseapp.com",
+  projectId: "flashcards-jp-pt",
+  storageBucket: "flashcards-jp-pt.firebasestorage.app",
+  messagingSenderId: "163392706044",
+  appId: "1:163392706044:web:1f6f0ed3a65b367c534e79"
 };
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
