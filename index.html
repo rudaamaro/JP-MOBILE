@@ -785,7 +785,7 @@ function preventFocusScroll(input){
     deck = migrate(deck) || seed(defaultDeck);
     await hydrateFromJson();
     refreshCategoriesUI();
-    State.current = randomCard();
+    State.current = nextFromCycle();
     renderQuestion();
     Quiz.cat='todas'; startQuizRound();
   })();
