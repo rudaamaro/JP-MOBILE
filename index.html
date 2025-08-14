@@ -160,6 +160,8 @@
       </div>
 
       <div class="center helper" id="accepted" style="display:none" aria-live="polite"></div>
+      <!-- NOVO: cronômetro de retorno do card (Study) -->
+      <div class="center helper" id="dueTimer" style="display:none"></div>
     </div>
   </section>
 
@@ -242,6 +244,7 @@
 <script>
   // ===== CONFIG =====
   const DATA_URL = './anime_romaji.json';
+  const SHORT_STEPS_MIN = [1, 3, 6]; // 1min > 3min > 6min
 
   // ===== HELPERS / STORAGE =====
   const LS_DECK = 'romajiDeck_v8';
@@ -277,7 +280,6 @@
   const roughlyEquals = (a,b) => lev(a,b) <= 1;
 
   function seed(list){
-    // adiciona campos SRS padrão
     const now = Date.now();
     return list.map(([romaji,pt,cat='geral',kana=''],i)=>({
       id:String(now+i),
@@ -286,7 +288,8 @@
       cat:String(cat||'geral').toLowerCase().trim(),
       kana:String(kana||'').trim(),
       ok:0,err:0,
-      ease:2.5, interval:0, due:now
+      ease:2.5, interval:0, due:now,
+      shortIdx:0
     }));
   }
   function migrate(arr){
@@ -300,7 +303,8 @@
       ok:c.ok||0, err:c.err||0,
       ease: (typeof c.ease==='number' && c.ease>0) ? c.ease : 2.5,
       interval: (typeof c.interval==='number') ? c.interval : 0,
-      due: (typeof c.due==='number') ? c.due : now
+      due: (typeof c.due==='number') ? c.due : now,
+      shortIdx: (typeof c.shortIdx==='number') ? c.shortIdx : 0
     }));
   }
   function loadDeckLS(){ try{ const raw=JSON.parse(localStorage.getItem(LS_DECK)); if(Array.isArray(raw)) return migrate(raw);}catch(e){} return null;}
@@ -330,8 +334,6 @@ async function ensureAudio(){
     try{ await ACTX.resume(); }catch(_){}
   }
 }
-
-// gera um beep com ataque/decay pra não "cortar"
 function blip(freq, t0, dur, type='sine', gain=0.06){
   if(!ACTX) return;
   const o = ACTX.createOscillator();
@@ -345,28 +347,22 @@ function blip(freq, t0, dur, type='sine', gain=0.06){
   o.start(t0);
   o.stop(t0 + dur + 0.02);
 }
-
-// Haptics leves
+// Haptics
 function vibrateOk(){ navigator.vibrate?.(15); }
 function vibrateErr(){ navigator.vibrate?.([10,40,10]); }
-
-// toca "ok" ou "err" com atraso opcional (ms)
 function playSFX(kind, delayMs=0){
   ensureAudio().then(()=>{
     const base = ACTX.currentTime + (delayMs/1000);
     if(kind === 'ok'){
       blip(880,  base + 0.00, 0.10, 'triangle', 0.06);
       blip(1320, base + 0.09, 0.10, 'triangle', 0.05);
-    }else{ // 'err'
+    }else{
       blip(300, base + 0.00, 0.12, 'sawtooth', 0.07);
       blip(220, base + 0.10, 0.12, 'sawtooth', 0.06);
     }
   });
-  // haptic
   if(kind==='ok') vibrateOk(); else vibrateErr();
 }
-
-// “desbloqueia” o áudio no primeiro toque
 window.addEventListener('pointerdown', ensureAudio, {once:true});
 
   // ===== ÁUDIO DE FALA (TTS) =====
@@ -494,11 +490,23 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   function shuffle(a){ const arr=a.slice(); for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
 
   // ====== SRS (agendamento)
+  function applyShortSchedule(card){
+    // agenda próximo devido usando 1,3,6min progressivo
+    const idx = Math.min(card.shortIdx||0, SHORT_STEPS_MIN.length-1);
+    const minutes = SHORT_STEPS_MIN[idx];
+    card.shortIdx = Math.min(idx+1, SHORT_STEPS_MIN.length-1);
+    card.due = Date.now() + minutes*60*1000;
+  }
   function rateCard(card, correct){
-    const q = correct ? 4 : 2; // simplicado
+    if(!correct){
+      applyShortSchedule(card);
+      return;
+    }
+    // acerto: volta pro SRS normal e zera os passos curtos
+    card.shortIdx = 0;
+    const q = 4; // usamos 4 como qualidade do SM-2 simplificado
     card.ease = Math.max(1.3, (card.ease||2.5) + (0.1 - (4 - q) * (0.08 + (4 - q)*0.02)));
-    if(!correct){ card.interval = 0; }
-    else if(card.interval === 0){ card.interval = 1; }
+    if(card.interval === 0){ card.interval = 1; }
     else if(card.interval === 1){ card.interval = 3; }
     else { card.interval = Math.round(card.interval * card.ease); }
     const ONE_DAY = 86400000;
@@ -515,18 +523,15 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   function buildOrder(cat){
     const now = Date.now();
     const list = filteredByCategory(deck, cat);
-    // due primeiro, depois não-devidos (os não-devidos continuam num embaralhado leve)
     const due = list.filter(c => (c.due||0) <= now);
     const notDue = list.filter(c => (c.due||0) >  now);
     const order = [...due.sort((a,b)=>(a.due||0)-(b.due||0)), ...shuffle(notDue)];
     return order.map(c=>c.id);
   }
-
   function rebuildCycle(kind, cat){
-    const order = shuffle(buildOrder(cat)); // ainda dá uma embaralhada
+    const order = shuffle(buildOrder(cat));
     Cycles[kind] = { key:cat, order, idx:0, last: Cycles[kind]?.last || null };
   }
-
   function nextFromCycle(kind, cat){
     const cy = Cycles[kind];
     if (cy.key !== cat) rebuildCycle(kind, cat);
@@ -544,7 +549,6 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     cy.last = id;
     return deck.find(c=>c.id===id) || null;
   }
-
   function invalidateCycles(){
     Cycles.study.order = [];
     Cycles.quiz.order  = [];
@@ -590,8 +594,40 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     small.textContent = detailsArr.join(' / ');
     box.append(span, small); box.style.display='block';
   }
+
+  // ====== Cronômetro de retorno (Study)
+  let dueTimerInt = null;
+  function mmss(ms){
+    const s = Math.max(0, Math.floor(ms/1000));
+    const m = Math.floor(s/60);
+    const r = s%60;
+    return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
+  }
+  function showDueTimer(ts){
+    clearInterval(dueTimerInt);
+    const box = el('#dueTimer');
+    if(!box) return;
+    function tick(){
+      const left = ts - Date.now();
+      if(left <= 0){
+        box.textContent = '⏱ disponível novamente';
+        clearInterval(dueTimerInt);
+        setTimeout(()=>{ box.style.display='none'; }, 1200);
+        return;
+      }
+      box.textContent = '⏱ volta em ' + mmss(left);
+    }
+    box.style.display='block';
+    tick();
+    dueTimerInt = setInterval(tick, 1000);
+  }
+  function hideDueTimer(){
+    clearInterval(dueTimerInt);
+    el('#dueTimer').style.display='none';
+  }
+
   function renderQuestion(){
-    const c=State.current; if(!c){ el('#qMain').textContent='Sem cartas nesta categoria.'; return; }
+    const c=State.current; if(!c){ el('#qMain').textContent='Sem cartas nesta categoria.'; hideDueTimer(); return; }
     const dir=State.direction;
     if(dir==='PT2ROMAJI'){ el('#promptLbl').textContent='Tradução (PT-BR)'; el('#helperLbl').innerHTML='Digite o <b>romaji</b> e pressione Verificar'; el('#qMain').textContent=(parsePT(c.pt)[0]||c.pt);}
     if(dir==='ROMAJI2PT'){ el('#promptLbl').textContent='Romaji'; el('#helperLbl').innerHTML='Digite uma tradução em <b>PT-BR</b> que sirva'; el('#qMain').textContent=c.romaji;}
@@ -599,6 +635,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     answer().value=''; answer().classList.remove('correct','wrong'); renderAccepted(false, []);
     btnSkip().textContent='Pular'; State.lastCorrect=false;
     adjustInputMode(); setLocked(false);
+    hideDueTimer();
   }
   function pickNext(){
     State.current = nextFromCycle('study', State.catFilter);
@@ -643,13 +680,15 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
 
     ensureAudio().then(() => playSFX(ok ? 'ok' : 'err', 280));
 
-    // SRS + stats
     if (ok) {
       c.ok++; State.lastCorrect = true; btnSkip().textContent = 'Próximo'; setLocked(true);
       rateCard(c, true); toast('✔ Correto!'); flash('Correto!', true);
+      hideDueTimer(); // no curto prazo após acerto não precisa cronômetro
     } else {
       c.err++; State.lastCorrect = false; btnSkip().textContent = 'Pular';
       rateCard(c, false); toast('✘ Quase!'); flash('Quase...', false);
+      // mostrar cronômetro com o próximo "due" curto
+      showDueTimer(c.due);
     }
 
     saveDeck();
@@ -693,20 +732,23 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
       b.addEventListener('click', ()=>{
         if(b.disabled) return;
 
-        // TTS da escolha
         if(dir==='ROMAJI2PT'){ speakPT(text); }
-        else {
-          const jp = c.kana && isKana(c.kana) ? c.kana : c.romaji;
-          speakJP(jp);
-        }
+        else { const jp = c.kana && isKana(c.kana) ? c.kana : c.romaji; speakJP(jp); }
 
         const isCorrect = text===correct;
         b.classList.add(isCorrect?'correct':'wrong');
-
         playSFX(isCorrect ? 'ok' : 'err', 280);
 
-        if(isCorrect){ c.ok++; rateCard(c,true); toast('✔ Correto!'); flash('Correto!',true); }
-        else        { c.err++; rateCard(c,false); toast('✘ Quase!');  flash('Quase...',false); }
+        if(isCorrect){
+          c.ok++; rateCard(c,true); toast('✔ Correto!'); flash('Correto!',true);
+          el('#qFeedback').style.display='none';
+        } else {
+          c.err++; rateCard(c,false); toast('✘ Quase!');  flash('Quase...',false);
+          // mostra info estática no Quiz (evita intervalo a cada segundo aqui)
+          const left = c.due - Date.now();
+          el('#qFeedback').textContent = '⏱ volta em ' + mmss(left);
+          el('#qFeedback').style.display='block';
+        }
         saveDeck();
 
         [...wrap.children].forEach(btn=>{
@@ -726,6 +768,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   el('#qCat').addEventListener('change',()=>{ Quiz.cat=el('#qCat').value; startQuizRound(); });
   el('#qNext').addEventListener('click', startQuizRound);
 
+  // atalho 1..4 no Quiz (mantive; diga se quer remover também)
   window.addEventListener('keydown', (e)=>{
     const k = Number(e.key);
     if(el('#quiz').classList.contains('active') && k>=1 && k<=4){
@@ -751,7 +794,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   function addCard(r,p,cat,kana){
     const rom=normBasic(r), pt=normBasic(p), c=(cat||'geral').toLowerCase().trim()||'geral', k=String(kana||'').trim();
     if(!rom||!pt) return false; if(deck.some(x=>normBasic(x.romaji)===rom)) return false;
-    deck.push({id:String(Date.now()+Math.random()*9999), romaji:rom, pt:pt, cat:c, kana:k, ok:0, err:0, ease:2.5, interval:0, due:Date.now()}); return true;
+    deck.push({id:String(Date.now()+Math.random()*9999), romaji:rom, pt:pt, cat:c, kana:k, ok:0, err:0, ease:2.5, interval:0, due:Date.now(), shortIdx:0}); return true;
   }
   el('#btnAdd').addEventListener('click', ()=>{
     const ok = addCard(el('#inRomaji').value, el('#inPT').value, el('#inCat').value, el('#inKana').value);
@@ -825,12 +868,11 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
       data.forEach((obj,i)=>{
         const r=normBasic(obj.romaji), p=Array.isArray(obj.pt)?obj.pt.join(';'):String(obj.pt||''), c=String(obj.cat||'geral').toLowerCase(), k=String(obj.kana||obj.hiragana||'').trim();
         if(!r||!p||have.has(r)) return;
-        deck.push({id:String(now+i), romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k, ok:0, err:0, ease:2.5, interval:0, due:now}); have.add(r); added++;
+        deck.push({id:String(now+i), romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k, ok:0, err:0, ease:2.5, interval:0, due:now, shortIdx:0}); have.add(r); added++;
       });
       if(added){ saveDeck(); refreshCategoriesUI(); }
     }catch(e){}
   }
-
 
   // ===== INIT =====
   (async function init(){
