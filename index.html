@@ -271,7 +271,7 @@ async function ensureAudio(){
   if(!ACTX){
     ACTX = new (window.AudioContext || window.webkitAudioContext)();
     SFX_BUS = ACTX.createGain();
-    SFX_BUS.gain.value = 0.9;
+    SFX_BUS.gain.value = 1.0;
     SFX_BUS.connect(ACTX.destination);
   }
   if(ACTX.state === 'suspended'){
