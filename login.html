@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
+<title>Login - Flashcards JP↔PT</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#0b0f14; --card:#111827; --muted:#9fb3c8; --text:#e7eef7;
+    --accent:#43b6ff; --duo:#2bd463;
+  }
+  body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif; background:var(--bg); color:var(--text); display:flex; align-items:center; justify-content:center; min-height:100vh;}
+  .wrap{width:100%; max-width:420px; padding:20px; display:flex; flex-direction:column; gap:16px;}
+  h1{text-align:center; margin:0 0 10px;}
+  .tabs{display:flex; gap:8px;}
+  .tab{flex:1; padding:10px; text-align:center; background:#1f2937; color:var(--text); border:none; border-radius:8px; font-weight:700; cursor:pointer;}
+  .tab.active{background:var(--duo); color:#05121d;}
+  form{display:flex; flex-direction:column; gap:12px;}
+  input{height:48px; padding:0 12px; border-radius:8px; border:1px solid #223047; background:#0f1422; color:var(--text); font-size:16px;}
+  button.action{height:48px; border-radius:8px; border:none; font-weight:700; cursor:pointer; background:var(--duo); color:#05121d;}
+  button.link{background:none; border:none; color:var(--accent); font-weight:700; cursor:pointer; padding:0;}
+  #msg{min-height:20px; text-align:center; color:var(--accent); font-weight:700;}
+</style>
+<script type="module" src="./firebase-config.js"></script>
+<script type="module" src="./auth.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <h1>Flashcards JP↔PT</h1>
+  <div class="tabs">
+    <button class="tab active" data-tab="signin">Entrar</button>
+    <button class="tab" data-tab="signup">Criar conta</button>
+  </div>
+  <div id="signin" class="panel">
+    <form id="formSignIn">
+      <input type="email" id="inEmail" placeholder="E-mail" required>
+      <input type="password" id="inPass" placeholder="Senha" required minlength="6">
+      <button class="action" type="submit">Entrar</button>
+      <button class="link" type="button" id="btnReset">Recuperar senha</button>
+    </form>
+  </div>
+  <div id="signup" class="panel" style="display:none">
+    <form id="formSignUp">
+      <input type="email" id="upEmail" placeholder="E-mail" required>
+      <input type="password" id="upPass" placeholder="Senha" required minlength="6">
+      <button class="action" type="submit">Criar conta</button>
+    </form>
+  </div>
+  <div id="msg" aria-live="polite"></div>
+</div>
+<script type="module">
+import { signIn, signUp, resetPassword, onAuthState } from './auth.js';
+
+onAuthState(user => { if(user) window.location.href = './index.html'; });
+
+const tabs = document.querySelectorAll('.tab');
+tabs.forEach(btn => btn.addEventListener('click', () => {
+  tabs.forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+  btn.classList.add('active');
+  document.getElementById(btn.dataset.tab).style.display = 'block';
+}));
+
+const msg = document.getElementById('msg');
+function showMsg(t){ msg.textContent = t; }
+
+document.getElementById('formSignIn').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = document.getElementById('inEmail').value;
+  const pass = document.getElementById('inPass').value;
+  try{
+    await signIn(email, pass);
+    window.location.href = './index.html';
+  }catch(err){
+    showMsg(err.message);
+  }
+});
+
+document.getElementById('formSignUp').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = document.getElementById('upEmail').value;
+  const pass = document.getElementById('upPass').value;
+  try{
+    await signUp(email, pass);
+    window.location.href = './index.html';
+  }catch(err){
+    showMsg(err.message);
+  }
+});
+
+document.getElementById('btnReset').addEventListener('click', async () => {
+  const email = document.getElementById('inEmail').value;
+  if(!email){ showMsg('Informe seu e-mail.'); return; }
+  try{
+    await resetPassword(email);
+    showMsg('Email enviado.');
+  }catch(err){
+    showMsg(err.message);
+  }
+});
+</script>
+</body>
+</html>
