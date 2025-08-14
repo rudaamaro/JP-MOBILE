@@ -28,31 +28,35 @@
 <body>
 <div class="wrap">
   <h1>Flashcards JP↔PT</h1>
-  <div class="tabs">
+  <div class="tabs" role="tablist">
     <button class="tab active" data-tab="signin">Entrar</button>
     <button class="tab" data-tab="signup">Criar conta</button>
   </div>
-  <div id="signin" class="panel">
+
+  <div id="signin" class="panel" role="tabpanel" aria-labelledby="Entrar">
     <form id="formSignIn">
-      <input type="email" id="inEmail" placeholder="E-mail" required>
-      <input type="password" id="inPass" placeholder="Senha" required minlength="6">
+      <input type="email" id="inEmail" placeholder="E-mail" required autocomplete="email">
+      <input type="password" id="inPass" placeholder="Senha" required minlength="6" autocomplete="current-password">
       <button class="action" type="submit">Entrar</button>
       <button class="link" type="button" id="btnReset">Recuperar senha</button>
     </form>
   </div>
-  <div id="signup" class="panel" style="display:none">
+
+  <div id="signup" class="panel" style="display:none" role="tabpanel" aria-labelledby="Criar conta">
     <form id="formSignUp">
-      <input type="email" id="upEmail" placeholder="E-mail" required>
-      <input type="password" id="upPass" placeholder="Senha" required minlength="6">
+      <input type="email" id="upEmail" placeholder="E-mail" required autocomplete="email">
+      <input type="password" id="upPass" placeholder="Senha (mín. 6)" required minlength="6" autocomplete="new-password">
       <button class="action" type="submit">Criar conta</button>
     </form>
   </div>
+
   <div id="msg" aria-live="polite"></div>
 </div>
+
 <script type="module">
 import { signIn, signUp, resetPassword, onAuthState } from './auth.js';
 
-onAuthState(user => { if(user) window.location.href = './index.html'; });
+onAuthState(user => { if (user) window.location.href = './index.html'; });
 
 const tabs = document.querySelectorAll('.tab');
 tabs.forEach(btn => btn.addEventListener('click', () => {
@@ -67,36 +71,36 @@ function showMsg(t){ msg.textContent = t; }
 
 document.getElementById('formSignIn').addEventListener('submit', async e => {
   e.preventDefault();
-  const email = document.getElementById('inEmail').value;
-  const pass = document.getElementById('inPass').value;
-  try{
+  const email = document.getElementById('inEmail').value.trim();
+  const pass  = document.getElementById('inPass').value;
+  try {
     await signIn(email, pass);
     window.location.href = './index.html';
-  }catch(err){
-    showMsg(err.message);
+  } catch (err) {
+    showMsg(err.message || 'Erro ao entrar.');
   }
 });
 
 document.getElementById('formSignUp').addEventListener('submit', async e => {
   e.preventDefault();
-  const email = document.getElementById('upEmail').value;
-  const pass = document.getElementById('upPass').value;
-  try{
+  const email = document.getElementById('upEmail').value.trim();
+  const pass  = document.getElementById('upPass').value;
+  try {
     await signUp(email, pass);
     window.location.href = './index.html';
-  }catch(err){
-    showMsg(err.message);
+  } catch (err) {
+    showMsg(err.message || 'Erro ao criar conta.');
   }
 });
 
 document.getElementById('btnReset').addEventListener('click', async () => {
-  const email = document.getElementById('inEmail').value;
-  if(!email){ showMsg('Informe seu e-mail.'); return; }
-  try{
+  const email = document.getElementById('inEmail').value.trim();
+  if (!email) { showMsg('Informe seu e-mail para recuperar.'); return; }
+  try {
     await resetPassword(email);
-    showMsg('Email enviado.');
-  }catch(err){
-    showMsg(err.message);
+    showMsg('Email de recuperação enviado.');
+  } catch (err) {
+    showMsg(err.message || 'Erro ao enviar e-mail.');
   }
 });
 </script>
