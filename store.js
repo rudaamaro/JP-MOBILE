@@ -28,7 +28,7 @@ export async function loadUserDeck(uid){
 }
 
 // ---------------------------
-// Escrita “espelho” (usar só em migração/seed grande)
+// “Espelho” do deck inteiro (use só em seed/migração)
 // ---------------------------
 export async function saveUserDeck(uid, deck){
   const colRef = collection(db, `users/${uid}/decks/default/cards`);
@@ -37,7 +37,7 @@ export async function saveUserDeck(uid, deck){
   const currentSnap = await getDocs(colRef);
   const toDelete = new Set(currentSnap.docs.map(d => d.id));
 
-  // batch com chunk (limite ~500 ops)
+  // batch com chunk
   let batch = writeBatch(db);
   let ops = 0;
   async function flush(){
@@ -46,7 +46,7 @@ export async function saveUserDeck(uid, deck){
     ops = 0;
   }
 
-  // upsert (e tira da lista de exclusão)
+  // upserts
   for(const card of deck){
     const id = String(card.id || `${Date.now()}-${Math.random()}`);
     const ref = doc(colRef, id);
@@ -55,7 +55,7 @@ export async function saveUserDeck(uid, deck){
     if (ops >= 450) await flush();
   }
 
-  // delete o que saiu do deck
+  // deletes
   for (const id of toDelete){
     batch.delete(doc(colRef, id)); ops++;
     if (ops >= 450) await flush();
@@ -66,7 +66,7 @@ export async function saveUserDeck(uid, deck){
 }
 
 // ---------------------------
-// Escritas leves (1 card)
+// Escritas leves
 // ---------------------------
 export async function upsertCard(uid, card){
   const id = String(card.id || `${Date.now()}-${Math.random()}`);
@@ -74,7 +74,6 @@ export async function upsertCard(uid, card){
   await setDoc(ref, { ...card, id }, { merge: true });
 }
 
-// upsert em lote (opcional para import/hydrate)
 export async function upsertMany(uid, cards){
   if(!cards || !cards.length) return;
   let batch = writeBatch(db);
@@ -93,9 +92,25 @@ export async function upsertMany(uid, cards){
   await flush();
 }
 
-// apagar um único card
 export async function deleteCard(uid, id){
   await deleteDoc(doc(db, `users/${uid}/decks/default/cards/${String(id)}`));
+}
+
+export async function deleteMany(uid, ids){
+  if(!ids || !ids.length) return;
+  let batch = writeBatch(db);
+  let ops = 0;
+  async function flush(){
+    await batch.commit();
+    batch = writeBatch(db);
+    ops = 0;
+  }
+  for (const id of ids){
+    batch.delete(doc(db, `users/${uid}/decks/default/cards/${String(id)}`));
+    ops++;
+    if (ops >= 450) await flush();
+  }
+  await flush();
 }
 
 // cache local do deck
@@ -104,11 +119,17 @@ export function cacheDeck(uid, deck){
 }
 
 // ---------------------------
-// “Tombstones” (para não reimportar do JSON)
+// Tombstones (para não reimportar do JSON)
 // ---------------------------
 export async function markDeletedRomaji(uid, romajiNorm){
   const metaRef = doc(db, `users/${uid}/meta/deleted`);
   await setDoc(metaRef, { romaji: arrayUnion(romajiNorm) }, { merge:true });
+}
+
+export async function markDeletedRomajiMany(uid, list){
+  if(!list || !list.length) return;
+  const metaRef = doc(db, `users/${uid}/meta/deleted`);
+  await setDoc(metaRef, { romaji: arrayUnion(...list) }, { merge:true });
 }
 
 export async function getDeletedRomajiSet(uid){
@@ -126,7 +147,7 @@ export async function migrateFromLocalStorage(uid){
   try{
     const raw = JSON.parse(localStorage.getItem('romajiDeck_v8'));
     if(Array.isArray(raw) && raw.length){
-      await saveUserDeck(uid, raw);     // espelha tudo (caso único)
+      await saveUserDeck(uid, raw);
       localStorage.removeItem('romajiDeck_v8');
       deck = raw;
     }
