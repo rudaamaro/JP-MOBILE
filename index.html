@@ -33,7 +33,8 @@
   header{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px}
   .brand{font-weight:800; color:var(--text); font-size:18px}
 
-  .tabs{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
+  /* AGORA 5 abas (inclui Reforço) */
+  .tabs{display:grid; grid-template-columns:repeat(5,1fr); gap:8px}
   .tab{padding:10px 12px; text-align:center; background:var(--pill); color:var(--text);
     border-radius:999px; border:1px solid rgba(255,255,255,.06); font-weight:700}
   .tab.active{background:var(--duo); color:#05121d; border-color:transparent}
@@ -125,6 +126,7 @@
   <div class="tabs">
     <button class="tab active" data-tab="study">Estudar</button>
     <button class="tab" data-tab="quiz">Quiz</button>
+    <button class="tab" data-tab="reinforce">Reforço</button><!-- NOVA ABA -->
     <button class="tab" data-tab="add">+</button>
     <button class="tab" data-tab="list">Lista</button>
   </div>
@@ -160,7 +162,6 @@
       </div>
 
       <div class="center helper" id="accepted" style="display:none" aria-live="polite"></div>
-      <!-- NOVO: cronômetro de retorno do card (Study) -->
       <div class="center helper" id="dueTimer" style="display:none"></div>
     </div>
   </section>
@@ -191,6 +192,36 @@
         <button class="btn secondary" id="qNext">Próximo</button>
       </div>
       <div class="center helper" id="qFeedback" style="display:none" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- NOVO: REFORÇO -->
+  <section class="section" id="reinforce">
+    <div class="card">
+      <div class="row">
+        <div class="seg" aria-label="Direção reforço">
+          <input id="r1" type="radio" name="rdir" value="PT2ROMAJI" checked><label for="r1">PT → Romaji</label>
+          <input id="r2" type="radio" name="rdir" value="ROMAJI2PT"><label for="r2">Romaji → PT</label>
+          <input id="r3" type="radio" name="rdir" value="HIRA2PT"><label for="r3">Hiragana → PT</label>
+        </div>
+        <div class="helper" id="rfInfo">—</div>
+      </div>
+
+      <div class="prompt" id="rPrompt">Reforço ativo</div>
+      <div class="qRow">
+        <button title="Ouvir Japonês" class="audioBtn" id="rSpeakJP">JP</button>
+        <div class="question" id="rQuestion">Não há itens no reforço 🎉</div>
+        <button title="Ouvir Português" class="audioBtn" id="rSpeakPT">PT</button>
+      </div>
+
+      <div class="inputRow">
+        <input id="rAnswer" class="answer" placeholder="sua resposta…" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" inputmode="latin" enterkeyhint="done">
+        <button class="btn" id="rCheck" disabled>Verificar</button>
+        <button class="btn secondary" id="rSkip">Pular</button>
+      </div>
+
+      <div class="center helper" id="rAccepted" style="display:none" aria-live="polite"></div>
+      <div class="center helper" id="rTimer" style="display:none"></div>
     </div>
   </section>
 
@@ -245,6 +276,7 @@
   // ===== CONFIG =====
   const DATA_URL = './anime_romaji.json';
   const SHORT_STEPS_MIN = [1, 3, 6]; // 1min > 3min > 6min
+  const RF_TARGET = 3;               // precisa de 3 acertos no reforço para sair
 
   // ===== HELPERS / STORAGE =====
   const LS_DECK = 'romajiDeck_v8';
@@ -259,7 +291,7 @@
   const parsePT = pt => (pt||'').split(/[|;,\n]/).map(normBasic).filter(Boolean);
   const isKana = s => /[\u3040-\u309f\u30a0-\u30ff]/.test(s||'');
 
-  // Levenshtein simples (para tolerância a erro)
+  // Levenshtein simples
   function lev(a,b){
     const m=a.length, n=b.length;
     if(m===0) return n; if(n===0) return m;
@@ -289,7 +321,8 @@
       kana:String(kana||'').trim(),
       ok:0,err:0,
       ease:2.5, interval:0, due:now,
-      shortIdx:0
+      shortIdx:0,
+      rfCount:0, rfLast:0
     }));
   }
   function migrate(arr){
@@ -304,7 +337,9 @@
       ease: (typeof c.ease==='number' && c.ease>0) ? c.ease : 2.5,
       interval: (typeof c.interval==='number') ? c.interval : 0,
       due: (typeof c.due==='number') ? c.due : now,
-      shortIdx: (typeof c.shortIdx==='number') ? c.shortIdx : 0
+      shortIdx: (typeof c.shortIdx==='number') ? c.shortIdx : 0,
+      rfCount: (typeof c.rfCount==='number') ? c.rfCount : 0,
+      rfLast:  (typeof c.rfLast==='number')  ? c.rfLast  : 0
     }));
   }
   function loadDeckLS(){ try{ const raw=JSON.parse(localStorage.getItem(LS_DECK)); if(Array.isArray(raw)) return migrate(raw);}catch(e){} return null;}
@@ -320,9 +355,8 @@
     setTimeout(()=>n.remove(), 1200);
   }
 
- // ===== SONS (Web Audio) — estável e com envelope =====
+ // ===== SONS (Web Audio)
 let ACTX = null, SFX_BUS = null;
-
 async function ensureAudio(){
   if(!ACTX){
     ACTX = new (window.AudioContext || window.webkitAudioContext)();
@@ -347,7 +381,6 @@ function blip(freq, t0, dur, type='sine', gain=0.06){
   o.start(t0);
   o.stop(t0 + dur + 0.02);
 }
-// Haptics
 function vibrateOk(){ navigator.vibrate?.(15); }
 function vibrateErr(){ navigator.vibrate?.([10,40,10]); }
 function playSFX(kind, delayMs=0){
@@ -453,7 +486,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
       if(oneM){ out += oneM; i++; continue; }
       out += s[i]; i++;
     }
-    // alongamento simples + partículas comuns
+    // alongamento + partículas
     out = out.replace(/ou/g,'おう').replace(/oo/g,'おお');
     out = out.replace(/\bha\b/g,'は').replace(/\bhe\b/g,'へ').replace(/\bwo\b/g,'を');
     return out.replace(/\s{2,}/g,' ').trim();
@@ -471,6 +504,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   let deck = loadDeckLS() || seed(defaultDeck);
   const State = { modeTab:'study', direction:'PT2ROMAJI', catFilter:'todas', current:null, lastCorrect:false };
   const Quiz = { direction:'PT2ROMAJI', cat:'todas', current:null, choices:[] };
+  const Reinforce = { direction:'PT2ROMAJI', current:null };
 
   // ===== UI helpers =====
   const el = s => document.querySelector(s);
@@ -500,11 +534,14 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   function rateCard(card, correct){
     if(!correct){
       applyShortSchedule(card);
+      // entra/volta no reforço
+      card.rfCount = RF_TARGET;
+      card.rfLast = Date.now();
       return;
     }
-    // acerto: volta pro SRS normal e zera os passos curtos
+    // acerto: volta pro SRS normal e zera passos curtos
     card.shortIdx = 0;
-    const q = 4; // usamos 4 como qualidade do SM-2 simplificado
+    const q = 4; // SM-2 simplificado
     card.ease = Math.max(1.3, (card.ease||2.5) + (0.1 - (4 - q) * (0.08 + (4 - q)*0.02)));
     if(card.interval === 0){ card.interval = 1; }
     else if(card.interval === 1){ card.interval = 3; }
@@ -513,13 +550,11 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     card.due = Date.now() + card.interval * ONE_DAY;
   }
 
-  // Ciclos sem repetição por categoria (separados p/ study e quiz)
+  // Ciclos Study/Quiz
   const Cycles = {
     study: { key:'todas', order:[], idx:0, last:null },
     quiz:  { key:'todas', order:[], idx:0, last:null }
   };
-
-  // Seleção priorizando "devidos"
   function buildOrder(cat){
     const now = Date.now();
     const list = filteredByCategory(deck, cat);
@@ -536,12 +571,9 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     const cy = Cycles[kind];
     if (cy.key !== cat) rebuildCycle(kind, cat);
     if (cy.order.length === 0) rebuildCycle(kind, cat);
-
     if (cy.idx >= cy.order.length){
       let order = shuffle(buildOrder(cat));
-      if (order.length > 1 && cy.last && order[0] === cy.last){
-        order.push(order.shift());
-      }
+      if (order.length > 1 && cy.last && order[0] === cy.last){ order.push(order.shift()); }
       cy.order = order;
       cy.idx = 0;
     }
@@ -559,7 +591,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   const btnCheck = () => el('#btnCheck');
   const btnSkip = () => el('#btnSkip');
 
-  // ===== MOBILE: FIXAR TELA NO TOPO AO FOCAR INPUTS =====
+  // Mobile: evitar pulo
   function preventFocusScroll(input){
     if(!input) return;
     input.addEventListener('touchstart', () => {
@@ -575,7 +607,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
       });
     });
   }
-  [ answer(), el('#inRomaji'), el('#inPT'), el('#inKana'), el('#inCat'), el('#bulk') ].forEach(preventFocusScroll);
+  [ answer(), el('#rAnswer'), el('#inRomaji'), el('#inPT'), el('#inKana'), el('#inCat'), el('#bulk') ].forEach(preventFocusScroll);
 
   function setLocked(lock){
     answer().readOnly = lock;
@@ -595,7 +627,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     box.append(span, small); box.style.display='block';
   }
 
-  // ====== Cronômetro de retorno (Study)
+  // Cronômetro Study
   let dueTimerInt = null;
   function mmss(ms){
     const s = Math.max(0, Math.floor(ms/1000));
@@ -603,16 +635,16 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     const r = s%60;
     return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
   }
-  function showDueTimer(ts){
+  function showDueTimer(ts, elId){
+    const box = el(elId);
     clearInterval(dueTimerInt);
-    const box = el('#dueTimer');
     if(!box) return;
     function tick(){
       const left = ts - Date.now();
       if(left <= 0){
         box.textContent = '⏱ disponível novamente';
         clearInterval(dueTimerInt);
-        setTimeout(()=>{ box.style.display='none'; }, 1200);
+        setTimeout(()=>{ box.style.display='none'; }, 1000);
         return;
       }
       box.textContent = '⏱ volta em ' + mmss(left);
@@ -621,21 +653,17 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     tick();
     dueTimerInt = setInterval(tick, 1000);
   }
-  function hideDueTimer(){
-    clearInterval(dueTimerInt);
-    el('#dueTimer').style.display='none';
-  }
+  function hideDueTimer(){ clearInterval(dueTimerInt); el('#dueTimer').style.display='none'; }
 
   function renderQuestion(){
     const c=State.current; if(!c){ el('#qMain').textContent='Sem cartas nesta categoria.'; hideDueTimer(); return; }
     const dir=State.direction;
-    if(dir==='PT2ROMAJI'){ el('#promptLbl').textContent='Tradução (PT-BR)'; el('#helperLbl').innerHTML='Digite o <b>romaji</b> e pressione Verificar'; el('#qMain').textContent=(parsePT(c.pt)[0]||c.pt);}
-    if(dir==='ROMAJI2PT'){ el('#promptLbl').textContent='Romaji'; el('#helperLbl').innerHTML='Digite uma tradução em <b>PT-BR</b> que sirva'; el('#qMain').textContent=c.romaji;}
-    if(dir==='HIRA2PT'){ el('#promptLbl').textContent='Hiragana'; el('#helperLbl').innerHTML='Digite uma tradução em <b>PT-BR</b> que sirva'; el('#qMain').textContent=c.kana||romajiToHiragana(c.romaji);}
+    if(dir==='PT2ROMAJI'){ el('#promptLbl').textContent='Tradução (PT-BR)'; el('#helperLbl').innerHTML='Digite o <b>romaji</b> e pressione Verificar'; el('#qMain').textContent=(parsePT(c.pt)[0]||c.pt); }
+    if(dir==='ROMAJI2PT'){ el('#promptLbl').textContent='Romaji'; el('#helperLbl').innerHTML='Digite uma tradução em <b>PT-BR</b> que sirva'; el('#qMain').textContent=c.romaji; }
+    if(dir==='HIRA2PT'){ el('#promptLbl').textContent='Hiragana'; el('#helperLbl').innerHTML='Digite uma tradução em <b>PT-BR</b> que sirva'; el('#qMain').textContent=c.kana||romajiToHiragana(c.romaji); }
     answer().value=''; answer().classList.remove('correct','wrong'); renderAccepted(false, []);
     btnSkip().textContent='Pular'; State.lastCorrect=false;
-    adjustInputMode(); setLocked(false);
-    hideDueTimer();
+    adjustInputMode(); setLocked(false); hideDueTimer();
   }
   function pickNext(){
     State.current = nextFromCycle('study', State.catFilter);
@@ -650,6 +678,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
       State.modeTab=tab;
       if(tab==='study'){ if(!State.current) pickNext(); else renderQuestion(); }
       if(tab==='quiz'){ startQuizRound(); }
+      if(tab==='reinforce'){ startReinforceRound(); }
       if(tab==='list') renderTable();
     });
   });
@@ -682,13 +711,13 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
 
     if (ok) {
       c.ok++; State.lastCorrect = true; btnSkip().textContent = 'Próximo'; setLocked(true);
-      rateCard(c, true); toast('✔ Correto!'); flash('Correto!', true);
-      hideDueTimer(); // no curto prazo após acerto não precisa cronômetro
+      rateCard(c, true); toast('✔ Correto!'); flash('Correto!', true); hideDueTimer();
+      // se este card estava no reforço, um acerto fora do reforço também ajuda
+      if(c.rfCount>0){ c.rfCount = Math.max(0, c.rfCount-1); c.rfLast = Date.now(); }
     } else {
       c.err++; State.lastCorrect = false; btnSkip().textContent = 'Pular';
       rateCard(c, false); toast('✘ Quase!'); flash('Quase...', false);
-      // mostrar cronômetro com o próximo "due" curto
-      showDueTimer(c.due);
+      showDueTimer(c.due, '#dueTimer');
     }
 
     saveDeck();
@@ -741,10 +770,10 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
 
         if(isCorrect){
           c.ok++; rateCard(c,true); toast('✔ Correto!'); flash('Correto!',true);
+          if(c.rfCount>0){ c.rfCount=Math.max(0,c.rfCount-1); c.rfLast=Date.now(); }
           el('#qFeedback').style.display='none';
         } else {
           c.err++; rateCard(c,false); toast('✘ Quase!');  flash('Quase...',false);
-          // mostra info estática no Quiz (evita intervalo a cada segundo aqui)
           const left = c.due - Date.now();
           el('#qFeedback').textContent = '⏱ volta em ' + mmss(left);
           el('#qFeedback').style.display='block';
@@ -768,16 +797,120 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   el('#qCat').addEventListener('change',()=>{ Quiz.cat=el('#qCat').value; startQuizRound(); });
   el('#qNext').addEventListener('click', startQuizRound);
 
-  // atalho 1..4 no Quiz (mantive; diga se quer remover também)
-  window.addEventListener('keydown', (e)=>{
-    const k = Number(e.key);
-    if(el('#quiz').classList.contains('active') && k>=1 && k<=4){
-      const btn = el('#choices')?.children[k-1];
-      if(btn && !btn.disabled) btn.click();
+  // ===== REFORÇO =====
+  function rfList(){
+    // itens com rfCount>0, ordenados por due (curtinho) e pelo mais recente erro
+    const now = Date.now();
+    return deck
+      .filter(c => (c.rfCount||0) > 0)
+      .sort((a,b)=>{
+        const ad = (a.due||0) - now, bd = (b.due||0) - now;
+        if(ad<=0 && bd>0) return -1; if(bd<=0 && ad>0) return 1;
+        if(ad!==bd) return ad-bd;
+        return (b.rfLast||0) - (a.rfLast||0);
+      });
+  }
+  function rfAdjustInputMode(){
+    el('#rAnswer').setAttribute('inputmode', (Reinforce.direction==='PT2ROMAJI') ? 'latin' : 'text');
+  }
+  function rRenderAccepted(ok, detailsArr){
+    const box = el('#rAccepted'); box.innerHTML='';
+    if(!detailsArr || !detailsArr.length){ box.style.display='none'; return; }
+    const span = document.createElement('span'); span.className='okText';
+    span.textContent = ok ? 'Correto: ' : 'Aceitas: ';
+    const small = document.createElement('small'); small.className='okText';
+    small.textContent = detailsArr.join(' / ');
+    box.append(span, small); box.style.display='block';
+  }
+
+  let rTimerInt=null;
+  function rShowTimer(ts){
+    clearInterval(rTimerInt);
+    const box = el('#rTimer'); if(!box) return;
+    function tick(){
+      const left = ts - Date.now();
+      if(left<=0){ box.textContent='⏱ disponível'; clearInterval(rTimerInt); return; }
+      box.textContent = '⏱ volta em ' + mmss(left);
     }
+    box.style.display='block'; tick();
+    rTimerInt=setInterval(tick,1000);
+  }
+  function rHideTimer(){ clearInterval(rTimerInt); el('#rTimer').style.display='none'; }
+
+  function renderReinforce(){
+    const list = rfList();
+    el('#rfInfo').textContent = list.length ? `No reforço: ${list.length} carta(s)` : 'Sem itens no reforço 🎉';
+    Reinforce.current = list[0] || null;
+
+    const c = Reinforce.current;
+    const qEl = el('#rQuestion');
+    if(!c){ qEl.textContent='Não há itens no reforço 🎉'; el('#rAnswer').value=''; rHideTimer(); el('#rCheck').disabled=true; return; }
+
+    const dir=Reinforce.direction;
+    if(dir==='PT2ROMAJI'){ el('#rPrompt').textContent='Reforço — Tradução (PT-BR)'; qEl.textContent=(parsePT(c.pt)[0]||c.pt); }
+    if(dir==='ROMAJI2PT'){ el('#rPrompt').textContent='Reforço — Romaji'; qEl.textContent=c.romaji; }
+    if(dir==='HIRA2PT'){ el('#rPrompt').textContent='Reforço — Hiragana'; qEl.textContent=c.kana||romajiToHiragana(c.romaji); }
+
+    el('#rAnswer').value=''; el('#rAnswer').classList.remove('correct','wrong');
+    rRenderAccepted(false, []);
+
+    rfAdjustInputMode();
+    el('#rCheck').disabled=true;
+
+    // painel “repetições restantes”
+    const remain = c.rfCount||0;
+    el('#rfInfo').textContent = `No reforço: ${list.length} • Repetições desta: ${remain}`;
+
+    // timer se ainda não due
+    const left = (c.due||0) - Date.now();
+    if(left>0) rShowTimer(c.due); else rHideTimer();
+  }
+  function startReinforceRound(){ renderReinforce(); }
+
+  els('input[name="rdir"]').forEach(r=>{ r.addEventListener('change',()=>{ Reinforce.direction=r.value; renderReinforce(); }); });
+  el('#rAnswer').addEventListener('input', ()=> el('#rCheck').disabled = !el('#rAnswer').value.trim());
+  el('#rSpeakJP').addEventListener('click', ()=>{ const c=Reinforce.current; if(!c) return; const text=c.kana && isKana(c.kana) ? c.kana : c.romaji; speakJP(text); });
+  el('#rSpeakPT').addEventListener('click', ()=>{ const c=Reinforce.current; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
+
+  function rCheck(){
+    const c = Reinforce.current; if(!c) return;
+    const user = normBasic(el('#rAnswer').value);
+    let ok=false, details=[];
+
+    if (Reinforce.direction === 'PT2ROMAJI') {
+      ok = !!user && roughlyEquals(user, normBasic(c.romaji));
+      details = [c.romaji, 'PT: '+parsePT(c.pt).join(' / ')];
+    } else {
+      const acc = new Set(parsePT(c.pt));
+      ok = !!user && [...acc].some(t => roughlyEquals(user, t));
+      details = [...acc];
+    }
+
+    const input = el('#rAnswer');
+    input.classList.remove('correct','wrong');
+    input.classList.add(ok?'correct':'wrong');
+    rRenderAccepted(ok, details);
+
+    ensureAudio().then(()=> playSFX(ok?'ok':'err', 280));
+
+    if(ok){
+      c.ok++; c.rfCount = Math.max(0,(c.rfCount||0)-1); c.rfLast=Date.now();
+      // se zerou o reforço, agenda pelo SRS normal (pequeno empurrão)
+      if(c.rfCount===0){ rateCard(c, true); }
+      toast('✔ Reforço: acerto!');
+    }else{
+      c.err++; c.rfCount = RF_TARGET; c.rfLast=Date.now();
+      applyShortSchedule(c); // volta pro curto 1→3→6
+      toast('✘ Reforço: vamos fixar!');
+      rShowTimer(c.due);
+    }
+    saveDeck();
+  }
+  el('#rCheck').addEventListener('click', rCheck);
+  el('#rAnswer').addEventListener('keydown', e=>{
+    if(e.key==='Enter'){ e.preventDefault(); rCheck(); }
   });
-  el('#qSpeakJP').addEventListener('click', ()=>{ const c=Quiz.current; if(!c) return; const text=c.kana&&isKana(c.kana)?c.kana:c.romaji; speakJP(text); });
-  el('#qSpeakPT').addEventListener('click', ()=>{ const c=Quiz.current; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
+  el('#rSkip').addEventListener('click', renderReinforce);
 
   // ===== ADD / BULK =====
   function parseBulk(text){
@@ -794,7 +927,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   function addCard(r,p,cat,kana){
     const rom=normBasic(r), pt=normBasic(p), c=(cat||'geral').toLowerCase().trim()||'geral', k=String(kana||'').trim();
     if(!rom||!pt) return false; if(deck.some(x=>normBasic(x.romaji)===rom)) return false;
-    deck.push({id:String(Date.now()+Math.random()*9999), romaji:rom, pt:pt, cat:c, kana:k, ok:0, err:0, ease:2.5, interval:0, due:Date.now(), shortIdx:0}); return true;
+    deck.push({id:String(Date.now()+Math.random()*9999), romaji:rom, pt:pt, cat:c, kana:k, ok:0, err:0, ease:2.5, interval:0, due:Date.now(), shortIdx:0, rfCount:0, rfLast:0}); return true;
   }
   el('#btnAdd').addEventListener('click', ()=>{
     const ok = addCard(el('#inRomaji').value, el('#inPT').value, el('#inCat').value, el('#inKana').value);
@@ -806,27 +939,6 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     const arr=parseBulk(el('#bulk').value); if(!arr.length){toast('Nada válido'); return;}
     let added=0,skipped=0; for(const it of arr){ if(addCard(it.romaji,it.pt,it.cat,it.kana)) added++; else skipped++; }
     saveDeck(); refreshCategoriesUI(); toast('Importados: '+added+'. Ignorados: '+skipped+'.'); el('#bulk').value=''; el('#preview').textContent=''; invalidateCycles();
-  });
-
-  // ===== Backup JSON =====
-  el('#btnExport').addEventListener('click', ()=>{
-    const blob = new Blob([JSON.stringify(deck,null,2)], {type:'application/json'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'romaji_deck_backup.json';
-    a.click();
-  });
-  el('#btnLoad').addEventListener('click', ()=> el('#fileImport').click());
-  el('#fileImport').addEventListener('change', async (e)=>{
-    const file = e.target.files?.[0]; if(!file) return;
-    const text = await file.text();
-    try{
-      const json = JSON.parse(text);
-      if(!Array.isArray(json)) throw new Error('formato inválido');
-      deck = migrate(json);
-      saveDeck(); refreshCategoriesUI(); renderTable(); toast('Backup importado!'); invalidateCycles(); pickNext(); startQuizRound();
-    }catch(err){ toast('Falha ao importar'); }
-    e.target.value = '';
   });
 
   // ===== LISTA =====
@@ -868,7 +980,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
       data.forEach((obj,i)=>{
         const r=normBasic(obj.romaji), p=Array.isArray(obj.pt)?obj.pt.join(';'):String(obj.pt||''), c=String(obj.cat||'geral').toLowerCase(), k=String(obj.kana||obj.hiragana||'').trim();
         if(!r||!p||have.has(r)) return;
-        deck.push({id:String(now+i), romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k, ok:0, err:0, ease:2.5, interval:0, due:now, shortIdx:0}); have.add(r); added++;
+        deck.push({id:String(now+i), romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k, ok:0, err:0, ease:2.5, interval:0, due:now, shortIdx:0, rfCount:0, rfLast:0}); have.add(r); added++;
       });
       if(added){ saveDeck(); refreshCategoriesUI(); }
     }catch(e){}
@@ -882,6 +994,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     State.current = nextFromCycle('study', State.catFilter)
     renderQuestion();
     Quiz.cat='todas'; startQuizRound();
+    startReinforceRound();
   })();
 
   // ===== PWA (opcional, falha segura) =====
