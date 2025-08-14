@@ -94,7 +94,7 @@
 
   /* Quiz */
   .choices{display:grid; grid-template-columns:repeat(2,minmax(160px,1fr)); gap:10px}
-  .choice{padding:12px; border-radius:14px; border:2px solid var(--stroke); background:#0f1422; color:var(--text); font-weight:800; cursor:pointer}
+  .choice{padding:12px; border-radius:14px; border:2px solid var(--stroke); background:#0f1422; color:#0fe; color:var(--text); font-weight:800; cursor:pointer}
   .choice:hover{border-color:var(--accent)}
   .choice.correct{border-color:var(--accent2)}
   .choice.wrong{border-color:var(--danger)}
@@ -263,7 +263,39 @@
     setTimeout(()=>n.remove(), 1200);
   }
 
-  // ===== ÁUDIO (robusto p/ mobile/desktop) =====
+  /* ====== SFX (sons de acerto/erro) ======
+     Gera “plim”/“bzz” com Web Audio, sem arquivos.
+     Toca após cliques (ok pra mobile). */
+  const SFX = {
+    ctx: null,
+    _init(){ if(!this.ctx){ const AC = window.AudioContext||window.webkitAudioContext; if(AC) this.ctx = new AC(); } return this.ctx; },
+    _resume(){ const c=this._init(); if(c && c.state==='suspended') c.resume(); return c; },
+    tone(freq=440, dur=0.16, type='sine', gain=0.05){
+      const ctx=this._resume(); if(!ctx) return;
+      const osc=ctx.createOscillator(); const g=ctx.createGain();
+      osc.type=type; osc.frequency.value=freq;
+      g.gain.value=0.0001; osc.connect(g); g.connect(ctx.destination);
+      const t=ctx.currentTime;
+      g.gain.setValueAtTime(0.0001,t);
+      g.gain.exponentialRampToValueAtTime(gain, t+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+      osc.start(t); osc.stop(t+dur+0.02);
+    },
+    ok(){ // “duolingo-like”: duas notas ascendentes
+      this.tone(660,0.12,'sine',0.05);
+      setTimeout(()=>this.tone(880,0.16,'sine',0.05),110);
+      if(navigator.vibrate) navigator.vibrate(18);
+    },
+    err(){ // “bzz” grave em 2 passos descendentes
+      this.tone(220,0.18,'square',0.045);
+      setTimeout(()=>this.tone(180,0.22,'square',0.045),150);
+      if(navigator.vibrate) navigator.vibrate([8,40,8]);
+    }
+  };
+  // Garantir resume do áudio na primeira interação global
+  window.addEventListener('pointerdown', ()=>SFX._resume(), {once:true});
+
+  // ===== ÁUDIO TTS (JP/PT) =====
   let voices = [];
   function refreshVoices(){
     try { voices = window.speechSynthesis ? speechSynthesis.getVoices() || [] : []; }
@@ -277,12 +309,10 @@
   function pickVoice(langStartsWithArray){
     refreshVoices();
     const lower = (v)=> (v.lang||'').toLowerCase();
-    // tenta na ordem
     for(const pref of langStartsWithArray){
       const v = voices.find(v=> lower(v).startsWith(pref));
       if(v) return v;
     }
-    // fallback: qualquer pt/ja
     const any = voices.find(v=> langStartsWithArray.some(p=>lower(v).startsWith(p.slice(0,2))));
     return any || null;
   }
@@ -296,11 +326,9 @@
     u.lang = (v?.lang) || (langPrefs[0] || 'en-US');
     u.rate = rate; u.pitch = pitch;
     try{ speechSynthesis.cancel(); }catch(_){}
-    // leve debounce para evitar engasgos em mobile
     clearTimeout(speak._t);
     speak._t = setTimeout(()=>speechSynthesis.speak(u),120);
   }
-
   function romajiToHiragana(input){
     if(!input) return '';
     let s=input.toLowerCase().trim().replace(/[^a-z0-9 ?!.,-]/g,' ').replace(/\s+/g,' ').trim().replace(/nn/g,'n').replace(/n'(?=[^aeiouy])/g,'n');
@@ -309,7 +337,7 @@
     let out='',i=0; const vow=c=>/[aeiou]/.test(c), cons=c=>/[bcdfghjklmnpqrstvwxyz]/.test(c);
     while(i<s.length){
       if(/\s/.test(s[i])){out+=' '; i++; continue;}
-      if(/[?!.,-]/.test(s[i])){out+=s[i]; i++; continue;}
+      if(/[?!.,-]/.test(s[i])){out+=s[i]); i++; continue;}
       if(i+1<s.length && s[i]===s[i+1] && cons(s[i]) && s[i]!=='n'){out+='っ'; i++; continue;}
       if(s[i]==='n'){const nx=s[i+1]||''; if(!nx||(!vow(nx)&&nx!=='y')){out+='ん'; i++; continue;}}
       const tri=s.slice(i,i+3); if(yo[tri]){out+=yo[tri]; i+=3; continue;}
@@ -320,15 +348,12 @@
     }
     return out.replace(/\s{2,}/g,' ').trim();
   }
-
   function speakJP(text){
     const kana = isKana(text)? text : romajiToHiragana(text);
     if(!kana) return;
-    // Japonês mais natural: taxa ligeiramente menor
     speak(kana, ['ja-jp','ja'], 0.95, 1.0);
   }
   function speakPT(text){
-    // força pt-BR quando disponível
     speak(text, ['pt-br','pt-pt','pt'], 1.0, 1.0);
   }
 
@@ -415,6 +440,10 @@
     answer().classList.remove('correct','wrong'); answer().classList.add(ok?'correct':'wrong');
     el('#accepted').innerHTML=feedback; el('#accepted').style.display='block';
     toast(ok?'✔ Correto!':'✘ Quase!'); flash(ok?'Correto!':'Quase...', ok);
+
+    // >>> sons de acerto/erro
+    if(ok) SFX.ok(); else SFX.err();
+
     if(ok){ c.ok++; State.lastCorrect=true; btnSkip().textContent='Próximo'; setLocked(true); } else { c.err++; State.lastCorrect=false; btnSkip().textContent='Pular'; }
     saveDeck();
   }
@@ -431,7 +460,7 @@
 
   btnSkip().addEventListener('click', pickNext);
 
-  // áudio study
+  // áudio study (TTS)
   el('#speakJP').addEventListener('click', ()=>{ const c=State.current; if(!c) return; const text=c.kana && isKana(c.kana) ? c.kana : c.romaji; speakJP(text); });
   el('#speakPT').addEventListener('click', ()=>{ const c=State.current; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
 
@@ -465,12 +494,16 @@
       const b=document.createElement('button'); b.className='choice'; b.textContent=text; b.setAttribute('tabindex','0');
       b.addEventListener('click', ()=>{
         if(b.disabled) return;
-        // toca áudio ao clicar (JP para PT→Romaji/Hira→PT, PT para Romaji→PT)
+        // toca TTS conforme direção
         if(dir==='ROMAJI2PT'){ speakPT(text); } else { const jp = c.kana && isKana(c.kana) ? c.kana : c.romaji; speakJP(jp); }
 
         const isCorrect = text===correct;
         b.classList.add(isCorrect?'correct':'wrong');
-        if(isCorrect){ c.ok++; toast('✔ Correto!'); flash('Correto!',true); } else { c.err++; toast('✘ Quase!'); flash('Quase...',false); }
+
+        // >>> sons de acerto/erro
+        if(isCorrect){ SFX.ok(); c.ok++; toast('✔ Correto!'); flash('Correto!',true); }
+        else { SFX.err(); c.err++; toast('✘ Quase!'); flash('Quase...',false); }
+
         saveDeck();
         [...wrap.children].forEach(btn=>{
           btn.disabled=true;
@@ -495,7 +528,7 @@
     }
   });
 
-  // áudio quiz botões centrais
+  // áudio quiz botões centrais (TTS)
   el('#qSpeakJP').addEventListener('click', ()=>{ const c=Quiz.current; if(!c) return; const text=c.kana&&isKana(c.kana)?c.kana:c.romaji; speakJP(text); });
   el('#qSpeakPT').addEventListener('click', ()=>{ const c=Quiz.current; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
 
