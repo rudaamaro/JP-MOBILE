@@ -1,68 +1,105 @@
 // store.js
 import { db } from './firebase-config.js';
 import {
-  collection, doc, getDocs, writeBatch, onSnapshot
+  collection, doc, getDocs, writeBatch, deleteDoc,
+  getDoc, setDoc, arrayUnion
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 const CACHE_PREFIX = 'romajiDeck_cache_';
 
+// Lê o deck do usuário
 export async function loadUserDeck(uid){
-  try {
+  try{
     const colRef = collection(db, `users/${uid}/decks/default/cards`);
     const snap = await getDocs(colRef);
     const deck = [];
     snap.forEach(d => deck.push(d.data()));
     localStorage.setItem(`${CACHE_PREFIX}${uid}`, JSON.stringify(deck));
     return deck;
-  } catch (e) {
-    // fallback em cache local (offline/primeiro boot)
-    try {
+  }catch(e){
+    try{
       const cached = JSON.parse(localStorage.getItem(`${CACHE_PREFIX}${uid}`));
-      if (Array.isArray(cached)) return cached;
-    } catch(_) {}
+      if(Array.isArray(cached)) return cached;
+    }catch(_){}
     return [];
   }
 }
 
+// Salva o deck **espelhando** no Firestore: upsert + delete dos que saíram
 export async function saveUserDeck(uid, deck){
   const colRef = collection(db, `users/${uid}/decks/default/cards`);
-  const batch = writeBatch(db);
-  deck.forEach(card => {
-    // garante id string
+
+  // ids atuais no Firestore
+  const currentSnap = await getDocs(colRef);
+  const toDelete = new Set(currentSnap.docs.map(d => d.id));
+
+  // ids do novo deck
+  const nextIds = new Set(deck.map(c => String(c.id)));
+
+  // batch com chunk (limite ~500 ops)
+  let batch = writeBatch(db);
+  let ops = 0;
+
+  function commitIfNeeded(){
+    if(ops >= 450){ // margem de segurança
+      return batch.commit().then(()=>{ batch = writeBatch(db); ops = 0; });
+    }
+    return Promise.resolve();
+  }
+
+  // upsert (e tira da lista de exclusão)
+  for(const card of deck){
     const id = String(card.id || `${Date.now()}-${Math.random()}`);
     const ref = doc(colRef, id);
-    batch.set(ref, { ...card, id }, { merge: true });
-  });
+    batch.set(ref, { ...card, id }, { merge:true }); ops++;
+    toDelete.delete(id);
+    await commitIfNeeded();
+  }
+
+  // delete o que saiu do deck
+  for (const id of toDelete){
+    batch.delete(doc(colRef, id)); ops++;
+    await commitIfNeeded();
+  }
+
   await batch.commit();
   localStorage.setItem(`${CACHE_PREFIX}${uid}`, JSON.stringify(deck));
 }
 
-export function watchUserDeck(uid, cb){
-  const colRef = collection(db, `users/${uid}/decks/default/cards`);
-  return onSnapshot(colRef, snap => {
-    const deck = [];
-    snap.forEach(d => deck.push(d.data()));
-    localStorage.setItem(`${CACHE_PREFIX}${uid}`, JSON.stringify(deck));
-    cb(deck);
-  });
+// Delete direto por id (útil ao clicar na linha da tabela)
+export async function deleteCard(uid, id){
+  await deleteDoc(doc(db, `users/${uid}/decks/default/cards/${String(id)}`));
 }
 
+// --- Tombstones: romaji que o usuário decidiu NUNCA reimportar do JSON ---
+export async function markDeletedRomaji(uid, romajiNorm){
+  const metaRef = doc(db, `users/${uid}/meta/deleted`);
+  await setDoc(metaRef, { romaji: arrayUnion(romajiNorm) }, { merge:true });
+}
+
+export async function getDeletedRomajiSet(uid){
+  const metaRef = doc(db, `users/${uid}/meta/deleted`);
+  const snap = await getDoc(metaRef);
+  const arr = snap.exists() ? (snap.data().romaji || []) : [];
+  return new Set(arr);
+}
+
+// Migração do LS → Firestore (1ª vez)
 export async function migrateFromLocalStorage(uid){
   let deck = [];
   try{
     const raw = JSON.parse(localStorage.getItem('romajiDeck_v8'));
-    if (Array.isArray(raw) && raw.length){
+    if(Array.isArray(raw) && raw.length){
       await saveUserDeck(uid, raw);
       localStorage.removeItem('romajiDeck_v8');
       deck = raw;
     }
-  } catch(_) {}
-
-  if (!deck.length){
+  }catch(_){}
+  if(!deck.length){
     try{
       const cached = JSON.parse(localStorage.getItem(`${CACHE_PREFIX}${uid}`));
-      if (Array.isArray(cached)) deck = cached;
-    } catch(_) {}
+      if(Array.isArray(cached)) deck = cached;
+    }catch(_){}
   }
   return deck;
 }
