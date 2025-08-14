@@ -6,6 +6,9 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 const CACHE_PREFIX = 'romajiDeck_cache_';
+const MAX_BATCH = 450;       // < 500 (limite do Firestore)
+const PAUSE_MS  = 120;       // respiro entre commits para evitar backoff
+const sleep = (ms)=> new Promise(r=>setTimeout(r,ms));
 
 // ---------------------------
 // Leitura
@@ -15,10 +18,15 @@ export async function loadUserDeck(uid){
     const colRef = collection(db, `users/${uid}/decks/default/cards`);
     const snap = await getDocs(colRef);
     const deck = [];
-    snap.forEach(d => deck.push(d.data()));
+    snap.forEach(d => {
+      const data = d.data() || {};
+      // garante id sempre presente
+      deck.push({ id: data.id || d.id, ...data });
+    });
     localStorage.setItem(`${CACHE_PREFIX}${uid}`, JSON.stringify(deck));
     return deck;
   }catch(e){
+    // fallback: cache local
     try{
       const cached = JSON.parse(localStorage.getItem(`${CACHE_PREFIX}${uid}`));
       if(Array.isArray(cached)) return cached;
@@ -37,11 +45,12 @@ export async function saveUserDeck(uid, deck){
   const currentSnap = await getDocs(colRef);
   const toDelete = new Set(currentSnap.docs.map(d => d.id));
 
-  // batch com chunk
   let batch = writeBatch(db);
   let ops = 0;
   async function flush(){
+    if(ops === 0) return;     // evita commit vazio
     await batch.commit();
+    await sleep(PAUSE_MS);
     batch = writeBatch(db);
     ops = 0;
   }
@@ -52,13 +61,13 @@ export async function saveUserDeck(uid, deck){
     const ref = doc(colRef, id);
     batch.set(ref, { ...card, id }, { merge:true }); ops++;
     toDelete.delete(id);
-    if (ops >= 450) await flush();
+    if (ops >= MAX_BATCH) await flush();
   }
 
   // deletes
   for (const id of toDelete){
     batch.delete(doc(colRef, id)); ops++;
-    if (ops >= 450) await flush();
+    if (ops >= MAX_BATCH) await flush();
   }
 
   await flush();
@@ -79,7 +88,9 @@ export async function upsertMany(uid, cards){
   let batch = writeBatch(db);
   let ops = 0;
   async function flush(){
+    if(ops === 0) return;
     await batch.commit();
+    await sleep(PAUSE_MS);
     batch = writeBatch(db);
     ops = 0;
   }
@@ -87,7 +98,7 @@ export async function upsertMany(uid, cards){
     const id = String(card.id || `${Date.now()}-${Math.random()}`);
     batch.set(doc(db, `users/${uid}/decks/default/cards/${id}`), { ...card, id }, { merge:true });
     ops++;
-    if (ops >= 450) await flush();
+    if (ops >= MAX_BATCH) await flush();
   }
   await flush();
 }
@@ -101,14 +112,16 @@ export async function deleteMany(uid, ids){
   let batch = writeBatch(db);
   let ops = 0;
   async function flush(){
+    if(ops === 0) return;
     await batch.commit();
+    await sleep(PAUSE_MS);
     batch = writeBatch(db);
     ops = 0;
   }
   for (const id of ids){
     batch.delete(doc(db, `users/${uid}/decks/default/cards/${String(id)}`));
     ops++;
-    if (ops >= 450) await flush();
+    if (ops >= MAX_BATCH) await flush();
   }
   await flush();
 }
@@ -129,7 +142,12 @@ export async function markDeletedRomaji(uid, romajiNorm){
 export async function markDeletedRomajiMany(uid, list){
   if(!list || !list.length) return;
   const metaRef = doc(db, `users/${uid}/meta/deleted`);
-  await setDoc(metaRef, { romaji: arrayUnion(...list) }, { merge:true });
+  const CHUNK = 50; // segurança para arrayUnion
+  for(let i=0;i<list.length;i+=CHUNK){
+    const slice = list.slice(i, i+CHUNK);
+    await setDoc(metaRef, { romaji: arrayUnion(...slice) }, { merge:true });
+    await sleep(PAUSE_MS);
+  }
 }
 
 export async function getDeletedRomajiSet(uid){
