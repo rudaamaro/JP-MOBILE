@@ -15,15 +15,14 @@
     --pill:#0f1422;
   }
   *{box-sizing:border-box}
-    /* trava o scroll do documento; só o .app rola */
+  /* trava o scroll do documento; só o .app rola */
   html,body{
     height:100%;
     margin:0;
     background:var(--bg);
     font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
-    overflow:hidden;                 /* <— impede a página de “andar” ao focar inputs */
+    overflow:hidden;                 /* impede a página de “andar” ao focar inputs */
   }
-  
   .app{
     height:100svh;                   /* usa o viewport “seguro” no mobile */
     display:flex;
@@ -279,53 +278,49 @@
     setTimeout(()=>n.remove(), 1200);
   }
 
- // ===== SONS (Web Audio) — estável e com envelope =====
-let ACTX = null, SFX_BUS = null;
+  // ===== SONS (Web Audio) =====
+  let ACTX = null, SFX_BUS = null;
 
-async function ensureAudio(){
-  if(!ACTX){
-    ACTX = new (window.AudioContext || window.webkitAudioContext)();
-    SFX_BUS = ACTX.createGain();
-    SFX_BUS.gain.value = 1.0;
-    SFX_BUS.connect(ACTX.destination);
-  }
-  if(ACTX.state === 'suspended'){
-    try{ await ACTX.resume(); }catch(_){}
-  }
-}
-
-// gera um beep com ataque/decay pra não "cortar"
-function blip(freq, t0, dur, type='sine', gain=0.06){
-  if(!ACTX) return;
-  const o = ACTX.createOscillator();
-  const g = ACTX.createGain();
-  o.type = type;
-  o.frequency.setValueAtTime(freq, t0);
-  // envelope
-  g.gain.setValueAtTime(0, t0);
-  g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
-  g.gain.linearRampToValueAtTime(0, t0 + dur);
-  o.connect(g); g.connect(SFX_BUS);
-  o.start(t0);
-  o.stop(t0 + dur + 0.02);
-}
-
-// toca "ok" ou "err" com atraso opcional (ms)
-function playSFX(kind, delayMs=0){
-  ensureAudio().then(()=>{
-    const base = ACTX.currentTime + (delayMs/1000);
-    if(kind === 'ok'){
-      blip(880,  base + 0.00, 0.10, 'triangle', 0.06);
-      blip(1320, base + 0.09, 0.10, 'triangle', 0.05);
-    }else{ // 'err'
-      blip(300, base + 0.00, 0.12, 'sawtooth', 0.07);
-      blip(220, base + 0.10, 0.12, 'sawtooth', 0.06);
+  async function ensureAudio(){
+    if(!ACTX){
+      ACTX = new (window.AudioContext || window.webkitAudioContext)();
+      SFX_BUS = ACTX.createGain();
+      SFX_BUS.gain.value = 1.0;
+      SFX_BUS.connect(ACTX.destination);
     }
-  });
-}
+    if(ACTX.state === 'suspended'){
+      try{ await ACTX.resume(); }catch(_){}
+    }
+  }
 
-// “desbloqueia” o áudio no primeiro toque
-window.addEventListener('pointerdown', ensureAudio, {once:true});
+  function blip(freq, t0, dur, type='sine', gain=0.06){
+    if(!ACTX) return;
+    const o = ACTX.createOscillator();
+    const g = ACTX.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
+    g.gain.linearRampToValueAtTime(0, t0 + dur);
+    o.connect(g); g.connect(SFX_BUS);
+    o.start(t0);
+    o.stop(t0 + dur + 0.02);
+  }
+
+  function playSFX(kind, delayMs=0){
+    ensureAudio().then(()=>{
+      const base = ACTX.currentTime + (delayMs/1000);
+      if(kind === 'ok'){
+        blip(880,  base + 0.00, 0.10, 'triangle', 0.06);
+        blip(1320, base + 0.09, 0.10, 'triangle', 0.05);
+      }else{
+        blip(300, base + 0.00, 0.12, 'sawtooth', 0.07);
+        blip(220, base + 0.10, 0.12, 'sawtooth', 0.06);
+      }
+    });
+  }
+
+  window.addEventListener('pointerdown', ensureAudio, {once:true});
 
   // ===== ÁUDIO DE FALA (TTS) =====
   let voices = [];
@@ -446,7 +441,8 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     });
   }
   function filteredByCategory(list, cat){ const k = cat || State.catFilter; if(k==='todas') return list; return list.filter(c=>(c.cat||'geral')===k); }
-    // --- util: embaralhar (Fisher–Yates)
+
+  // --- util: embaralhar (Fisher–Yates)
   function shuffle(a){
     const arr=a.slice();
     for(let i=arr.length-1;i>0;i--){
@@ -455,29 +451,32 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     }
     return arr;
   }
-  
+
   // Ciclos sem repetição por categoria (separados p/ study e quiz)
   const Cycles = {
     study: { key:'todas', order:[], idx:0, last:null },
     quiz:  { key:'todas', order:[], idx:0, last:null }
   };
-  
+
   function buildOrder(cat){
     return filteredByCategory(deck, cat).map(c=>c.id);
   }
-  
+
   function rebuildCycle(kind, cat){
     const order = shuffle(buildOrder(cat));
     Cycles[kind] = { key:cat, order, idx:0, last: Cycles[kind]?.last || null };
   }
-  
+
   // pega o próximo id do ciclo; reembaralha quando acabar
   function nextFromCycle(kind, cat){
     const cy = Cycles[kind];
     if (cy.key !== cat) rebuildCycle(kind, cat);
     if (cy.order.length === 0) rebuildCycle(kind, cat);
-  
-    // acabou? reembaralha e evita repetir o último de cara
+
+    // se ainda não há cartas (lista vazia), retorna null
+    if (cy.order.length === 0) return null;
+
+    // acabou? reembaralha e evita repetir a última de cara
     if (cy.idx >= cy.order.length){
       let order = shuffle(buildOrder(cat));
       if (order.length > 1 && cy.last && order[0] === cy.last){
@@ -490,13 +489,12 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     cy.last = id;
     return deck.find(c=>c.id===id) || null;
   }
-  
-  // quando o deck muda (add/remove/import), invalida ciclos
+
+  // quando o deck muda (add/remove/import/hidratar), invalida ciclos
   function invalidateCycles(){
     Cycles.study.order = [];
     Cycles.quiz.order  = [];
   }
-
 
   // ===== STUDY =====
   const answer = () => el('#answer');
@@ -504,34 +502,22 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   const btnSkip = () => el('#btnSkip');
 
   // ===== MOBILE: FIXAR TELA NO TOPO AO FOCAR INPUTS =====
-function preventFocusScroll(input){
-  if(!input) return;
-
-  // Em alguns navegadores, usar focus({preventScroll:true}) evita o pulo
-  input.addEventListener('touchstart', () => {
-    if(input !== document.activeElement){
-      try { input.focus({ preventScroll: true }); }
-      catch(_){ input.focus(); }
-    }
-  }, { passive: true });
-
-  // Segurança extra: força o topo no frame seguinte ao foco
-  input.addEventListener('focus', () => {
-    requestAnimationFrame(() => {
-      // zera qualquer tentativa do browser de deslocar a página
-      document.scrollingElement && (document.scrollingElement.scrollTop = 0);
-      window.scrollTo(0, 0);
+  function preventFocusScroll(input){
+    if(!input) return;
+    input.addEventListener('touchstart', () => {
+      if(input !== document.activeElement){
+        try { input.focus({ preventScroll: true }); }
+        catch(_){ input.focus(); }
+      }
+    }, { passive: true });
+    input.addEventListener('focus', () => {
+      requestAnimationFrame(() => {
+        document.scrollingElement && (document.scrollingElement.scrollTop = 0);
+        window.scrollTo(0, 0);
+      });
     });
-  });
-}
-
-// aplique aos campos que recebem foco
-[
-  answer(),
-  el('#inRomaji'), el('#inPT'), el('#inKana'), el('#inCat'),
-  el('#bulk')
-].forEach(preventFocusScroll);
-
+  }
+  [ answer(), el('#inRomaji'), el('#inPT'), el('#inKana'), el('#inCat'), el('#bulk') ].forEach(preventFocusScroll);
 
   function setLocked(lock){
     answer().readOnly = lock;
@@ -552,10 +538,9 @@ function preventFocusScroll(input){
     adjustInputMode(); setLocked(false);
   }
   function pickNext(){
-  State.current = nextFromCycle('study', State.catFilter);
-  renderQuestion();
-}
-
+    State.current = nextFromCycle('study', State.catFilter);
+    renderQuestion();
+  }
 
   // tabs
   els('.tab').forEach(b=>{
@@ -570,58 +555,61 @@ function preventFocusScroll(input){
   });
 
   els('input[name="dir"]').forEach(r=>{ r.addEventListener('change',()=>{ State.direction=r.value; renderQuestion(); }); });
-  el('#catFilter').addEventListener('change',()=>{ State.catFilter = el('#catFilter').value; pickNext(); });
+
+  // quando muda filtro/categoria, reinicia ciclo e já pega próxima
+  el('#catFilter').addEventListener('change',()=>{
+    State.catFilter = el('#catFilter').value;
+    invalidateCycles();
+    pickNext();
+  });
+
   answer().addEventListener('input', ()=> btnCheck().disabled = !answer().value.trim());
 
   function checkAnswer(){
-  const c = State.current;
-  if(!c) return;
+    const c = State.current;
+    if(!c) return;
 
-  const user = normBasic(answer().value);
-  let ok = false, feedback = '';
+    const user = normBasic(answer().value);
+    let ok = false, feedback = '';
 
-  if (State.direction === 'PT2ROMAJI') {
-    ok = !!user && user === normBasic(c.romaji);
-    feedback =
-      '<span class="okText">Romaji correto: <b>' + c.romaji +
-      '</b></span> • <small class="okText">Traduções: ' +
-      parsePT(c.pt).join(' / ') + '</small>';
-  } else {
-    const acc = new Set(parsePT(c.pt));
-    ok = !!user && acc.has(user);
-    feedback =
-      '<span class="okText">Aceitas:</span> <small class="okText">' +
-      [...acc].join(' / ') + '</small>';
+    if (State.direction === 'PT2ROMAJI') {
+      ok = !!user && user === normBasic(c.romaji);
+      feedback =
+        '<span class="okText">Romaji correto: <b>' + c.romaji +
+        '</b></span> • <small class="okText">Traduções: ' +
+        parsePT(c.pt).join(' / ') + '</small>';
+    } else {
+      const acc = new Set(parsePT(c.pt));
+      ok = !!user && acc.has(user);
+      feedback =
+        '<span class="okText">Aceitas:</span> <small class="okText">' +
+        [...acc].join(' / ') + '</small>';
+    }
+
+    answer().classList.remove('correct','wrong');
+    answer().classList.add(ok ? 'correct' : 'wrong');
+    el('#accepted').innerHTML = feedback;
+    el('#accepted').style.display = 'block';
+
+    ensureAudio().then(() => playSFX(ok ? 'ok' : 'err', 280));
+
+    if (ok) {
+      c.ok++;
+      State.lastCorrect = true;
+      btnSkip().textContent = 'Próximo';
+      setLocked(true);
+      toast('✔ Correto!');
+      flash('Correto!', true);
+    } else {
+      c.err++;
+      State.lastCorrect = false;
+      btnSkip().textContent = 'Pular';
+      toast('✘ Quase!');
+      flash('Quase...', false);
+    }
+
+    saveDeck();
   }
-
-  // feedback visual
-  answer().classList.remove('correct','wrong');
-  answer().classList.add(ok ? 'correct' : 'wrong');
-  el('#accepted').innerHTML = feedback;
-  el('#accepted').style.display = 'block';
-
-  // garante AudioContext e aplica o mesmo delay do Quiz (≈280ms)
-  ensureAudio().then(() => playSFX(ok ? 'ok' : 'err', 280));
-
-  // resto do fluxo
-  if (ok) {
-    c.ok++;
-    State.lastCorrect = true;
-    btnSkip().textContent = 'Próximo';
-    setLocked(true);
-    toast('✔ Correto!');
-    flash('Correto!', true);
-  } else {
-    c.err++;
-    State.lastCorrect = false;
-    btnSkip().textContent = 'Pular';
-    toast('✘ Quase!');
-    flash('Quase...', false);
-  }
-
-  saveDeck();
-}
-
 
   btnCheck().addEventListener('click', checkAnswer);
   answer().addEventListener('keydown', e=>{
@@ -659,42 +647,41 @@ function preventFocusScroll(input){
     options.forEach(text=>{
       const b=document.createElement('button'); b.className='choice'; b.textContent=text; b.setAttribute('tabindex','0');
       b.addEventListener('click', ()=>{
-  if(b.disabled) return;
+        if(b.disabled) return;
 
-  // 1) Fala a opção escolhida (TTS)
-  if(dir==='ROMAJI2PT'){ speakPT(text); }
-  else {
-    const jp = c.kana && isKana(c.kana) ? c.kana : c.romaji;
-    speakJP(jp);
-  }
+        if(dir==='ROMAJI2PT'){ speakPT(text); }
+        else {
+          const jp = c.kana && isKana(c.kana) ? c.kana : c.romaji;
+          speakJP(jp);
+        }
 
-  // 2) Marca correto/errado
-  const isCorrect = text===correct;
-  b.classList.add(isCorrect?'correct':'wrong');
+        const isCorrect = text===correct;
+        b.classList.add(isCorrect?'correct':'wrong');
+        playSFX(isCorrect ? 'ok' : 'err', 280);
 
-  // 3) Toca SFX **depois** de um pequeno delay para não sobrepor o TTS
-  playSFX(isCorrect ? 'ok' : 'err', 280);
+        if(isCorrect){ c.ok++; toast('✔ Correto!'); flash('Correto!',true); }
+        else        { c.err++; toast('✘ Quase!');  flash('Quase...',false); }
+        saveDeck();
 
-  if(isCorrect){ c.ok++; toast('✔ Correto!'); flash('Correto!',true); }
-  else        { c.err++; toast('✘ Quase!');  flash('Quase...',false); }
-  saveDeck();
-
-  // trava os botões e destaca a correta
-  [...wrap.children].forEach(btn=>{
-    btn.disabled = true;
-    if(btn.textContent===correct) btn.classList.add('correct');
-  });
-});
+        [...wrap.children].forEach(btn=>{
+          btn.disabled = true;
+          if(btn.textContent===correct) btn.classList.add('correct');
+        });
+      });
       wrap.appendChild(b);
     });
     el('#qFeedback').style.display='none';
   }
   function startQuizRound(){
-  Quiz.current = nextFromCycle('quiz', Quiz.cat);
-  renderQuiz();
-}
+    Quiz.current = nextFromCycle('quiz', Quiz.cat);
+    renderQuiz();
+  }
   els('input[name="qdir"]').forEach(r=>{ r.addEventListener('change',()=>{ Quiz.direction=r.value; renderQuiz(); }); });
-  el('#qCat').addEventListener('change',()=>{ Quiz.cat=el('#qCat').value; startQuizRound(); });
+  el('#qCat').addEventListener('change',()=>{
+    Quiz.cat=el('#qCat').value;
+    invalidateCycles();
+    startQuizRound();
+  });
   el('#qNext').addEventListener('click', startQuizRound);
 
   window.addEventListener('keydown', (e)=>{
@@ -724,16 +711,31 @@ function preventFocusScroll(input){
     if(!rom||!pt) return false; if(deck.some(x=>normBasic(x.romaji)===rom)) return false;
     deck.push({id:String(Date.now()+Math.random()*9999), romaji:rom, pt:pt, cat:c, kana:k, ok:0, err:0}); return true;
   }
+
   el('#btnAdd').addEventListener('click', ()=>{
     const ok = addCard(el('#inRomaji').value, el('#inPT').value, el('#inCat').value, el('#inKana').value);
     if(!ok){toast('Preencha corretamente ou evite duplicar romaji'); return;}
-    saveDeck(); ['#inRomaji','#inPT','#inKana','#inCat'].forEach(s=>el(s).value=''); refreshCategoriesUI(); toast('Card adicionado!');
+    saveDeck();
+    invalidateCycles(); // <- reset ciclo
+    ['#inRomaji','#inPT','#inKana','#inCat'].forEach(s=>el(s).value='');
+    refreshCategoriesUI();
+    toast('Card adicionado!');
   });
-  el('#btnParse').addEventListener('click', ()=>{ const arr=parseBulk(el('#bulk').value); el('#preview').innerHTML = arr.length?'Pronto para importar: <b>'+arr.length+'</b> linha(s).':'Nada válido.'; });
+
+  el('#btnParse').addEventListener('click', ()=>{
+    const arr=parseBulk(el('#bulk').value);
+    el('#preview').innerHTML = arr.length?'Pronto para importar: <b>'+arr.length+'</b> linha(s).':'Nada válido.';
+  });
+
   el('#btnImport').addEventListener('click', ()=>{
     const arr=parseBulk(el('#bulk').value); if(!arr.length){toast('Nada válido'); return;}
-    let added=0,skipped=0; for(const it of arr){ if(addCard(it.romaji,it.pt,it.cat,it.kana)) added++; else skipped++; }
-    saveDeck(); refreshCategoriesUI(); toast('Importados: '+added+'. Ignorados: '+skipped+'.'); el('#bulk').value=''; el('#preview').textContent='';
+    let added=0,skipped=0;
+    for(const it of arr){ if(addCard(it.romaji,it.pt,it.cat,it.kana)) added++; else skipped++; }
+    saveDeck();
+    invalidateCycles(); // <- reset ciclo
+    refreshCategoriesUI();
+    toast('Importados: '+added+'. Ignorados: '+skipped+'.');
+    el('#bulk').value=''; el('#preview').textContent='';
   });
 
   // ===== LISTA =====
@@ -760,7 +762,14 @@ function preventFocusScroll(input){
          <td class="col-ok" style="text-align:right">'+(c.ok||0)+'</td>\
          <td class="col-err" style="text-align:right">'+(c.err||0)+'</td>';
       tr.title='Toque para remover';
-      tr.addEventListener('click',()=>{ deck=deck.filter(x=>x.id!==c.id); saveDeck(); renderTable(); refreshCategoriesUI(); toast('Removido.');});
+      tr.addEventListener('click',()=>{
+        deck=deck.filter(x=>x.id!==c.id);
+        saveDeck();
+        invalidateCycles(); // <- reset ciclo
+        renderTable();
+        refreshCategoriesUI();
+        toast('Removido.');
+      });
       t.appendChild(tr);
     });
   }
@@ -774,9 +783,14 @@ function preventFocusScroll(input){
       data.forEach((obj,i)=>{
         const r=normBasic(obj.romaji), p=Array.isArray(obj.pt)?obj.pt.join(';'):String(obj.pt||''), c=String(obj.cat||'geral').toLowerCase(), k=String(obj.kana||obj.hiragana||'').trim();
         if(!r||!p||have.has(r)) return;
-        deck.push({id:String(Date.now()+i), romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k, ok:0, err:0}); have.add(r); added++;
+        deck.push({id:String(Date.now()+i), romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k, ok:0, err:0});
+        have.add(r); added++;
       });
-      if(added){ saveDeck(); refreshCategoriesUI(); }
+      if(added){
+        saveDeck();
+        invalidateCycles(); // <- reset ciclo
+        refreshCategoriesUI();
+      }
     }catch(e){}
   }
 
@@ -785,9 +799,11 @@ function preventFocusScroll(input){
     deck = migrate(deck) || seed(defaultDeck);
     await hydrateFromJson();
     refreshCategoriesUI();
-    State.current = nextFromCycle('study', State.catFilter)
+    // pega primeira carta via ciclo (sem repetição)
+    State.current = nextFromCycle('study', State.catFilter);
     renderQuestion();
-    Quiz.cat='todas'; startQuizRound();
+    Quiz.cat='todas';
+    startQuizRound();
   })();
 </script>
 </body>
