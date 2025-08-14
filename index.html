@@ -6,9 +6,9 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <link rel="manifest" href="manifest.json"><!-- opcional; falha segura se ausente -->
 <title>Flashcards (Romaji ↔ PT)</title>
-<script type="module" src="./firebase-config.js"></script> <!-- ADDED -->
-<script type="module" src="./auth.js"></script> <!-- ADDED -->
-<script type="module" src="./store.js"></script> <!-- ADDED -->
+<script type="module" src="./firebase-config.js"></script>
+<script type="module" src="./auth.js"></script>
+<script type="module" src="./store.js"></script>
 <style>
   :root{
     color-scheme: dark;
@@ -35,9 +35,8 @@
   header,.card,.tabs,.section{width:100%; max-width:var(--maxw)}
   header{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px}
   .brand{font-weight:800; color:var(--text); font-size:18px}
-  .account{display:flex; align-items:center; gap:8px; color:var(--muted); font-weight:700} /* ADDED */
+  .account{display:flex; align-items:center; gap:8px; color:var(--muted); font-weight:700}
 
-  /* 5 abas (inclui Reforço) */
   .tabs{display:grid; grid-template-columns:repeat(5,1fr); gap:8px}
   .tab{padding:10px 12px; text-align:center; background:var(--pill); color:var(--text);
     border-radius:999px; border:1px solid rgba(255,255,255,.06); font-weight:700}
@@ -69,7 +68,7 @@
 
   .btn{height:52px; padding:0 16px; border-radius:14px; font-weight:800; border:1px solid rgba(255,255,255,.08); background:var(--duo); color:#05121d; cursor:pointer}
   .btn.secondary{background:#1f2937; color:#e7eef7}
-  .btn.small{height:32px; padding:0 12px;} /* ADDED */
+  .btn.small{height:32px; padding:0 12px;}
   .btn:disabled{opacity:.5; cursor:not-allowed}
   .btn:focus, .choice:focus, .audioBtn:focus {outline:3px solid rgba(67,182,255,.6); outline-offset:2px}
 
@@ -125,17 +124,17 @@
 <div class="app" id="app">
   <header>
     <div class="brand">Flashcards — Romaji ↔ PT</div>
-    <div class="account"> <!-- ADDED -->
+    <div class="account">
       <div class="helper" id="streak">Streak: 0</div>
-      <span id="userEmail"></span> <!-- ADDED -->
-      <button id="btnSignOut" class="btn secondary small">Sair</button> <!-- ADDED -->
-    </div> <!-- ADDED -->
+      <span id="userEmail"></span>
+      <button id="btnSignOut" class="btn secondary small">Sair</button>
+    </div>
   </header>
 
   <div class="tabs">
     <button class="tab active" data-tab="study">Estudar</button>
     <button class="tab" data-tab="quiz">Quiz</button>
-    <button class="tab" data-tab="reinforce">Reforço</button><!-- NOVA ABA -->
+    <button class="tab" data-tab="reinforce">Reforço</button>
     <button class="tab" data-tab="add">+</button>
     <button class="tab" data-tab="list">Lista</button>
   </div>
@@ -203,7 +202,6 @@
     </div>
   </section>
 
-  <!-- NOVO: REFORÇO (sem timer) -->
   <section class="section" id="reinforce">
     <div class="card">
       <div class="row">
@@ -270,11 +268,14 @@
   <section class="section" id="list">
     <div class="card">
       <div class="prompt">Cartas (toque para remover)</div>
+
+      <!-- Controles de pendências -->
       <div class="row" style="justify-content:flex-end;gap:8px;margin:6px 0">
         <span class="helper" id="pendingLbl" style="margin-right:auto">Alterações pendentes: 0</span>
         <button class="btn secondary small" id="btnDiscard" title="Descartar alterações locais">Descartar</button>
         <button class="btn small" id="btnSync" title="Enviar alterações ao servidor">Atualizar</button>
       </div>
+
       <div class="tableWrap">
         <table class="list" id="table"></table>
       </div>
@@ -292,12 +293,12 @@ import {
   saveUserDeck,
   migrateFromLocalStorage,
   getDeletedRomajiSet,
+  upsertCard,
   upsertMany,
   cacheDeck,
   deleteMany,
   markDeletedRomajiMany
 } from './store.js';
-
 
   // ===== CONFIG =====
   const DATA_URL = './anime_romaji.json';
@@ -315,7 +316,7 @@ import {
   const parsePT = pt => (pt||'').split(/[|;,\n]/).map(normBasic).filter(Boolean);
   const isKana = s => /[\u3040-\u309f\u30a0-\u30ff]/.test(s||'');
 
-  // Levenshtein simples (tolerância a erro leve)
+  // Levenshtein
   function lev(a,b){
     const m=a.length, n=b.length;
     if(m===0) return n; if(n===0) return m;
@@ -364,7 +365,7 @@ import {
     }));
   }
   function loadDeckLS(){ try{ const raw=JSON.parse(localStorage.getItem(LS_DECK)); if(Array.isArray(raw)) return migrate(raw);}catch(e){} return null;}
-  function saveDeck(){ localStorage.setItem(LS_DECK, JSON.stringify(deck));}
+  function saveDeck(){ localStorage.setItem(LS_DECK, JSON.stringify(deck)); } // (só local)
   function toast(t,ms=1400){ const el=document.querySelector('#msg'); el.textContent=t; el.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>el.style.display='none',ms);}
 
   function flash(msg, ok=true){
@@ -376,57 +377,56 @@ import {
     setTimeout(()=>n.remove(), 1200);
   }
 
- // ===== SONS (Web Audio) =====
-let ACTX = null, SFX_BUS = null;
-async function ensureAudio(){
-  if(!ACTX){
-    ACTX = new (window.AudioContext || window.webkitAudioContext)();
-    SFX_BUS = ACTX.createGain();
-    SFX_BUS.gain.value = 1.0;
-    SFX_BUS.connect(ACTX.destination);
-  }
-  if(ACTX.state === 'suspended'){
-    try{ await ACTX.resume(); }catch(_){}
-  }
-}
-function blip(freq, t0, dur, type='sine', gain=0.06){
-  if(!ACTX) return;
-  const o = ACTX.createOscillator();
-  const g = ACTX.createGain();
-  o.type = type;
-  o.frequency.setValueAtTime(freq, t0);
-  g.gain.setValueAtTime(0, t0);
-  g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
-  g.gain.linearRampToValueAtTime(0, t0 + dur);
-  o.connect(g); g.connect(SFX_BUS);
-  o.start(t0);
-  o.stop(t0 + dur + 0.02);
-}
-function vibrateOk(){ navigator.vibrate?.(15); }
-function vibrateErr(){ navigator.vibrate?.([10,40,10]); }
-function playSFX(kind, delayMs=0){
-  ensureAudio().then(()=>{
-    const base = ACTX.currentTime + (delayMs/1000);
-    if(kind === 'ok'){
-      blip(880,  base + 0.00, 0.10, 'triangle', 0.06);
-      blip(1320, base + 0.09, 0.10, 'triangle', 0.05);
-    }else{
-      blip(300, base + 0.00, 0.12, 'sawtooth', 0.07);
-      blip(220, base + 0.10, 0.12, 'sawtooth', 0.06);
+  // ===== SONS =====
+  let ACTX = null, SFX_BUS = null;
+  async function ensureAudio(){
+    if(!ACTX){
+      ACTX = new (window.AudioContext || window.webkitAudioContext)();
+      SFX_BUS = ACTX.createGain();
+      SFX_BUS.gain.value = 1.0;
+      SFX_BUS.connect(ACTX.destination);
     }
-  });
-  if(kind==='ok') vibrateOk(); else vibrateErr();
-}
-window.addEventListener('pointerdown', ensureAudio, {once:true});
+    if(ACTX.state === 'suspended'){
+      try{ await ACTX.resume(); }catch(_){}
+    }
+  }
+  function blip(freq, t0, dur, type='sine', gain=0.06){
+    if(!ACTX) return;
+    const o = ACTX.createOscillator();
+    const g = ACTX.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
+    g.gain.linearRampToValueAtTime(0, t0 + dur);
+    o.connect(g); g.connect(SFX_BUS);
+    o.start(t0);
+    o.stop(t0 + dur + 0.02);
+  }
+  function vibrateOk(){ navigator.vibrate?.(15); }
+  function vibrateErr(){ navigator.vibrate?.([10,40,10]); }
+  function playSFX(kind, delayMs=0){
+    ensureAudio().then(()=>{
+      const base = ACTX.currentTime + (delayMs/1000);
+      if(kind === 'ok'){
+        blip(880,  base + 0.00, 0.10, 'triangle', 0.06);
+        blip(1320, base + 0.09, 0.10, 'triangle', 0.05);
+      }else{
+        blip(300, base + 0.00, 0.12, 'sawtooth', 0.07);
+        blip(220, base + 0.10, 0.12, 'sawtooth', 0.06);
+      }
+    });
+    if(kind==='ok') vibrateOk(); else vibrateErr();
+  }
+  window.addEventListener('pointerdown', ensureAudio, {once:true});
 
-  // ===== ÁUDIO DE FALA (TTS) =====
+  // ===== TTS =====
   let voices = [];
   function refreshVoices(){
     try{ voices = window.speechSynthesis ? (speechSynthesis.getVoices()||[]) : []; }catch(_){ voices=[]; }
   }
   refreshVoices();
   if('speechSynthesis' in window){ speechSynthesis.onvoiceschanged = refreshVoices; }
-
   function pickVoice(prefList){
     const lower = v => (v.lang||'').toLowerCase();
     for(const pref of prefList){
@@ -505,7 +505,6 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
       if(oneM){ out += oneM; i++; continue; }
       out += s[i]; i++;
     }
-    // alongamento + partículas
     out = out.replace(/ou/g,'おう').replace(/oo/g,'おお');
     out = out.replace(/\bha\b/g,'は').replace(/\bhe\b/g,'へ').replace(/\bwo\b/g,'を');
     return out.replace(/\s{2,}/g,' ').trim();
@@ -520,12 +519,16 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   }
 
   // ===== STATE =====
-  let deck = []; // ADDED
-  // Alterações pendentes para enviar no "Atualizar"
+  let deck = [];
+  const State = { modeTab:'study', direction:'PT2ROMAJI', catFilter:'todas', current:null, lastCorrect:false };
+  const Quiz = { direction:'PT2ROMAJI', cat:'todas', current:null, choices:[] };
+  const Reinforce = { direction:'PT2ROMAJI', idx:0, order:[] };
+
+  // ===== Pending queue (para Atualizar) =====
   const Pending = {
-    deletions: new Set(),   // ids
-    tombs: new Set(),       // romaji normalizado
-    upserts: new Set()      // ids que mudaram (ok/err/ease/due, novos etc.)
+    deletions: new Set(),  // ids a deletar
+    tombs: new Set(),      // romaji normalizado
+    upserts: new Set()     // ids modificados/novos
   };
   function refreshPending(){
     const n = Pending.deletions.size + Pending.tombs.size + Pending.upserts.size;
@@ -533,12 +536,9 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     if(lbl) lbl.textContent = `Alterações pendentes: ${n}`;
   }
   function queueUpsert(id){
-    if(id) Pending.upserts.add(String(id));
+    if(id!=null) Pending.upserts.add(String(id));
     refreshPending();
   }
-  const State = { modeTab:'study', direction:'PT2ROMAJI', catFilter:'todas', current:null, lastCorrect:false };
-  const Quiz = { direction:'PT2ROMAJI', cat:'todas', current:null, choices:[] };
-  const Reinforce = { direction:'PT2ROMAJI', idx:0, order:[] };
 
   // ===== UI helpers =====
   const el = s => document.querySelector(s);
@@ -557,19 +557,15 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   function filteredByCategory(list, cat){ const k = cat || State.catFilter; if(k==='todas') return list; return list.filter(c=>(c.cat||'geral')===k); }
   function shuffle(a){ const arr=a.slice(); for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
 
-  // ===== SRS básico (sem timers curtos) =====
+  // ===== SRS =====
   function rateCard(card, correct){
     if(!correct){
-      // erro: zera intervalo e torna devido agora
       card.interval = 0;
       card.due = Date.now();
-      // manda para o reforço
       card.rf = true;
       card.rfLast = Date.now();
       return;
     }
-    // acerto normal
-    const q = 4; // SM-2 simplificado
     card.ease = Math.max(1.3, (card.ease||2.5) + 0.1);
     if(card.interval === 0){ card.interval = 1; }
     else if(card.interval === 1){ card.interval = 3; }
@@ -578,7 +574,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     card.due = Date.now() + card.interval * ONE_DAY;
   }
 
-  // Ciclos Study/Quiz
+  // Ciclos
   const Cycles = {
     study: { key:'todas', order:[], idx:0, last:null },
     quiz:  { key:'todas', order:[], idx:0, last:null }
@@ -619,7 +615,6 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   const btnCheck = () => el('#btnCheck');
   const btnSkip = () => el('#btnSkip');
 
-  // Mobile: evitar pulo
   function preventFocusScroll(input){
     if(!input) return;
     input.addEventListener('touchstart', () => {
@@ -771,6 +766,7 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
         } else {
           c.err++; rateCard(c,false); toast('✘ Quase!');  flash('Quase...',false);
         }
+
         cacheDeck(window.CURRENT_UID, deck);
         queueUpsert(c.id);
 
@@ -791,14 +787,9 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   el('#qCat').addEventListener('change',()=>{ Quiz.cat=el('#qCat').value; startQuizRound(); });
   el('#qNext').addEventListener('click', startQuizRound);
 
-  // ===== REFORÇO (infinito, com botão Aprendido) =====
-  function rfList(){
-    return deck.filter(c => !!c.rf);
-  }
-  function rfRebuildOrder(){
-    Reinforce.order = shuffle(rfList().map(c=>c.id));
-    Reinforce.idx = 0;
-  }
+  // ===== REFORÇO =====
+  function rfList(){ return deck.filter(c => !!c.rf); }
+  function rfRebuildOrder(){ Reinforce.order = shuffle(rfList().map(c=>c.id)); Reinforce.idx = 0; }
   function rfNext(){
     const list = rfList();
     if(list.length===0){ Reinforce.order=[]; Reinforce.idx=0; return null; }
@@ -868,11 +859,11 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     ensureAudio().then(()=> playSFX(ok?'ok':'err', 280));
 
     if(ok){ c.ok++; toast('✔ Reforço: acerto!'); }
-    else  { c.err++; toast('✘ Reforço: vamos fixar!'); c.rf = true; c.rfLast = Date.now(); } // mantém no reforço
+    else  { c.err++; toast('✘ Reforço: vamos fixar!'); c.rf = true; c.rfLast = Date.now(); }
+
     cacheDeck(window.CURRENT_UID, deck);
     queueUpsert(c.id);
 
-    // Vai para a próxima (loop infinito)
     renderReinforce();
   }
   el('#rCheck').addEventListener('click', rCheck);
@@ -912,38 +903,20 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     cacheDeck(window.CURRENT_UID, deck);
     queueUpsert(deck[deck.length - 1].id);
     ['#inRomaji','#inPT','#inKana','#inCat'].forEach(s=>el(s).value='');
-    refreshCategoriesUI();
-    toast('Card adicionado!');
-    invalidateCycles();
+    refreshCategoriesUI(); toast('Card adicionado!'); invalidateCycles();
   });
   el('#btnParse').addEventListener('click', ()=>{ const arr=parseBulk(el('#bulk').value); el('#preview').innerHTML = arr.length?'Pronto para importar: <b>'+arr.length+'</b> linha(s).':'Nada válido.'; });
-  el('#btnImport').addEventListener('click', async ()=>{
-  const arr = parseBulk(el('#bulk').value);
-  if(!arr.length){ toast('Nada válido'); return; }
-
-  let added = 0, skipped = 0;
-  const newCards = [];
-
-  for(const it of arr){
-    if(addCard(it.romaji, it.pt, it.cat, it.kana)){
-      added++;
-      newCards.push(deck[deck.length - 1]); // acabou de entrar
-    } else {
-      skipped++;
+  el('#btnImport').addEventListener('click', ()=>{
+    const arr=parseBulk(el('#bulk').value); if(!arr.length){toast('Nada válido'); return;}
+    let added=0,skipped=0; const newIds=[];
+    for(const it of arr){
+      if(addCard(it.romaji,it.pt,it.cat,it.kana)){ added++; newIds.push(deck[deck.length-1].id); }
+      else skipped++;
     }
-  }
-
-  if (added) {
-    newCards.forEach(c => queueUpsert(c.id));
+    newIds.forEach(id=>queueUpsert(id));
     cacheDeck(window.CURRENT_UID, deck);
-  }
-
-  refreshCategoriesUI();
-  toast('Importados: '+added+'. Ignorados: '+skipped+'.');
-  el('#bulk').value=''; el('#preview').textContent='';
-  invalidateCycles();
-});
-
+    refreshCategoriesUI(); toast('Importados: '+added+'. Ignorados: '+skipped+'.'); el('#bulk').value=''; el('#preview').textContent=''; invalidateCycles();
+  });
 
   // ===== LISTA =====
   function renderTable(){
@@ -969,147 +942,130 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
          <td class="col-ok" style="text-align:right">'+(c.ok||0)+'</td>\
          <td class="col-err" style="text-align:right">'+(c.err||0)+'</td>';
       tr.title='Toque para remover';
-      tr.addEventListener('click', async () => {
-  const uid = window.CURRENT_UID;
-
-  // 1) marca como pendente para apagar
-  Pending.deletions.add(c.id);
-  Pending.tombs.add(normBasic(c.romaji));
-
-  // 2) remove localmente
-  deck = deck.filter(x => x.id !== c.id);
-  cacheDeck(uid, deck);
-
-  // 3) UI
-  renderTable();
-  refreshCategoriesUI();
-  toast('Marcado para remover. Clique em Atualizar para enviar.');
-  invalidateCycles();
-  refreshPending();
-});
-                   // <-- fecha o addEventListener
-
-t.appendChild(tr);       // <-- ainda dentro do forEach
-
-});                      // <-- fecha o forEach(deck.slice()...forEach)
-
-}                        // <-- fecha a função renderTable()
+      tr.addEventListener('click', () => {
+        const uid = window.CURRENT_UID;
+        // 1) pendências
+        Pending.deletions.add(c.id);
+        Pending.tombs.add(normBasic(c.romaji));
+        refreshPending();
+        // 2) remove local
+        deck = deck.filter(x => x.id !== c.id);
+        cacheDeck(uid, deck);
+        // 3) UI
+        renderTable();
+        refreshCategoriesUI();
+        toast('Marcado para remover. Clique em Atualizar para enviar.');
+        invalidateCycles();
+      });
+      t.appendChild(tr);
+    });
+  }
 
   // ===== JSON remoto opcional =====
- async function hydrateFromJson(){
-  try{
-    const uid = window.CURRENT_UID || null;
-    const deleted = uid ? await getDeletedRomajiSet(uid) : new Set();
+  async function hydrateFromJson(){
+    try{
+      const uid = window.CURRENT_UID || null;
+      const deleted = uid ? await getDeletedRomajiSet(uid) : new Set();
 
-    const res = await fetch(DATA_URL,{cache:'no-store'});
-    if(!res.ok) return;
-    const data = await res.json();
-    if(!Array.isArray(data)) return;
+      const res = await fetch(DATA_URL,{cache:'no-store'});
+      if(!res.ok) return;
+      const data = await res.json();
+      if(!Array.isArray(data)) return;
 
-    let added = 0;
-    const addedCards = [];
-    const have = new Set(deck.map(c => normBasic(c.romaji)));
-    const now = Date.now();
+      let added=0;
+      const have = new Set(deck.map(c => normBasic(c.romaji)));
+      const now = Date.now();
 
-    for(const obj of data){
-      const r = normBasic(obj.romaji);
-      if(!r) continue;
-      if(have.has(r)) continue;        // já tenho
-      if(deleted.has(r)) continue;     // usuário removeu
-      const p = Array.isArray(obj.pt) ? obj.pt.join(';') : String(obj.pt||'');
-      const c = String(obj.cat||'geral').toLowerCase();
-      const k = String(obj.kana||obj.hiragana||'').trim();
+      for(const obj of data){
+        const r = normBasic(obj.romaji);
+        if(!r) continue;
+        if(have.has(r)) continue;
+        if(deleted.has(r)) continue;
+        const p = Array.isArray(obj.pt) ? obj.pt.join(';') : String(obj.pt||'');
+        const c = String(obj.cat||'geral').toLowerCase();
+        const k = String(obj.kana||obj.hiragana||'').trim();
 
-      const card = {
-        id:String(now + Math.random()*100000),
-        romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k,
-        ok:0, err:0, ease:2.5, interval:0, due:now, rf:false, rfLast:0
-      };
-      deck.push(card);
-      addedCards.push(card);
-      have.add(r);
-      added++;
-    }
-
-    if (added) {
-      addedCards.forEach(c => queueUpsert(c.id));
-      cacheDeck(uid, deck);
-      refreshCategoriesUI();
-      invalidateCycles();
-    }
-  }catch(e){}
-}
+        const card = {
+          id:String(now + Math.random()*100000),
+          romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k,
+          ok:0, err:0, ease:2.5, interval:0, due:now, rf:false, rfLast:0
+        };
+        deck.push(card);
+        queueUpsert(card.id); // marcar para enviar quando clicar em Atualizar
+        have.add(r);
+        added++;
+      }
+      if(added){
+        cacheDeck(uid, deck);
+        refreshCategoriesUI();
+        invalidateCycles();
+      }
+    }catch(e){}
+  }
 
   // ===== INIT =====
   (async function init(){
-  onAuthState(async user=>{
-    if(!user){ window.location.href = './login.html'; return; }
-    const uid = user.uid;
-    window.CURRENT_UID = uid;                       // <--- IMPORTANTE
+    onAuthState(async user=>{
+      if(!user){ window.location.href = './login.html'; return; }
+      const uid = user.uid;
+      window.CURRENT_UID = uid;
 
-    const shortEmail = (user.email||'').split('@')[0];
-    document.getElementById('userEmail').textContent = 'Olá, ' + shortEmail;
-    document.getElementById('btnSignOut').addEventListener('click', async ()=>{
-      await signOutUser();
-      window.location.href='./login.html';
+      const shortEmail = (user.email||'').split('@')[0];
+      document.getElementById('userEmail').textContent = 'Olá, ' + shortEmail;
+      document.getElementById('btnSignOut').addEventListener('click', async ()=>{
+        await signOutUser();
+        window.location.href='./login.html';
+      });
+
+      await migrateFromLocalStorage(uid);
+      deck = await loadUserDeck(uid);
+      if(!deck.length){
+        deck = seed(defaultDeck);
+        await saveUserDeck(uid, deck); // seed inicial (uma vez)
+      }
+
+      await hydrateFromJson();
+      refreshCategoriesUI();
+      State.current = nextFromCycle('study', State.catFilter);
+      renderQuestion();
+      Quiz.cat='todas'; startQuizRound();
+      startReinforceRound();
+      refreshPending();
     });
+  })();
 
-    await migrateFromLocalStorage(uid);
-    deck = await loadUserDeck(uid);
+  // ===== SYNC (Atualizar / Descartar) =====
+  document.getElementById('btnSync').addEventListener('click', async ()=>{
+    const uid = window.CURRENT_UID;
+    if(!uid){ toast('Você precisa estar logado.'); return; }
+    try{
+      const upsertList = deck.filter(c => Pending.upserts.has(String(c.id)));
+      if (upsertList.length) await upsertMany(uid, upsertList);
 
-    if(!deck.length){
-      deck = seed(defaultDeck);
-      await saveUserDeck(uid, deck);               // ok (seed único)
+      const delIds = [...Pending.deletions];
+      if (delIds.length) await deleteMany(uid, delIds);
+
+      const tombs = [...Pending.tombs];
+      if (tombs.length) await markDeletedRomajiMany(uid, tombs);
+
+      Pending.deletions.clear();
+      Pending.tombs.clear();
+      Pending.upserts.clear();
+      refreshPending();
+      toast('Sincronizado com o servidor!');
+    }catch(e){
+      console.error(e);
+      toast('Erro ao sincronizar.');
     }
-
-    await hydrateFromJson();
-    refreshCategoriesUI();
-
-    State.current = nextFromCycle('study', State.catFilter);
-    renderQuestion();
-    Quiz.cat='todas'; startQuizRound();
-    startReinforceRound();
   });
-})();
 
-// Envia todas as alterações pendentes
-document.getElementById('btnSync').addEventListener('click', async ()=>{
-  const uid = window.CURRENT_UID;
-  if(!uid){ toast('Você precisa estar logado.'); return; }
-
-  try{
-    // 1) upserts (cards tocados/novos)
-    const upsertList = deck.filter(c => Pending.upserts.has(String(c.id)));
-    if (upsertList.length) await upsertMany(uid, upsertList);
-
-    // 2) deletes
-    const delIds = [...Pending.deletions];
-    if (delIds.length) await deleteMany(uid, delIds);
-
-    // 3) tombstones (para não reimportar)
-    const tombs = [...Pending.tombs];
-    if (tombs.length) await markDeletedRomajiMany(uid, tombs);
-
+  document.getElementById('btnDiscard').addEventListener('click', ()=>{
     Pending.deletions.clear();
     Pending.tombs.clear();
     Pending.upserts.clear();
-
     refreshPending();
-    toast('Sincronizado com o servidor!');
-  }catch(e){
-    console.error(e);
-    toast('Erro ao sincronizar.');
-  }
-});
-
-// Descarta alterações locais (não desfaz remoções no array já alterado)
-document.getElementById('btnDiscard').addEventListener('click', ()=>{
-  Pending.deletions.clear();
-  Pending.tombs.clear();
-  Pending.upserts.clear();
-  refreshPending();
-  toast('Alterações pendentes descartadas.');
-});
+    toast('Alterações pendentes descartadas.');
+  });
 
   // ===== PWA (opcional, falha segura) =====
   if('serviceWorker' in navigator){
