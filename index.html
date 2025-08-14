@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
 <meta name="mobile-web-app-capable" content="yes" />
+<link rel="manifest" href="manifest.json"><!-- opcional; falha segura se ausente -->
 <title>Flashcards (Romaji ↔ PT)</title>
 <style>
   :root{
@@ -15,24 +16,18 @@
     --pill:#0f1422;
   }
   *{box-sizing:border-box}
-    /* trava o scroll do documento; só o .app rola */
   html,body{
     height:100%;
     margin:0;
     background:var(--bg);
     font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
-    overflow:hidden;                 /* <— impede a página de “andar” ao focar inputs */
+    overflow:hidden;
   }
-  
   .app{
-    height:100svh;                   /* usa o viewport “seguro” no mobile */
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:12px;
+    height:100svh;
+    display:flex; flex-direction:column; align-items:center; gap:12px;
     padding:env(safe-area-inset-top) 12px calc(12px + env(safe-area-inset-bottom)) 12px;
-    overflow:auto;                   /* rolagem interna do app */
-    overscroll-behavior:contain;     /* evita bounce/arrasto da página por baixo */
+    overflow:auto; overscroll-behavior:contain;
   }
   header,.card,.tabs,.section{width:100%; max-width:var(--maxw)}
   header{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px}
@@ -102,6 +97,9 @@
   .choice.correct{border-color:var(--accent2)}
   .choice.wrong{border-color:var(--danger)}
 
+  .kudos{position:fixed; right:10px; bottom:10px; color:#5b708a; font-weight:800; font-size:12px}
+  .msg{position:fixed; left:50%; bottom:18px; transform:translateX(-50%); background:#0f1422; color:#e7eef7; padding:10px 14px; border:1px solid rgba(255,255,255,.12); border-radius:12px; font-weight:800}
+
   @media (max-width:600px){
     .brand{font-size:16px}
     .tab{padding:8px 10px}
@@ -114,6 +112,7 @@
     .col-ok,.col-err{width:40px}
     .choices{grid-template-columns:1fr}
   }
+  textarea.bulk{min-height:140px; width:100%; background:#0f1422; color:#e7eef7; border:2px solid var(--stroke); border-radius:14px; padding:10px; font-weight:700}
 </style>
 </head>
 <body>
@@ -205,6 +204,7 @@
       </div>
       <div class="helper">No bulk: <code>romaji ; pt1 ; pt2 ; #categoria ; ひらがな(opcional)</code></div>
     </div>
+
     <div class="card">
       <div class="prompt">Importar em massa (colar lista)</div>
       <textarea class="bulk" id="bulk" placeholder="konnichiwa ; olá ; boa tarde ; #saudacao ; こんにちは&#10;arigatou ; obrigado ; obrigada ; #saudacao ; ありがとう"></textarea>
@@ -213,6 +213,16 @@
         <button class="btn" id="btnImport">Adicionar tudo</button>
       </div>
       <div id="preview" class="helper"></div>
+    </div>
+
+    <div class="card">
+      <div class="prompt">Backup (JSON)</div>
+      <div class="center">
+        <button class="btn secondary" id="btnExport">Exportar</button>
+        <input type="file" id="fileImport" accept="application/json" style="display:none">
+        <button class="btn" id="btnLoad">Importar JSON</button>
+      </div>
+      <div class="helper">Use para salvar/restaurar suas cartas e progresso (ok/err/SRS).</div>
     </div>
   </section>
 
@@ -246,24 +256,51 @@
   const parsePT = pt => (pt||'').split(/[|;,\n]/).map(normBasic).filter(Boolean);
   const isKana = s => /[\u3040-\u309f\u30a0-\u30ff]/.test(s||'');
 
+  // Levenshtein simples (para tolerância a erro)
+  function lev(a,b){
+    const m=a.length, n=b.length;
+    if(m===0) return n; if(n===0) return m;
+    const dp=Array.from({length:m+1},(_,i)=>Array(n+1).fill(0));
+    for(let i=0;i<=m;i++) dp[i][0]=i;
+    for(let j=0;j<=n;j++) dp[0][j]=j;
+    for(let i=1;i<=m;i++){
+      for(let j=1;j<=n;j++){
+        dp[i][j]=Math.min(
+          dp[i-1][j]+1,
+          dp[i][j-1]+1,
+          dp[i-1][j-1] + (a[i-1]===b[j-1]?0:1)
+        );
+      }
+    }
+    return dp[m][n];
+  }
+  const roughlyEquals = (a,b) => lev(a,b) <= 1;
+
   function seed(list){
+    // adiciona campos SRS padrão
+    const now = Date.now();
     return list.map(([romaji,pt,cat='geral',kana=''],i)=>({
-      id:String(Date.now()+i),
+      id:String(now+i),
       romaji:String(romaji||'').toLowerCase().trim(),
       pt:String(pt||'').toLowerCase().trim(),
       cat:String(cat||'geral').toLowerCase().trim(),
       kana:String(kana||'').trim(),
-      ok:0,err:0
+      ok:0,err:0,
+      ease:2.5, interval:0, due:now
     }));
   }
   function migrate(arr){
+    const now = Date.now();
     return arr.map(c=>({
-      id:c.id||String(Date.now()+Math.random()),
+      id:c.id||String(now+Math.random()),
       romaji:String(c.romaji||'').toLowerCase().trim(),
       pt:String(c.pt||'').toLowerCase().trim(),
       cat:String(c.cat||'geral').toLowerCase().trim(),
       kana:String(c.kana||c.hiragana||'').trim(),
-      ok:c.ok||0, err:c.err||0
+      ok:c.ok||0, err:c.err||0,
+      ease: (typeof c.ease==='number' && c.ease>0) ? c.ease : 2.5,
+      interval: (typeof c.interval==='number') ? c.interval : 0,
+      due: (typeof c.due==='number') ? c.due : now
     }));
   }
   function loadDeckLS(){ try{ const raw=JSON.parse(localStorage.getItem(LS_DECK)); if(Array.isArray(raw)) return migrate(raw);}catch(e){} return null;}
@@ -301,7 +338,6 @@ function blip(freq, t0, dur, type='sine', gain=0.06){
   const g = ACTX.createGain();
   o.type = type;
   o.frequency.setValueAtTime(freq, t0);
-  // envelope
   g.gain.setValueAtTime(0, t0);
   g.gain.linearRampToValueAtTime(gain, t0 + 0.01);
   g.gain.linearRampToValueAtTime(0, t0 + dur);
@@ -309,6 +345,10 @@ function blip(freq, t0, dur, type='sine', gain=0.06){
   o.start(t0);
   o.stop(t0 + dur + 0.02);
 }
+
+// Haptics leves
+function vibrateOk(){ navigator.vibrate?.(15); }
+function vibrateErr(){ navigator.vibrate?.([10,40,10]); }
 
 // toca "ok" ou "err" com atraso opcional (ms)
 function playSFX(kind, delayMs=0){
@@ -322,6 +362,8 @@ function playSFX(kind, delayMs=0){
       blip(220, base + 0.10, 0.12, 'sawtooth', 0.06);
     }
   });
+  // haptic
+  if(kind==='ok') vibrateOk(); else vibrateErr();
 }
 
 // “desbloqueia” o áudio no primeiro toque
@@ -415,6 +457,9 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
       if(oneM){ out += oneM; i++; continue; }
       out += s[i]; i++;
     }
+    // alongamento simples + partículas comuns
+    out = out.replace(/ou/g,'おう').replace(/oo/g,'おお');
+    out = out.replace(/\bha\b/g,'は').replace(/\bhe\b/g,'へ').replace(/\bwo\b/g,'を');
     return out.replace(/\s{2,}/g,' ').trim();
   }
   function speakJP(text){
@@ -446,42 +491,51 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     });
   }
   function filteredByCategory(list, cat){ const k = cat || State.catFilter; if(k==='todas') return list; return list.filter(c=>(c.cat||'geral')===k); }
-    // --- util: embaralhar (Fisher–Yates)
-  function shuffle(a){
-    const arr=a.slice();
-    for(let i=arr.length-1;i>0;i--){
-      const j=Math.floor(Math.random()*(i+1));
-      [arr[i],arr[j]]=[arr[j],arr[i]];
-    }
-    return arr;
+  function shuffle(a){ const arr=a.slice(); for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+
+  // ====== SRS (agendamento)
+  function rateCard(card, correct){
+    const q = correct ? 4 : 2; // simplicado
+    card.ease = Math.max(1.3, (card.ease||2.5) + (0.1 - (4 - q) * (0.08 + (4 - q)*0.02)));
+    if(!correct){ card.interval = 0; }
+    else if(card.interval === 0){ card.interval = 1; }
+    else if(card.interval === 1){ card.interval = 3; }
+    else { card.interval = Math.round(card.interval * card.ease); }
+    const ONE_DAY = 86400000;
+    card.due = Date.now() + card.interval * ONE_DAY;
   }
-  
+
   // Ciclos sem repetição por categoria (separados p/ study e quiz)
   const Cycles = {
     study: { key:'todas', order:[], idx:0, last:null },
     quiz:  { key:'todas', order:[], idx:0, last:null }
   };
-  
+
+  // Seleção priorizando "devidos"
   function buildOrder(cat){
-    return filteredByCategory(deck, cat).map(c=>c.id);
+    const now = Date.now();
+    const list = filteredByCategory(deck, cat);
+    // due primeiro, depois não-devidos (os não-devidos continuam num embaralhado leve)
+    const due = list.filter(c => (c.due||0) <= now);
+    const notDue = list.filter(c => (c.due||0) >  now);
+    const order = [...due.sort((a,b)=>(a.due||0)-(b.due||0)), ...shuffle(notDue)];
+    return order.map(c=>c.id);
   }
-  
+
   function rebuildCycle(kind, cat){
-    const order = shuffle(buildOrder(cat));
+    const order = shuffle(buildOrder(cat)); // ainda dá uma embaralhada
     Cycles[kind] = { key:cat, order, idx:0, last: Cycles[kind]?.last || null };
   }
-  
-  // pega o próximo id do ciclo; reembaralha quando acabar
+
   function nextFromCycle(kind, cat){
     const cy = Cycles[kind];
     if (cy.key !== cat) rebuildCycle(kind, cat);
     if (cy.order.length === 0) rebuildCycle(kind, cat);
-  
-    // acabou? reembaralha e evita repetir o último de cara
+
     if (cy.idx >= cy.order.length){
       let order = shuffle(buildOrder(cat));
       if (order.length > 1 && cy.last && order[0] === cy.last){
-        order.push(order.shift()); // empurra o repetido pro fim
+        order.push(order.shift());
       }
       cy.order = order;
       cy.idx = 0;
@@ -490,13 +544,11 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     cy.last = id;
     return deck.find(c=>c.id===id) || null;
   }
-  
-  // quando o deck muda (add/remove/import), invalida ciclos
+
   function invalidateCycles(){
     Cycles.study.order = [];
     Cycles.quiz.order  = [];
   }
-
 
   // ===== STUDY =====
   const answer = () => el('#answer');
@@ -504,34 +556,22 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   const btnSkip = () => el('#btnSkip');
 
   // ===== MOBILE: FIXAR TELA NO TOPO AO FOCAR INPUTS =====
-function preventFocusScroll(input){
-  if(!input) return;
-
-  // Em alguns navegadores, usar focus({preventScroll:true}) evita o pulo
-  input.addEventListener('touchstart', () => {
-    if(input !== document.activeElement){
-      try { input.focus({ preventScroll: true }); }
-      catch(_){ input.focus(); }
-    }
-  }, { passive: true });
-
-  // Segurança extra: força o topo no frame seguinte ao foco
-  input.addEventListener('focus', () => {
-    requestAnimationFrame(() => {
-      // zera qualquer tentativa do browser de deslocar a página
-      document.scrollingElement && (document.scrollingElement.scrollTop = 0);
-      window.scrollTo(0, 0);
+  function preventFocusScroll(input){
+    if(!input) return;
+    input.addEventListener('touchstart', () => {
+      if(input !== document.activeElement){
+        try { input.focus({ preventScroll: true }); }
+        catch(_){ input.focus(); }
+      }
+    }, { passive: true });
+    input.addEventListener('focus', () => {
+      requestAnimationFrame(() => {
+        document.scrollingElement && (document.scrollingElement.scrollTop = 0);
+        window.scrollTo(0, 0);
+      });
     });
-  });
-}
-
-// aplique aos campos que recebem foco
-[
-  answer(),
-  el('#inRomaji'), el('#inPT'), el('#inKana'), el('#inCat'),
-  el('#bulk')
-].forEach(preventFocusScroll);
-
+  }
+  [ answer(), el('#inRomaji'), el('#inPT'), el('#inKana'), el('#inCat'), el('#bulk') ].forEach(preventFocusScroll);
 
   function setLocked(lock){
     answer().readOnly = lock;
@@ -541,21 +581,29 @@ function preventFocusScroll(input){
     const dir = State.direction;
     answer().setAttribute('inputmode', (dir==='PT2ROMAJI') ? 'latin' : 'text');
   }
+  function renderAccepted(ok, detailsArr){
+    const box = el('#accepted'); box.innerHTML='';
+    if(!detailsArr || !detailsArr.length){ box.style.display='none'; return; }
+    const span = document.createElement('span'); span.className='okText';
+    span.textContent = ok ? 'Correto: ' : 'Aceitas: ';
+    const small = document.createElement('small'); small.className='okText';
+    small.textContent = detailsArr.join(' / ');
+    box.append(span, small); box.style.display='block';
+  }
   function renderQuestion(){
     const c=State.current; if(!c){ el('#qMain').textContent='Sem cartas nesta categoria.'; return; }
     const dir=State.direction;
     if(dir==='PT2ROMAJI'){ el('#promptLbl').textContent='Tradução (PT-BR)'; el('#helperLbl').innerHTML='Digite o <b>romaji</b> e pressione Verificar'; el('#qMain').textContent=(parsePT(c.pt)[0]||c.pt);}
     if(dir==='ROMAJI2PT'){ el('#promptLbl').textContent='Romaji'; el('#helperLbl').innerHTML='Digite uma tradução em <b>PT-BR</b> que sirva'; el('#qMain').textContent=c.romaji;}
     if(dir==='HIRA2PT'){ el('#promptLbl').textContent='Hiragana'; el('#helperLbl').innerHTML='Digite uma tradução em <b>PT-BR</b> que sirva'; el('#qMain').textContent=c.kana||romajiToHiragana(c.romaji);}
-    answer().value=''; answer().classList.remove('correct','wrong'); el('#accepted').style.display='none';
+    answer().value=''; answer().classList.remove('correct','wrong'); renderAccepted(false, []);
     btnSkip().textContent='Pular'; State.lastCorrect=false;
     adjustInputMode(); setLocked(false);
   }
   function pickNext(){
-  State.current = nextFromCycle('study', State.catFilter);
-  renderQuestion();
-}
-
+    State.current = nextFromCycle('study', State.catFilter);
+    renderQuestion();
+  }
 
   // tabs
   els('.tab').forEach(b=>{
@@ -574,54 +622,38 @@ function preventFocusScroll(input){
   answer().addEventListener('input', ()=> btnCheck().disabled = !answer().value.trim());
 
   function checkAnswer(){
-  const c = State.current;
-  if(!c) return;
+    const c = State.current;
+    if(!c) return;
 
-  const user = normBasic(answer().value);
-  let ok = false, feedback = '';
+    const user = normBasic(answer().value);
+    let ok = false, details = [];
 
-  if (State.direction === 'PT2ROMAJI') {
-    ok = !!user && user === normBasic(c.romaji);
-    feedback =
-      '<span class="okText">Romaji correto: <b>' + c.romaji +
-      '</b></span> • <small class="okText">Traduções: ' +
-      parsePT(c.pt).join(' / ') + '</small>';
-  } else {
-    const acc = new Set(parsePT(c.pt));
-    ok = !!user && acc.has(user);
-    feedback =
-      '<span class="okText">Aceitas:</span> <small class="okText">' +
-      [...acc].join(' / ') + '</small>';
+    if (State.direction === 'PT2ROMAJI') {
+      ok = !!user && roughlyEquals(user, normBasic(c.romaji));
+      details = [c.romaji, 'PT: '+parsePT(c.pt).join(' / ')];
+    } else {
+      const acc = new Set(parsePT(c.pt));
+      ok = !!user && [...acc].some(t => roughlyEquals(user, t));
+      details = [...acc];
+    }
+
+    answer().classList.remove('correct','wrong');
+    answer().classList.add(ok ? 'correct' : 'wrong');
+    renderAccepted(ok, details);
+
+    ensureAudio().then(() => playSFX(ok ? 'ok' : 'err', 280));
+
+    // SRS + stats
+    if (ok) {
+      c.ok++; State.lastCorrect = true; btnSkip().textContent = 'Próximo'; setLocked(true);
+      rateCard(c, true); toast('✔ Correto!'); flash('Correto!', true);
+    } else {
+      c.err++; State.lastCorrect = false; btnSkip().textContent = 'Pular';
+      rateCard(c, false); toast('✘ Quase!'); flash('Quase...', false);
+    }
+
+    saveDeck();
   }
-
-  // feedback visual
-  answer().classList.remove('correct','wrong');
-  answer().classList.add(ok ? 'correct' : 'wrong');
-  el('#accepted').innerHTML = feedback;
-  el('#accepted').style.display = 'block';
-
-  // garante AudioContext e aplica o mesmo delay do Quiz (≈280ms)
-  ensureAudio().then(() => playSFX(ok ? 'ok' : 'err', 280));
-
-  // resto do fluxo
-  if (ok) {
-    c.ok++;
-    State.lastCorrect = true;
-    btnSkip().textContent = 'Próximo';
-    setLocked(true);
-    toast('✔ Correto!');
-    flash('Correto!', true);
-  } else {
-    c.err++;
-    State.lastCorrect = false;
-    btnSkip().textContent = 'Pular';
-    toast('✘ Quase!');
-    flash('Quase...', false);
-  }
-
-  saveDeck();
-}
-
 
   btnCheck().addEventListener('click', checkAnswer);
   answer().addEventListener('keydown', e=>{
@@ -659,40 +691,37 @@ function preventFocusScroll(input){
     options.forEach(text=>{
       const b=document.createElement('button'); b.className='choice'; b.textContent=text; b.setAttribute('tabindex','0');
       b.addEventListener('click', ()=>{
-  if(b.disabled) return;
+        if(b.disabled) return;
 
-  // 1) Fala a opção escolhida (TTS)
-  if(dir==='ROMAJI2PT'){ speakPT(text); }
-  else {
-    const jp = c.kana && isKana(c.kana) ? c.kana : c.romaji;
-    speakJP(jp);
-  }
+        // TTS da escolha
+        if(dir==='ROMAJI2PT'){ speakPT(text); }
+        else {
+          const jp = c.kana && isKana(c.kana) ? c.kana : c.romaji;
+          speakJP(jp);
+        }
 
-  // 2) Marca correto/errado
-  const isCorrect = text===correct;
-  b.classList.add(isCorrect?'correct':'wrong');
+        const isCorrect = text===correct;
+        b.classList.add(isCorrect?'correct':'wrong');
 
-  // 3) Toca SFX **depois** de um pequeno delay para não sobrepor o TTS
-  playSFX(isCorrect ? 'ok' : 'err', 280);
+        playSFX(isCorrect ? 'ok' : 'err', 280);
 
-  if(isCorrect){ c.ok++; toast('✔ Correto!'); flash('Correto!',true); }
-  else        { c.err++; toast('✘ Quase!');  flash('Quase...',false); }
-  saveDeck();
+        if(isCorrect){ c.ok++; rateCard(c,true); toast('✔ Correto!'); flash('Correto!',true); }
+        else        { c.err++; rateCard(c,false); toast('✘ Quase!');  flash('Quase...',false); }
+        saveDeck();
 
-  // trava os botões e destaca a correta
-  [...wrap.children].forEach(btn=>{
-    btn.disabled = true;
-    if(btn.textContent===correct) btn.classList.add('correct');
-  });
-});
+        [...wrap.children].forEach(btn=>{
+          btn.disabled = true;
+          if(btn.textContent===correct) btn.classList.add('correct');
+        });
+      });
       wrap.appendChild(b);
     });
     el('#qFeedback').style.display='none';
   }
   function startQuizRound(){
-  Quiz.current = nextFromCycle('quiz', Quiz.cat);
-  renderQuiz();
-}
+    Quiz.current = nextFromCycle('quiz', Quiz.cat);
+    renderQuiz();
+  }
   els('input[name="qdir"]').forEach(r=>{ r.addEventListener('change',()=>{ Quiz.direction=r.value; renderQuiz(); }); });
   el('#qCat').addEventListener('change',()=>{ Quiz.cat=el('#qCat').value; startQuizRound(); });
   el('#qNext').addEventListener('click', startQuizRound);
@@ -722,18 +751,39 @@ function preventFocusScroll(input){
   function addCard(r,p,cat,kana){
     const rom=normBasic(r), pt=normBasic(p), c=(cat||'geral').toLowerCase().trim()||'geral', k=String(kana||'').trim();
     if(!rom||!pt) return false; if(deck.some(x=>normBasic(x.romaji)===rom)) return false;
-    deck.push({id:String(Date.now()+Math.random()*9999), romaji:rom, pt:pt, cat:c, kana:k, ok:0, err:0}); return true;
+    deck.push({id:String(Date.now()+Math.random()*9999), romaji:rom, pt:pt, cat:c, kana:k, ok:0, err:0, ease:2.5, interval:0, due:Date.now()}); return true;
   }
   el('#btnAdd').addEventListener('click', ()=>{
     const ok = addCard(el('#inRomaji').value, el('#inPT').value, el('#inCat').value, el('#inKana').value);
     if(!ok){toast('Preencha corretamente ou evite duplicar romaji'); return;}
-    saveDeck(); ['#inRomaji','#inPT','#inKana','#inCat'].forEach(s=>el(s).value=''); refreshCategoriesUI(); toast('Card adicionado!');
+    saveDeck(); ['#inRomaji','#inPT','#inKana','#inCat'].forEach(s=>el(s).value=''); refreshCategoriesUI(); toast('Card adicionado!'); invalidateCycles();
   });
   el('#btnParse').addEventListener('click', ()=>{ const arr=parseBulk(el('#bulk').value); el('#preview').innerHTML = arr.length?'Pronto para importar: <b>'+arr.length+'</b> linha(s).':'Nada válido.'; });
   el('#btnImport').addEventListener('click', ()=>{
     const arr=parseBulk(el('#bulk').value); if(!arr.length){toast('Nada válido'); return;}
     let added=0,skipped=0; for(const it of arr){ if(addCard(it.romaji,it.pt,it.cat,it.kana)) added++; else skipped++; }
-    saveDeck(); refreshCategoriesUI(); toast('Importados: '+added+'. Ignorados: '+skipped+'.'); el('#bulk').value=''; el('#preview').textContent='';
+    saveDeck(); refreshCategoriesUI(); toast('Importados: '+added+'. Ignorados: '+skipped+'.'); el('#bulk').value=''; el('#preview').textContent=''; invalidateCycles();
+  });
+
+  // ===== Backup JSON =====
+  el('#btnExport').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(deck,null,2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'romaji_deck_backup.json';
+    a.click();
+  });
+  el('#btnLoad').addEventListener('click', ()=> el('#fileImport').click());
+  el('#fileImport').addEventListener('change', async (e)=>{
+    const file = e.target.files?.[0]; if(!file) return;
+    const text = await file.text();
+    try{
+      const json = JSON.parse(text);
+      if(!Array.isArray(json)) throw new Error('formato inválido');
+      deck = migrate(json);
+      saveDeck(); refreshCategoriesUI(); renderTable(); toast('Backup importado!'); invalidateCycles(); pickNext(); startQuizRound();
+    }catch(err){ toast('Falha ao importar'); }
+    e.target.value = '';
   });
 
   // ===== LISTA =====
@@ -760,7 +810,7 @@ function preventFocusScroll(input){
          <td class="col-ok" style="text-align:right">'+(c.ok||0)+'</td>\
          <td class="col-err" style="text-align:right">'+(c.err||0)+'</td>';
       tr.title='Toque para remover';
-      tr.addEventListener('click',()=>{ deck=deck.filter(x=>x.id!==c.id); saveDeck(); renderTable(); refreshCategoriesUI(); toast('Removido.');});
+      tr.addEventListener('click',()=>{ deck=deck.filter(x=>x.id!==c.id); saveDeck(); renderTable(); refreshCategoriesUI(); toast('Removido.'); invalidateCycles();});
       t.appendChild(tr);
     });
   }
@@ -771,14 +821,25 @@ function preventFocusScroll(input){
       const res=await fetch(DATA_URL,{cache:'no-store'}); if(!res.ok) return;
       const data=await res.json(); if(!Array.isArray(data)) return;
       let added=0; const have=new Set(deck.map(c=>normBasic(c.romaji)));
+      const now = Date.now();
       data.forEach((obj,i)=>{
         const r=normBasic(obj.romaji), p=Array.isArray(obj.pt)?obj.pt.join(';'):String(obj.pt||''), c=String(obj.cat||'geral').toLowerCase(), k=String(obj.kana||obj.hiragana||'').trim();
         if(!r||!p||have.has(r)) return;
-        deck.push({id:String(Date.now()+i), romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k, ok:0, err:0}); have.add(r); added++;
+        deck.push({id:String(now+i), romaji:r, pt:parsePT(p).join('; '), cat:c, kana:k, ok:0, err:0, ease:2.5, interval:0, due:now}); have.add(r); added++;
       });
       if(added){ saveDeck(); refreshCategoriesUI(); }
     }catch(e){}
   }
+
+  // ===== Atalhos de teclado (Study)
+  window.addEventListener('keydown', (e)=>{
+    if(State.modeTab==='study'){
+      if(e.key==='v') btnCheck().click();
+      if(e.key==='s') btnSkip().click();
+      if(e.key==='j') el('#speakJP').click();
+      if(e.key==='p') el('#speakPT').click();
+    }
+  });
 
   // ===== INIT =====
   (async function init(){
@@ -789,6 +850,32 @@ function preventFocusScroll(input){
     renderQuestion();
     Quiz.cat='todas'; startQuizRound();
   })();
+
+  // ===== PWA (opcional, falha segura) =====
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('./sw.js').catch(()=>{ /* ok se não existir */ });
+  }
 </script>
+
+<!--
+Modelos opcionais para PWA:
+
+manifest.json
+{
+  "name": "Flashcards JP↔PT",
+  "short_name": "JP-PT",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0b0f14",
+  "theme_color": "#0b0f14",
+  "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+}
+
+sw.js
+const CACHE='jppt-v1';
+const ASSETS=['.', 'index.html','manifest.json','icon-192.png'];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
+self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))});
+-->
 </body>
 </html>
