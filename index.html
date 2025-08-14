@@ -446,7 +446,57 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
     });
   }
   function filteredByCategory(list, cat){ const k = cat || State.catFilter; if(k==='todas') return list; return list.filter(c=>(c.cat||'geral')===k); }
-  function randomCard(cat){ const arr=filteredByCategory(deck,cat); return arr.length ? arr[Math.floor(Math.random()*arr.length)] : null; }
+    // --- util: embaralhar (Fisher–Yates)
+  function shuffle(a){
+    const arr=a.slice();
+    for(let i=arr.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
+  }
+  
+  // Ciclos sem repetição por categoria (separados p/ study e quiz)
+  const Cycles = {
+    study: { key:'todas', order:[], idx:0, last:null },
+    quiz:  { key:'todas', order:[], idx:0, last:null }
+  };
+  
+  function buildOrder(cat){
+    return filteredByCategory(deck, cat).map(c=>c.id);
+  }
+  
+  function rebuildCycle(kind, cat){
+    const order = shuffle(buildOrder(cat));
+    Cycles[kind] = { key:cat, order, idx:0, last: Cycles[kind]?.last || null };
+  }
+  
+  // pega o próximo id do ciclo; reembaralha quando acabar
+  function nextFromCycle(kind, cat){
+    const cy = Cycles[kind];
+    if (cy.key !== cat) rebuildCycle(kind, cat);
+    if (cy.order.length === 0) rebuildCycle(kind, cat);
+  
+    // acabou? reembaralha e evita repetir o último de cara
+    if (cy.idx >= cy.order.length){
+      let order = shuffle(buildOrder(cat));
+      if (order.length > 1 && cy.last && order[0] === cy.last){
+        order.push(order.shift()); // empurra o repetido pro fim
+      }
+      cy.order = order;
+      cy.idx = 0;
+    }
+    const id = cy.order[cy.idx++];
+    cy.last = id;
+    return deck.find(c=>c.id===id) || null;
+  }
+  
+  // quando o deck muda (add/remove/import), invalida ciclos
+  function invalidateCycles(){
+    Cycles.study.order = [];
+    Cycles.quiz.order  = [];
+  }
+
 
   // ===== STUDY =====
   const answer = () => el('#answer');
@@ -501,7 +551,11 @@ function preventFocusScroll(input){
     btnSkip().textContent='Pular'; State.lastCorrect=false;
     adjustInputMode(); setLocked(false);
   }
-  function pickNext(){ State.current = randomCard(); renderQuestion(); }
+  function pickNext(){
+  State.current = nextFromCycle('study', State.catFilter);
+  renderQuestion();
+}
+
 
   // tabs
   els('.tab').forEach(b=>{
@@ -635,7 +689,10 @@ function preventFocusScroll(input){
     });
     el('#qFeedback').style.display='none';
   }
-  function startQuizRound(){ Quiz.current = randomCard(Quiz.cat); renderQuiz(); }
+  function startQuizRound(){
+  Quiz.current = nextFromCycle('quiz', Quiz.cat);
+  renderQuiz();
+}
   els('input[name="qdir"]').forEach(r=>{ r.addEventListener('change',()=>{ Quiz.direction=r.value; renderQuiz(); }); });
   el('#qCat').addEventListener('change',()=>{ Quiz.cat=el('#qCat').value; startQuizRound(); });
   el('#qNext').addEventListener('click', startQuizRound);
