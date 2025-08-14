@@ -475,50 +475,54 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   answer().addEventListener('input', ()=> btnCheck().disabled = !answer().value.trim());
 
   function checkAnswer(){
-  const c = State.current; 
+  const c = State.current;
   if(!c) return;
 
-  const user = normBasic(answer().value); 
+  const user = normBasic(answer().value);
   let ok = false, feedback = '';
 
-  if(State.direction==='PT2ROMAJI'){
+  if (State.direction === 'PT2ROMAJI') {
     ok = !!user && user === normBasic(c.romaji);
-    feedback = '<span class="okText">Romaji correto: <b>'+c.romaji+
-               '</b></span> • <small class="okText">Traduções: '+
-               parsePT(c.pt).join(' / ')+'</small>';
+    feedback =
+      '<span class="okText">Romaji correto: <b>' + c.romaji +
+      '</b></span> • <small class="okText">Traduções: ' +
+      parsePT(c.pt).join(' / ') + '</small>';
   } else {
-    const acc = new Set(parsePT(c.pt)); 
+    const acc = new Set(parsePT(c.pt));
     ok = !!user && acc.has(user);
-    feedback = '<span class="okText">Aceitas:</span> <small class="okText">'+
-               [...acc].join(' / ')+'</small>';
+    feedback =
+      '<span class="okText">Aceitas:</span> <small class="okText">' +
+      [...acc].join(' / ') + '</small>';
   }
 
-  answer().classList.remove('correct','wrong'); 
+  // feedback visual
+  answer().classList.remove('correct','wrong');
   answer().classList.add(ok ? 'correct' : 'wrong');
-
-  el('#accepted').innerHTML = feedback; 
+  el('#accepted').innerHTML = feedback;
   el('#accepted').style.display = 'block';
 
-  // Áudio de resultado com pequeno atraso para evitar corte
-  if(ok){ 
-    setTimeout(()=>playSFX('ok'), 120);
-    c.ok++; 
-    State.lastCorrect = true;  
-    btnSkip().textContent = 'Próximo'; 
-    setLocked(true); 
-    toast('✔ Correto!'); 
-    flash('Correto!', true); 
-  } else { 
-    setTimeout(()=>playSFX('err'), 120);
-    c.err++; 
-    State.lastCorrect = false; 
-    btnSkip().textContent = 'Pular';  
-    toast('✘ Quase!');  
-    flash('Quase...', false); 
+  // *** SFX IMEDIATO (não usar setTimeout aqui) ***
+  if (ok) { sfxOK(); } else { sfxERR(); }
+
+  // resto do fluxo
+  if (ok) {
+    c.ok++;
+    State.lastCorrect = true;
+    btnSkip().textContent = 'Próximo';
+    setLocked(true);
+    toast('✔ Correto!');
+    flash('Correto!', true);
+  } else {
+    c.err++;
+    State.lastCorrect = false;
+    btnSkip().textContent = 'Pular';
+    toast('✘ Quase!');
+    flash('Quase...', false);
   }
 
   saveDeck();
 }
+
   btnCheck().addEventListener('click', checkAnswer);
   answer().addEventListener('keydown', e=>{
     if(e.key==='Enter'){ e.preventDefault(); if(State.lastCorrect) pickNext(); else checkAnswer(); }
