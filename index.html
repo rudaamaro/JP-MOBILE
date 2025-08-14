@@ -916,18 +916,18 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
          <td class="col-err" style="text-align:right">'+(c.err||0)+'</td>';
       tr.title='Toque para remover';
       tr.addEventListener('click', async () => {
-  const uid = auth.currentUser?.uid;
+  const uid = window.CURRENT_UID;
 
   // 1) remove do array local
   deck = deck.filter(x => x.id !== c.id);
 
-  // 2) apaga o documento no Firestore
+  // 2) apaga do Firestore e marca “não reimportar”
   if (uid) {
     await deleteCard(uid, c.id);
-    await markDeletedRomaji(uid, normBasic(c.romaji)); // evita reimportar do JSON
+    await markDeletedRomaji(uid, normBasic(c.romaji));
   }
 
-  // 3) mantém o cache local em sincronia
+  // 3) salva o deck
   await saveDeck();
 
   // 4) UI
@@ -935,11 +935,13 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   refreshCategoriesUI();
   toast('Removido.');
   invalidateCycles();
-});
+});                      // <-- fecha o addEventListener
 
-// ✅ mantenha isto!
-t.appendChild(tr);
+t.appendChild(tr);       // <-- ainda dentro do forEach
 
+});                      // <-- fecha o forEach(deck.slice()...forEach)
+
+}                        // <-- fecha a função renderTable()
 
   // ===== JSON remoto opcional =====
   async function hydrateFromJson(){
