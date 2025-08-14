@@ -281,15 +281,19 @@
 </div>
 
 <script type="module">
-import { onAuthState, signOutUser } from './auth.js'; // ADDED
+import { onAuthState, signOutUser } from './auth.js';
 import {
   loadUserDeck,
   saveUserDeck,
   migrateFromLocalStorage,
-  deleteCard,               // +++
-  markDeletedRomaji,        // +++
-  getDeletedRomajiSet       // +++
+  deleteCard,
+  markDeletedRomaji,
+  getDeletedRomajiSet,
+  upsertCard,           // NOVO
+  upsertMany,           // NOVO (usado no hydrate/import)
+  cacheDeck             // NOVO
 } from './store.js';
+
 
   // ===== CONFIG =====
   const DATA_URL = './anime_romaji.json';
@@ -921,21 +925,22 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   // 1) remove do array local
   deck = deck.filter(x => x.id !== c.id);
 
-  // 2) apaga do Firestore e marca “não reimportar”
+  // 2) apaga no Firestore e marca “não reimportar”
   if (uid) {
     await deleteCard(uid, c.id);
     await markDeletedRomaji(uid, normBasic(c.romaji));
   }
 
-  // 3) salva o deck
-  await saveDeck();
+  // 3) atualiza apenas o cache local (NENHUM write maciço)
+  cacheDeck(uid, deck);
 
   // 4) UI
   renderTable();
   refreshCategoriesUI();
   toast('Removido.');
   invalidateCycles();
-});                      // <-- fecha o addEventListener
+});
+                   // <-- fecha o addEventListener
 
 t.appendChild(tr);       // <-- ainda dentro do forEach
 
@@ -985,13 +990,13 @@ t.appendChild(tr);       // <-- ainda dentro do forEach
     onAuthState(async user=>{ // ADDED
       if(!user){ window.location.href = './login.html'; return; } // ADDED
       const uid = user.uid; // ADDED
+      window.CURRENT_UID = uid;
       const shortEmail = (user.email||'').split('@')[0]; // ADDED
       document.getElementById('userEmail').textContent = 'Olá, ' + shortEmail; // ADDED
       document.getElementById('btnSignOut').addEventListener('click', async ()=>{ await signOutUser(); window.location.href='./login.html';}); // ADDED
       await migrateFromLocalStorage(uid); // ADDED
       deck = await loadUserDeck(uid); // ADDED
       if(!deck.length){ deck = seed(defaultDeck); await saveUserDeck(uid, deck); } // ADDED
-      saveDeck = () => saveUserDeck(uid, deck); // ADDED
       await hydrateFromJson();
       refreshCategoriesUI();
       State.current = nextFromCycle('study', State.catFilter)
