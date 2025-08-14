@@ -822,19 +822,21 @@ import {
   el('#qCat').addEventListener('change',()=>{ Quiz.cat=el('#qCat').value; startQuizRound(); });
   el('#qNext').addEventListener('click', startQuizRound);
 
- // ===== REFORÇO 2.0 =====
+// ===== REFORÇO 2.0 (FIX) =====
 const Reinforce = {
   direction:'PT2ROMAJI',
   pool:'mix',       // rf | due | trouble | mix
   cat:'todas',
   order:[],
-  idx:0,
+  idx:0,            // próximo índice a consumir em order
   sessionMax:20,
   autoSpeak:false,
   showHints:false,
   done:0,
   total:0
 };
+
+let RCurrent = null; // carta atualmente mostrada
 
 function rSetInputMode(){
   el('#rAnswer').setAttribute('inputmode', (Reinforce.direction==='PT2ROMAJI') ? 'latin' : 'text');
@@ -846,47 +848,50 @@ function rBuildPool(){
 
   const isRF      = c => !!c.rf;
   const isDue     = c => (c.due||0) <= now;
-  const isTrouble = c => (c.err||0) >= Math.max(2, (c.ok||0)); // mais erros que acertos (mín. 2)
+  const isTrouble = c => (c.err||0) >= Math.max(2, (c.ok||0)); // +erros que acertos (mín.2)
 
-  if(Reinforce.pool === 'rf')       list = list.filter(isRF);
-  else if(Reinforce.pool === 'due') list = list.filter(isDue);
+  if(Reinforce.pool === 'rf')         list = list.filter(isRF);
+  else if(Reinforce.pool === 'due')   list = list.filter(isDue);
   else if(Reinforce.pool === 'trouble') list = list.filter(isTrouble);
   else { // mix
     const set = new Set();
     list.forEach(c => { if(isRF(c)||isDue(c)||isTrouble(c)) set.add(c.id); });
-    list = list.filter(c=>set.has(c.id));
+    list = list.filter(c => set.has(c.id));
   }
-
   return list;
 }
 
 function rStartSession(){
   const pool = rBuildPool();
   Reinforce.order = shuffle(pool).map(c=>c.id);
-  Reinforce.idx = 0;
-  Reinforce.done = 0;
+  Reinforce.idx   = 0;
+  Reinforce.done  = 0;
   Reinforce.total = (el('#rLen').value==='all') ? Reinforce.order.length
-                 : Math.min(parseInt(el('#rLen').value||20,10), Reinforce.order.length);
-  rRender();
+                  : Math.min(parseInt(el('#rLen').value||20,10), Reinforce.order.length);
+
+  // pega a PRIMEIRA carta sem avançar o índice de forma invisível
+  RCurrent = Reinforce.order.length ? deck.find(c=>c.id===Reinforce.order[0]) : null;
+  Reinforce.idx = RCurrent ? 1 : 0;
+
+  rRenderUI();
 }
 
-function rNext(){
+// avança para a próxima carta e re-renderiza
+function rAdvance(){
   if(Reinforce.done >= Reinforce.total || Reinforce.idx >= Reinforce.order.length){
-    // acabou → reiniciar com novo pool
+    // sessão acabou → inicia outra com novo pool
     rStartSession();
     return;
   }
   const id = Reinforce.order[Reinforce.idx++];
-  return deck.find(c=>c.id===id) || null;
+  RCurrent = deck.find(c=>c.id===id) || null;
+  rRenderUI();
 }
-
-let RCurrent = null;
 
 function rHintFor(c){
   if(!c) return '';
   const dir = Reinforce.direction;
   if(dir==='PT2ROMAJI'){
-    // quantas “sílabas” (aprox.) + primeira letra
     const syl = (c.romaji.match(/[aeiou]+/g)||[]).length;
     return `Dica: ${c.romaji[0]}… · ${syl} sílaba(s)`;
   }
@@ -894,7 +899,6 @@ function rHintFor(c){
     const first = (parsePT(c.pt)[0]||c.pt);
     return `Dica: “${first?.[0]||'?'}…” (${first?.split(' ')?.[0]?.length||'?'} letras)`;
   }
-  // HIRAGANA → PT
   const first = (parsePT(c.pt)[0]||c.pt);
   return `Dica: começa com “${first?.[0]||'?'}”`;
 }
@@ -909,21 +913,19 @@ function rRenderAccepted(ok, detailsArr){
   box.append(span, small); box.style.display='block';
 }
 
-function rRender(){
+// só desenha a UI; NÃO avança índice
+function rRenderUI(){
   const pool = rBuildPool();
   el('#rfInfo').textContent = pool.length ? `No foco: ${pool.length}` : 'Sem itens no foco 🎉';
+  el('#rProg').textContent  = `${Reinforce.done}/${Reinforce.total}`;
 
-  if(Reinforce.done >= Reinforce.total || pool.length===0){
+  if(Reinforce.done >= Reinforce.total || pool.length===0 || !RCurrent){
     el('#rQuestion').textContent = pool.length ? 'Concluído! Reiniciando…' : 'Não há itens 🎉';
     el('#rAnswer').value=''; el('#rCheck').disabled=true;
-    el('#rProg').textContent = `${Reinforce.done}/${Reinforce.total}`;
     rRenderAccepted(false, []);
     el('#rHint').style.display='none';
     return;
   }
-
-  RCurrent = rNext();
-  if(!RCurrent){ rStartSession(); return; }
 
   const dir=Reinforce.direction;
   if(dir==='PT2ROMAJI'){ el('#rPrompt').textContent='Reforço — Tradução (PT-BR)'; el('#rQuestion').textContent=(parsePT(RCurrent.pt)[0]||RCurrent.pt); }
@@ -934,7 +936,6 @@ function rRender(){
   rRenderAccepted(false, []);
   rSetInputMode();
   el('#rCheck').disabled=true;
-  el('#rProg').textContent = `${Reinforce.done}/${Reinforce.total}`;
 
   // dicas
   const hint = Reinforce.showHints ? rHintFor(RCurrent) : '';
@@ -954,12 +955,8 @@ function rateCardReinforce(card, quality){
   // quality: 0 again, 1 hard, 2 good, 3 easy
   const DAY = 86400000;
   if(quality===0){
-    card.err++; // erro forte
-    card.interval = 0;
-    card.due = Date.now();
-    card.rf = true;
-    card.rfLast = Date.now();
-    // coloca de novo daqui a 3 itens (se houver espaço)
+    card.err++; card.interval = 0; card.due = Date.now(); card.rf = true; card.rfLast = Date.now();
+    // reinjeta ~3 à frente
     const pos = Math.min(Reinforce.idx + 3, Reinforce.order.length);
     Reinforce.order.splice(pos, 0, card.id);
     return;
@@ -980,7 +977,7 @@ function rateCardReinforce(card, quality){
   if(quality>=2){ card.rf = false; card.rfLast = Date.now(); }
 }
 
-function rScore(_ok, showDetails=true){
+function rScore(showDetails=true){
   if(!RCurrent) return;
   const dir = Reinforce.direction;
   const user = normBasic(el('#rAnswer').value);
@@ -998,27 +995,24 @@ function rScore(_ok, showDetails=true){
   const input = el('#rAnswer');
   input.classList.remove('correct','wrong');
   input.classList.add(correct?'correct':'wrong');
-
   if(showDetails) rRenderAccepted(correct, details);
 
   ensureAudio().then(()=> playSFX(correct?'ok':'err', 280));
 
-  if(correct) rateCardReinforce(RCurrent, 2); // Good
-  else        rateCardReinforce(RCurrent, 0); // Again (erro)
-
+  rateCardReinforce(RCurrent, correct ? 2 : 0); // Good ou Again
   cacheDeck(window.CURRENT_UID, deck);
   queueUpsert(RCurrent.id);
 
   Reinforce.done++;
-  rRender();
+  rAdvance();
 }
 
-// listeners UI
+// === Listeners UI (agora sem avançar indevidamente) ===
 els('input[name="rdir"]').forEach(r=>{
   r.addEventListener('change',()=>{
     Reinforce.direction=r.value;
     rSetInputMode();
-    rRender();
+    rRenderUI(); // não avança
   });
 });
 el('#rAnswer').addEventListener('input', ()=> el('#rCheck').disabled = !el('#rAnswer').value.trim());
@@ -1029,20 +1023,27 @@ el('#rSpeakPT').addEventListener('click', ()=>{ const c=RCurrent; if(!c) return;
 el('#rCheck').addEventListener('click', ()=> rScore(true));
 el('#rAnswer').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); rScore(true); } });
 
+// “Mostrar” agora conta como AGAIN, sem passar por rScore()
 el('#rReveal').addEventListener('click', ()=>{
   if(!RCurrent) return;
   const dir = Reinforce.direction;
   const val = rValFor(RCurrent, dir);
   el('#rAnswer').value = val;
-  rScore(false); // conta como erro (Again)
+  el('#rAnswer').classList.remove('correct','wrong'); el('#rAnswer').classList.add('wrong');
+  rRenderAccepted(false, [val]);
+  ensureAudio().then(()=> playSFX('err', 180));
+  rateCardReinforce(RCurrent, 0);
+  cacheDeck(window.CURRENT_UID, deck);
+  queueUpsert(RCurrent.id);
+  Reinforce.done++;
+  rAdvance();
 });
 
 el('#rSkip').addEventListener('click', ()=>{
-  // não altera stats; só joga pro final
   if(!RCurrent) return;
-  Reinforce.order.push(RCurrent.id);
+  Reinforce.order.push(RCurrent.id); // manda pro fim
   Reinforce.done++;
-  rRender();
+  rAdvance();
 });
 
 el('#rLearned').addEventListener('click', ()=>{
@@ -1052,40 +1053,25 @@ el('#rLearned').addEventListener('click', ()=>{
   queueUpsert(RCurrent.id);
   Reinforce.done++;
   toast('Removido do reforço!');
-  rRender();
+  rAdvance();
 });
 
-// rating buttons
-el('#rAgain').addEventListener('click', ()=>{
-  if(!RCurrent) return;
-  rateCardReinforce(RCurrent,0); cacheDeck(window.CURRENT_UID, deck); queueUpsert(RCurrent.id);
-  Reinforce.done++; rRender();
-});
-el('#rHard').addEventListener('click', ()=>{
-  if(!RCurrent) return;
-  rateCardReinforce(RCurrent,1); cacheDeck(window.CURRENT_UID, deck); queueUpsert(RCurrent.id);
-  Reinforce.done++; rRender();
-});
-el('#rGood').addEventListener('click', ()=>{
-  if(!RCurrent) return;
-  rateCardReinforce(RCurrent,2); cacheDeck(window.CURRENT_UID, deck); queueUpsert(RCurrent.id);
-  Reinforce.done++; rRender();
-});
-el('#rEasy').addEventListener('click', ()=>{
-  if(!RCurrent) return;
-  rateCardReinforce(RCurrent,3); cacheDeck(window.CURRENT_UID, deck); queueUpsert(RCurrent.id);
-  Reinforce.done++; rRender();
-});
+// rating buttons (apenas agenda e avança)
+el('#rAgain').addEventListener('click', ()=>{ if(!RCurrent) return; rateCardReinforce(RCurrent,0); cacheDeck(window.CURRENT_UID, deck); queueUpsert(RCurrent.id); Reinforce.done++; rAdvance(); });
+el('#rHard').addEventListener('click',  ()=>{ if(!RCurrent) return; rateCardReinforce(RCurrent,1); cacheDeck(window.CURRENT_UID, deck); queueUpsert(RCurrent.id); Reinforce.done++; rAdvance(); });
+el('#rGood').addEventListener('click',  ()=>{ if(!RCurrent) return; rateCardReinforce(RCurrent,2); cacheDeck(window.CURRENT_UID, deck); queueUpsert(RCurrent.id); Reinforce.done++; rAdvance(); });
+el('#rEasy').addEventListener('click',  ()=>{ if(!RCurrent) return; rateCardReinforce(RCurrent,3); cacheDeck(window.CURRENT_UID, deck); queueUpsert(RCurrent.id); Reinforce.done++; rAdvance(); });
 
 // filtros e opções
 el('#rPool').addEventListener('change', ()=>{ Reinforce.pool = el('#rPool').value; rStartSession(); });
-el('#rCat').addEventListener('change', ()=>{ Reinforce.cat = el('#rCat').value; rStartSession(); });
-el('#rLen').addEventListener('change', ()=>{ rStartSession(); });
-el('#rAutoSpeak').addEventListener('change', ()=>{ Reinforce.autoSpeak = el('#rAutoSpeak').checked; });
-el('#rHints').addEventListener('change', ()=>{ Reinforce.showHints = el('#rHints').checked; rRender(); });
+el('#rCat').addEventListener('change',  ()=>{ Reinforce.cat  = el('#rCat').value;  rStartSession(); });
+el('#rLen').addEventListener('change',  ()=>{ rStartSession(); });
+el('#rAutoSpeak').addEventListener('change', ()=>{ Reinforce.autoSpeak = el('#rAutoSpeak').checked; rRenderUI(); });
+el('#rHints').addEventListener('change',     ()=>{ Reinforce.showHints = el('#rHints').checked;   rRenderUI(); });
 
 // bootstrap do reforço ao entrar na aba
 function startReinforceRound(){ rStartSession(); }
+
 
 
   // ===== ADD / BULK =====
