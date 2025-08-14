@@ -15,10 +15,25 @@
     --pill:#0f1422;
   }
   *{box-sizing:border-box}
-  html,body{height:100%; margin:0; background:var(--bg); font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
-  body{min-height:100svh; -webkit-text-size-adjust:100%}
-  .app{min-height:100svh; display:flex; flex-direction:column; align-items:center; gap:12px;
-    padding:env(safe-area-inset-top) 12px calc(12px + env(safe-area-inset-bottom)) 12px}
+    /* trava o scroll do documento; só o .app rola */
+  html,body{
+    height:100%;
+    margin:0;
+    background:var(--bg);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
+    overflow:hidden;                 /* <— impede a página de “andar” ao focar inputs */
+  }
+  
+  .app{
+    height:100svh;                   /* usa o viewport “seguro” no mobile */
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:12px;
+    padding:env(safe-area-inset-top) 12px calc(12px + env(safe-area-inset-bottom)) 12px;
+    overflow:auto;                   /* rolagem interna do app */
+    overscroll-behavior:contain;     /* evita bounce/arrasto da página por baixo */
+  }
   header,.card,.tabs,.section{width:100%; max-width:var(--maxw)}
   header{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 4px}
   .brand{font-weight:800; color:var(--text); font-size:18px}
@@ -437,6 +452,36 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   const answer = () => el('#answer');
   const btnCheck = () => el('#btnCheck');
   const btnSkip = () => el('#btnSkip');
+
+  // ===== MOBILE: FIXAR TELA NO TOPO AO FOCAR INPUTS =====
+function preventFocusScroll(input){
+  if(!input) return;
+
+  // Em alguns navegadores, usar focus({preventScroll:true}) evita o pulo
+  input.addEventListener('touchstart', () => {
+    if(input !== document.activeElement){
+      try { input.focus({ preventScroll: true }); }
+      catch(_){ input.focus(); }
+    }
+  }, { passive: true });
+
+  // Segurança extra: força o topo no frame seguinte ao foco
+  input.addEventListener('focus', () => {
+    requestAnimationFrame(() => {
+      // zera qualquer tentativa do browser de deslocar a página
+      document.scrollingElement && (document.scrollingElement.scrollTop = 0);
+      window.scrollTo(0, 0);
+    });
+  });
+}
+
+// aplique aos campos que recebem foco
+[
+  answer(),
+  el('#inRomaji'), el('#inPT'), el('#inKana'), el('#inCat'),
+  el('#bulk')
+].forEach(preventFocusScroll);
+
 
   function setLocked(lock){
     answer().readOnly = lock;
