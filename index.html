@@ -501,8 +501,8 @@ window.addEventListener('pointerdown', ensureAudio, {once:true});
   el('#accepted').innerHTML = feedback;
   el('#accepted').style.display = 'block';
 
-  // SFX imediato (usa WebAudio que você já tem)
-  playSFX(ok ? 'ok' : 'err');
+  // garante AudioContext e aplica o mesmo delay do Quiz (≈280ms)
+  ensureAudio().then(() => playSFX(ok ? 'ok' : 'err', 280));
 
   // resto do fluxo
   if (ok) {
