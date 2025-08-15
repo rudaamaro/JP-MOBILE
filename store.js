@@ -1,4 +1,4 @@
-// store.js
+// store.js  —  versão offline-first estável
 import { db } from './firebase-config.js';
 import {
   collection, doc, getDocs, writeBatch, deleteDoc,
@@ -13,8 +13,13 @@ const Q_TOMBS  = 'romajiDeck_q_tombs_';
 // ===== util =====
 const readLS = (k, d=[]) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? d; }catch(_){ return d; } };
 const writeLS = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ /* noop */ } };
-const isQuotaError = e => (e?.code === 'resource-exhausted') || /quota|exhausted|resource-exhausted/i.test(e?.message||'');
-const byId = arr => { const m = new Map(arr.map(c => [String(c.id), c])); return m; };
+const setUnsynced = () => { try{ localStorage.setItem('unsynced','1'); }catch(_){ } };
+const clearUnsynced = () => { try{ localStorage.removeItem('unsynced'); }catch(_){ } };
+
+const isQuotaError = e =>
+  (e?.code === 'resource-exhausted') || /quota|exhausted|resource-exhausted/i.test(e?.message||'');
+
+const byId = arr => { const m = new Map((arr||[]).map(c => [String(c.id), c])); return m; };
 
 function getCachedDeck(uid){ return readLS(CACHE_PREFIX+uid, []); }
 export function cacheDeck(uid, deck){ writeLS(CACHE_PREFIX+uid, deck); }
@@ -28,35 +33,38 @@ function getQueues(uid){
 }
 function applyQueuesToDeck(uid, deck){
   const {upserts, deletes} = getQueues(uid);
-  if(deletes.length) deck = deck.filter(c => !deletes.includes(String(c.id)));
+  let out = Array.isArray(deck) ? deck.slice() : [];
+  if(deletes.length) out = out.filter(c => !deletes.includes(String(c.id)));
   if(upserts.length){
-    const map = byId(deck);
-    upserts.forEach(c => map.set(String(c.id), c));
-    deck = [...map.values()];
+    const m = byId(out);
+    upserts.forEach(c => m.set(String(c.id), c));
+    out = [...m.values()];
   }
-  return deck;
+  return out;
 }
 
 // ===========================
 // Leitura
 // ===========================
 export async function loadUserDeck(uid){
+  // Se houve alterações locais, confie no cache (evita bater no Firestore na inicialização)
   const hasUnsynced = localStorage.getItem('unsynced') === '1';
   if(hasUnsynced){
-    let deck = getCachedDeck(uid);
-    return applyQueuesToDeck(uid, deck);
+    const deck = applyQueuesToDeck(uid, getCachedDeck(uid));
+    return deck;
   }
+  // Tenta buscar do Firestore; se falhar, volta ao cache
   try{
     const colRef = collection(db, `users/${uid}/decks/default/cards`);
     const snap = await getDocs(colRef);
     const deck = [];
     snap.forEach(d => deck.push(d.data()));
-    const merged = applyQueuesToDeck(uid, deck); // preserva alterações locais
+    const merged = applyQueuesToDeck(uid, deck);
     cacheDeck(uid, merged);
     return merged;
-  }catch(_e){
-    let deck = getCachedDeck(uid);
-    return applyQueuesToDeck(uid, deck);
+  }catch(_){
+    const deck = applyQueuesToDeck(uid, getCachedDeck(uid));
+    return deck;
   }
 }
 
@@ -65,60 +73,49 @@ export async function loadUserDeck(uid){
 // ===========================
 export async function saveUserDeck(uid, deck){
   const colRef = collection(db, `users/${uid}/decks/default/cards`);
-
-  const currentSnap = await getDocs(colRef);
-  const toDelete = new Set(currentSnap.docs.map(d => d.id));
-
-  let batch = writeBatch(db);
-  let ops = 0;
-  async function flush(){
-    if(ops===0) return;
-    await batch.commit();
-    batch = writeBatch(db);
-    ops = 0;
-  }
-
-  for(const card of deck){
-    const id = String(card.id || `${Date.now()}-${Math.random()}`);
-    const ref = doc(colRef, id);
-    batch.set(ref, { ...card, id }, { merge:true }); ops++;
-    toDelete.delete(id);
-    if (ops >= 450) await flush();
-  }
-
-  for (const id of toDelete){
-    batch.delete(doc(colRef, id)); ops++;
-    if (ops >= 450) await flush();
-  }
-
-  await flush();
-  cacheDeck(uid, deck);
-}
-
-// ===========================
-// Escritas leves
-// ===========================
-export async function upsertCard(uid, card){
   try{
-    const id = String(card.id || `${Date.now()}-${Math.random()}`);
-    const ref = doc(db, `users/${uid}/decks/default/cards/${id}`);
-    await setDoc(ref, { ...card, id }, { merge: true });
-    // remove da fila se estava lá
-    const q = readLS(Q_UPSERT+uid, []);
-    writeLS(Q_UPSERT+uid, q.filter(c => String(c.id)!==id));
-  }catch(e){
-    if(isQuotaError(e) || navigator.onLine===false){
-      const id = String(card.id || `${Date.now()}-${Math.random()}`);
-      const q = readLS(Q_UPSERT+uid, []);
-      const merged = [...q.filter(c => String(c.id)!==id), { ...card, id }];
-      writeLS(Q_UPSERT+uid, merged);
-      localStorage.setItem('unsynced','1');
-      return;
+    const currentSnap = await getDocs(colRef);
+    const toDelete = new Set(currentSnap.docs.map(d => d.id));
+
+    let batch = writeBatch(db);
+    let ops = 0;
+    async function flush(){
+      if(ops===0) return;
+      await batch.commit();
+      batch = writeBatch(db);
+      ops = 0;
     }
-    throw e;
+
+    for(const card of (deck||[])){
+      const id = String(card.id || `${Date.now()}-${Math.random()}`);
+      const ref = doc(colRef, id);
+      batch.set(ref, { ...card, id }, { merge:true });
+      ops++; toDelete.delete(id);
+      if (ops >= 450) await flush();
+    }
+
+    for (const id of toDelete){
+      batch.delete(doc(colRef, id));
+      ops++;
+      if (ops >= 450) await flush();
+    }
+
+    await flush();
+    cacheDeck(uid, deck||[]);
+  }catch(e){
+    // Fallback: joga tudo na fila de upsert; cacheia
+    const q = readLS(Q_UPSERT+uid, []);
+    const merged = [...byId([...q, ...(deck||[])]).values()];
+    writeLS(Q_UPSERT+uid, merged);
+    cacheDeck(uid, deck||[]);
+    setUnsynced();
+    if(!isQuotaError(e)) throw e;
   }
 }
 
+// ===========================
+// Escritas leves (upsert/delete) com fila
+// ===========================
 export async function upsertMany(uid, cards){
   if(!cards || !cards.length) return;
 
@@ -143,44 +140,18 @@ export async function upsertMany(uid, cards){
       await batch.commit();
       successCount += chunk.length;
     }
-    // deu boa: limpa fila
-    writeLS(Q_UPSERT+uid, []);
+    writeLS(Q_UPSERT+uid, []);  // sucesso -> limpa fila
   }catch(e){
-    // mantém o restante na fila
     const remaining = all.slice(successCount);
     writeLS(Q_UPSERT+uid, remaining);
-    localStorage.setItem('unsynced','1');
+    setUnsynced();
     if(!isQuotaError(e)) throw e;
-    const err = new Error('resource-exhausted'); err.code = 'resource-exhausted'; throw err;
   }finally{
     // cache otimista
     const cached = getCachedDeck(uid);
     const m = byId(cached);
     all.forEach(c => m.set(String(c.id), c));
     cacheDeck(uid, [...m.values()]);
-  }
-}
-
-export async function deleteCard(uid, id){
-  id = String(id);
-  try{
-    await deleteDoc(doc(db, `users/${uid}/decks/default/cards/${id}`));
-    // e remove de um possível upsert pendente
-    const q = readLS(Q_UPSERT+uid, []);
-    writeLS(Q_UPSERT+uid, q.filter(c => String(c.id)!==id));
-  }catch(e){
-    if(isQuotaError(e) || navigator.onLine===false){
-      const qd = readLS(Q_DELETE+uid, []);
-      if(!qd.includes(id)) qd.push(id);
-      writeLS(Q_DELETE+uid, qd);
-      localStorage.setItem('unsynced','1');
-      return;
-    }
-    throw e;
-  }finally{
-    // cache
-    const cached = getCachedDeck(uid).filter(c => String(c.id)!==id);
-    cacheDeck(uid, cached);
   }
 }
 
@@ -204,11 +175,10 @@ export async function deleteMany(uid, ids){
   }catch(e){
     const remaining = all.slice(successCount);
     writeLS(Q_DELETE+uid, remaining);
-    localStorage.setItem('unsynced','1');
+    setUnsynced();
     if(!isQuotaError(e)) throw e;
-    const err = new Error('resource-exhausted'); err.code = 'resource-exhausted'; throw err;
   }finally{
-    // garante que um delete não seja "ressuscitado" por um upsert pendente
+    // evita ressuscitar item deletado
     const upQ = readLS(Q_UPSERT+uid, []);
     writeLS(Q_UPSERT+uid, upQ.filter(c => !all.includes(String(c.id))));
     // cache
@@ -220,39 +190,19 @@ export async function deleteMany(uid, ids){
 // ===========================
 // Tombstones (para não reimportar do JSON)
 // ===========================
-export async function markDeletedRomaji(uid, romajiNorm){
-  try{
-    const metaRef = doc(db, `users/${uid}/meta/deleted`);
-    await setDoc(metaRef, { romaji: arrayUnion(romajiNorm) }, { merge:true });
-  }catch(e){
-    if(isQuotaError(e) || navigator.onLine===false){
-      const q = readLS(Q_TOMBS+uid, []);
-      if(!q.includes(romajiNorm)) q.push(romajiNorm);
-      writeLS(Q_TOMBS+uid, q);
-      localStorage.setItem('unsynced','1');
-      return;
-    }
-    throw e;
-  }
-}
-
 export async function markDeletedRomajiMany(uid, list){
   if(!list || !list.length) return;
   try{
     const metaRef = doc(db, `users/${uid}/meta/deleted`);
     await setDoc(metaRef, { romaji: arrayUnion(...list) }, { merge:true });
   }catch(e){
-    if(isQuotaError(e) || navigator.onLine===false){
-      const q = readLS(Q_TOMBS+uid, []);
-      const set = new Set([...q, ...list]);
-      writeLS(Q_TOMBS+uid, [...set]);
-      localStorage.setItem('unsynced','1');
-      return;
-    }
-    throw e;
+    const q = readLS(Q_TOMBS+uid, []);
+    const set = new Set([...q, ...list]);
+    writeLS(Q_TOMBS+uid, [...set]);
+    setUnsynced();
+    if(!isQuotaError(e)) throw e;
   }
 }
-
 export async function getDeletedRomajiSet(uid){
   try{
     const metaRef = doc(db, `users/${uid}/meta/deleted`);
@@ -287,7 +237,7 @@ export async function migrateFromLocalStorage(uid){
 }
 
 // ===========================
-// (Opcional) tentar drenar as filas
+// Drenar filas (chamar no boot, ao ficar online e no botão “Atualizar”)
 // ===========================
 export async function drainQueues(uid){
   const up = readLS(Q_UPSERT+uid, []);
@@ -297,5 +247,5 @@ export async function drainQueues(uid){
   if(del.length) await deleteMany(uid, del);
   if(tb.length)  await markDeletedRomajiMany(uid, tb);
   const left = readLS(Q_UPSERT+uid, []).length + readLS(Q_DELETE+uid, []).length + readLS(Q_TOMBS+uid, []).length;
-  if(left===0) try{ localStorage.removeItem('unsynced'); }catch(_){}
+  if(left===0) clearUnsynced();
 }
