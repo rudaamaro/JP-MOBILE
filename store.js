@@ -107,6 +107,8 @@ export async function saveUserDeck(uid, deck){
     const q = readLS(Q_UPSERT+uid, []);
     const merged = [...byId([...q, ...(deck||[])]).values()];
     writeLS(Q_UPSERT+uid, merged);
+    const qDel = readLS(Q_DELETE+uid, []);
+    writeLS(Q_UPSERT+uid, merged.filter(c => !qDel.includes(String(c.id))));
     cacheDeck(uid, deck||[]);
     setUnsynced();
     if(!isQuotaError(e)) throw e;
