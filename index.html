@@ -331,8 +331,7 @@ import {
   upsertMany,
   cacheDeck,
   deleteMany,
-  markDeletedRomajiMany,
-  drainQueues
+  markDeletedRomajiMany
 } from './store.js';
 
   // ===== CONFIG =====
@@ -565,11 +564,7 @@ import {
     upserts: new Set()     // ids modificados/novos
   };
   function refreshPending(){
-    const uid = window.CURRENT_UID;
-    const qU = JSON.parse(localStorage.getItem('romajiDeck_q_upserts_'+uid) || '[]').length;
-    const qD = JSON.parse(localStorage.getItem('romajiDeck_q_deletes_'+uid) || '[]').length;
-    const qT = JSON.parse(localStorage.getItem('romajiDeck_q_tombs_'+uid)  || '[]').length;
-    const n = Pending.deletions.size + Pending.tombs.size + Pending.upserts.size + qU + qD + qT;
+    const n = Pending.deletions.size + Pending.tombs.size + Pending.upserts.size;
     const lbl = document.getElementById('pendingLbl');
     if(lbl) lbl.textContent = `Alterações pendentes: ${n}`;
   }
@@ -1235,13 +1230,6 @@ import {
       }
 
       await hydrateFromJson();
-      try {
-        await drainQueues(uid);       // tenta enviar o que ficou pendente de sessões anteriores
-      } catch(e) {
-        // Se quota estourou, mantemos tudo offline e tentamos depois
-        console.warn('Sync adiada (provável quota):', e);
-        toast('Sem quota agora. Suas alterações estão salvas offline.');
-      }
       refreshCategoriesUI();
       State.current = nextFromCycle('study', State.catFilter);
       renderQuestion();
@@ -1256,32 +1244,24 @@ import {
     const uid = window.CURRENT_UID;
     if(!uid){ toast('Você precisa estar logado.'); return; }
     try{
-      // 1) envia o que foi alterado nesta sessão
       const upsertList = deck.filter(c => Pending.upserts.has(String(c.id)));
       if (upsertList.length) await upsertMany(uid, upsertList);
+
       const delIds = [...Pending.deletions];
       if (delIds.length) await deleteMany(uid, delIds);
+
       const tombs = [...Pending.tombs];
       if (tombs.length) await markDeletedRomajiMany(uid, tombs);
 
-      // 2) envia também o que já estava pendente de sessões anteriores
-      await drainQueues(uid);
-
-      // 3) limpa pendências locais de UI
       Pending.deletions.clear();
       Pending.tombs.clear();
       Pending.upserts.clear();
       refreshPending();
-      toast('Sincronizado!');
+      try{ localStorage.removeItem('unsynced'); }catch(_){}
+      toast('Sincronizado com o servidor!');
     }catch(e){
       console.error(e);
-      if (String(e?.code||e?.message).includes('resource-exhausted')){
-        // salva offline e tenta depois
-        try{ localStorage.setItem('unsynced','1'); }catch(_){ }
-        toast('Cota da Firestore esgotada. Alterações salvas offline.');
-      } else {
-        toast('Erro ao sincronizar: ' + (e.message || e));
-      }
+      toast('Erro ao sincronizar: ' + (e.code || e.message || 'desconhecido'));
     }
   });
 
