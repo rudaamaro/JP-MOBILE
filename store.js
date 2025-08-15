@@ -1,7 +1,7 @@
 // store.js  —  versão offline-first estável
 import { db } from './firebase-config.js';
 import {
-  collection, doc, getDocs, writeBatch, deleteDoc,
+  collection, doc, getDocs, writeBatch,
   getDoc, setDoc, arrayUnion
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
@@ -47,13 +47,11 @@ function applyQueuesToDeck(uid, deck){
 // Leitura
 // ===========================
 export async function loadUserDeck(uid){
-  // Se houve alterações locais, confie no cache (evita bater no Firestore na inicialização)
   const hasUnsynced = localStorage.getItem('unsynced') === '1';
   if(hasUnsynced){
     const deck = applyQueuesToDeck(uid, getCachedDeck(uid));
     return deck;
   }
-  // Tenta buscar do Firestore; se falhar, volta ao cache
   try{
     const colRef = collection(db, `users/${uid}/decks/default/cards`);
     const snap = await getDocs(colRef);
@@ -69,11 +67,12 @@ export async function loadUserDeck(uid){
 }
 
 // ===========================
-// “Espelho” do deck inteiro (seed/migração)
+// “Espelho” (seed/migração)
 // ===========================
 export async function saveUserDeck(uid, deck){
   const colRef = collection(db, `users/${uid}/decks/default/cards`);
   try{
+    // apagamentos + upserts em batches
     const currentSnap = await getDocs(colRef);
     const toDelete = new Set(currentSnap.docs.map(d => d.id));
 
@@ -103,10 +102,9 @@ export async function saveUserDeck(uid, deck){
     await flush();
     cacheDeck(uid, deck||[]);
   }catch(e){
-    // Fallback: joga tudo na fila de upsert; cacheia
+    // Fallback: sobe tudo para a fila; respeita deletados
     const q = readLS(Q_UPSERT+uid, []);
     const merged = [...byId([...q, ...(deck||[])]).values()];
-    writeLS(Q_UPSERT+uid, merged);
     const qDel = readLS(Q_DELETE+uid, []);
     writeLS(Q_UPSERT+uid, merged.filter(c => !qDel.includes(String(c.id))));
     cacheDeck(uid, deck||[]);
@@ -121,7 +119,6 @@ export async function saveUserDeck(uid, deck){
 export async function upsertMany(uid, cards){
   if(!cards || !cards.length) return;
 
-  // junta com a fila local (dedup por id)
   const queued = readLS(Q_UPSERT+uid, []);
   const map = new Map();
   [...queued, ...cards].forEach(c => {
@@ -239,7 +236,7 @@ export async function migrateFromLocalStorage(uid){
 }
 
 // ===========================
-// Drenar filas (boot/online/botão “Atualizar”)
+// Drenar filas (boot/online/botão)
 // ===========================
 export async function drainQueues(uid){
   const up = readLS(Q_UPSERT+uid, []);
@@ -248,9 +245,6 @@ export async function drainQueues(uid){
   if(up.length) await upsertMany(uid, up);
   if(del.length) await deleteMany(uid, del);
   if(tb.length)  await markDeletedRomajiMany(uid, tb);
-  const left = readLS(Q_UPSERT+uid, []).length
-             + readLS(Q_DELETE+uid, []).length
-             + readLS(Q_TOMBS+uid, []).length;
+  const left = readLS(Q_UPSERT+uid, []).length + readLS(Q_DELETE+uid, []).length + readLS(Q_TOMBS+uid, []).length;
   if(left===0) clearUnsynced();
-  return left; // <<< devolve quantos itens sobraram
 }
