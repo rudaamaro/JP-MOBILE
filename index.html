@@ -556,7 +556,6 @@ import {
   let deck = [];
   const State = { modeTab:'study', direction:'PT2ROMAJI', catFilter:'todas', current:null, lastCorrect:false };
   const Quiz = { direction:'PT2ROMAJI', cat:'todas', current:null, choices:[] };
-  
 
   // ===== Pending queue (para Atualizar) =====
   const Pending = {
@@ -571,6 +570,8 @@ import {
   }
   function queueUpsert(id){
     if(id!=null) Pending.upserts.add(String(id));
+    // marca que há alterações locais não sincronizadas
+    try{ localStorage.setItem('unsynced','1'); }catch(_){}
     refreshPending();
   }
 
@@ -578,19 +579,19 @@ import {
   const el = s => document.querySelector(s);
   const els = s => [...document.querySelectorAll(s)];
   function refreshCategoriesUI(){
-  const cats = new Set(deck.map(c=>c.cat||'geral')); cats.add('todas');
-  const sels = [el('#catFilter'), el('#qCat'), el('#rCat')]; // <= ADICIONE #rCat AQUI
-  sels.forEach(sel=>{
-    const cur=sel?.value; if(!sel) return;
-    sel.innerHTML='';
-    [...cats].sort().forEach(c=>{
-      const o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o);
+    const cats = new Set(deck.map(c=>c.cat||'geral')); cats.add('todas');
+    const sels = [el('#catFilter'), el('#qCat'), el('#rCat')];
+    sels.forEach(sel=>{
+      const cur=sel?.value; if(!sel) return;
+      sel.innerHTML='';
+      [...cats].sort().forEach(c=>{
+        const o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o);
+      });
+      sel.value=cats.has(cur)?cur:'todas';
     });
-    sel.value=cats.has(cur)?cur:'todas';
-  });
-}
+  }
   function filteredByCategory(list, cat){ const k = cat || State.catFilter; if(k==='todas') return list; return list.filter(c=>(c.cat||'geral')===k); }
-  function shuffle(a){ const arr=a.slice(); for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+  function shuffle(a){ const arr=a.slice(); for(let i=arr.length-1;i>0;i++){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
 
   // ===== SRS =====
   function rateCard(card, correct){
@@ -822,257 +823,270 @@ import {
   el('#qCat').addEventListener('change',()=>{ Quiz.cat=el('#qCat').value; startQuizRound(); });
   el('#qNext').addEventListener('click', startQuizRound);
 
-// ===== REFORÇO 2.0 (FIX) =====
-const Reinforce = {
-  direction:'PT2ROMAJI',
-  pool:'mix',       // rf | due | trouble | mix
-  cat:'todas',
-  order:[],
-  idx:0,            // próximo índice a consumir em order
-  sessionMax:20,
-  autoSpeak:false,
-  showHints:false,
-  done:0,
-  total:0
-};
+  // ===== REFORÇO 2.0 (corrigido) =====
+  const Reinforce = {
+    direction:'PT2ROMAJI',
+    pool:'mix',       // rf | due | trouble | mix
+    cat:'todas',
+    order:[],
+    idx:0,
+    sessionMax:20,
+    autoSpeak:false,
+    showHints:false,
+    done:0,
+    total:0
+  };
 
-let RCurrent = null; // carta atualmente mostrada
-
-function rSetInputMode(){
-  el('#rAnswer').setAttribute('inputmode', (Reinforce.direction==='PT2ROMAJI') ? 'latin' : 'text');
-}
-
-function rBuildPool(){
-  const now = Date.now();
-  let list = filteredByCategory(deck, Reinforce.cat);
-
-  const isRF      = c => !!c.rf;
-  const isDue     = c => (c.due||0) <= now;
-  const isTrouble = c => (c.err||0) >= Math.max(2, (c.ok||0)); // +erros que acertos (mín.2)
-
-  if(Reinforce.pool === 'rf')         list = list.filter(isRF);
-  else if(Reinforce.pool === 'due')   list = list.filter(isDue);
-  else if(Reinforce.pool === 'trouble') list = list.filter(isTrouble);
-  else { // mix
-    const set = new Set();
-    list.forEach(c => { if(isRF(c)||isDue(c)||isTrouble(c)) set.add(c.id); });
-    list = list.filter(c => set.has(c.id));
+  function rSetInputMode(){
+    el('#rAnswer').setAttribute('inputmode', (Reinforce.direction==='PT2ROMAJI') ? 'latin' : 'text');
   }
-  return list;
-}
 
-function rStartSession(){
-  const pool = rBuildPool();
-  Reinforce.order = shuffle(pool).map(c=>c.id);
-  Reinforce.idx   = 0;
-  Reinforce.done  = 0;
-  Reinforce.total = (el('#rLen').value==='all') ? Reinforce.order.length
-                  : Math.min(parseInt(el('#rLen').value||20,10), Reinforce.order.length);
+  function rBuildPool(){
+    const now = Date.now();
+    let list = filteredByCategory(deck, Reinforce.cat);
 
-  // pega a PRIMEIRA carta sem avançar o índice de forma invisível
-  RCurrent = Reinforce.order.length ? deck.find(c=>c.id===Reinforce.order[0]) : null;
-  Reinforce.idx = RCurrent ? 1 : 0;
+    const isRF      = c => !!c.rf;
+    const isDue     = c => (c.due||0) <= now;
+    const isTrouble = c => (c.err||0) >= Math.max(2, (c.ok||0)); // mais erros que acertos (mín. 2)
 
-  rRenderUI();
-}
+    if(Reinforce.pool === 'rf')       list = list.filter(isRF);
+    else if(Reinforce.pool === 'due') list = list.filter(isDue);
+    else if(Reinforce.pool === 'trouble') list = list.filter(isTrouble);
+    else { // mix
+      const set = new Set();
+      list.forEach(c => { if(isRF(c)||isDue(c)||isTrouble(c)) set.add(c.id); });
+      list = list.filter(c=>set.has(c.id));
+    }
 
-// avança para a próxima carta e re-renderiza
-function rAdvance(){
-  if(Reinforce.done >= Reinforce.total || Reinforce.idx >= Reinforce.order.length){
-    // sessão acabou → inicia outra com novo pool
-    rStartSession();
-    return;
+    return list;
   }
-  const id = Reinforce.order[Reinforce.idx++];
-  RCurrent = deck.find(c=>c.id===id) || null;
-  rRenderUI();
-}
 
-function rHintFor(c){
-  if(!c) return '';
-  const dir = Reinforce.direction;
-  if(dir==='PT2ROMAJI'){
-    const syl = (c.romaji.match(/[aeiou]+/g)||[]).length;
-    return `Dica: ${c.romaji[0]}… · ${syl} sílaba(s)`;
+  function rStartSession(){
+    const pool = rBuildPool();
+    Reinforce.order = shuffle(pool).map(c=>c.id);
+    Reinforce.idx = 0;
+    Reinforce.done = 0;
+    Reinforce.total = (el('#rLen').value==='all') ? Reinforce.order.length
+                   : Math.min(parseInt(el('#rLen').value||20,10), Reinforce.order.length);
+    RCurrent = null;            // não avance até pontuar
+    rRender();
   }
-  if(dir==='ROMAJI2PT'){
+
+  function rNext(){
+    if(Reinforce.done >= Reinforce.total || Reinforce.idx >= Reinforce.order.length){
+      // acabou → reiniciar com novo pool
+      rStartSession();
+      return;
+    }
+    const id = Reinforce.order[Reinforce.idx++];
+    return deck.find(c=>c.id===id) || null;
+  }
+
+  let RCurrent = null;
+
+  function rHintFor(c){
+    if(!c) return '';
+    const dir = Reinforce.direction;
+    if(dir==='PT2ROMAJI'){
+      const syl = (c.romaji.match(/[aeiou]+/g)||[]).length;
+      return `Dica: ${c.romaji[0]}… · ${syl} sílaba(s)`;
+    }
+    if(dir==='ROMAJI2PT'){
+      const first = (parsePT(c.pt)[0]||c.pt);
+      return `Dica: “${first?.[0]||'?'}…” (${first?.split(' ')?.[0]?.length||'?'} letras)`;
+    }
     const first = (parsePT(c.pt)[0]||c.pt);
-    return `Dica: “${first?.[0]||'?'}…” (${first?.split(' ')?.[0]?.length||'?'} letras)`;
+    return `Dica: começa com “${first?.[0]||'?'}”`;
   }
-  const first = (parsePT(c.pt)[0]||c.pt);
-  return `Dica: começa com “${first?.[0]||'?'}”`;
-}
 
-function rRenderAccepted(ok, detailsArr){
-  const box = el('#rAccepted'); box.innerHTML='';
-  if(!detailsArr || !detailsArr.length){ box.style.display='none'; return; }
-  const span = document.createElement('span'); span.className='okText';
-  span.textContent = ok ? 'Correto: ' : 'Aceitas: ';
-  const small = document.createElement('small'); small.className='okText';
-  small.textContent = detailsArr.join(' / ');
-  box.append(span, small); box.style.display='block';
-}
+  function rRenderAccepted(ok, detailsArr){
+    const box = el('#rAccepted'); box.innerHTML='';
+    if(!detailsArr || !detailsArr.length){ box.style.display='none'; return; }
+    const span = document.createElement('span'); span.className='okText';
+    span.textContent = ok ? 'Correto: ' : 'Aceitas: ';
+    const small = document.createElement('small'); small.className='okText';
+    small.textContent = detailsArr.join(' / ');
+    box.append(span, small); box.style.display='block';
+  }
 
-// só desenha a UI; NÃO avança índice
-function rRenderUI(){
-  const pool = rBuildPool();
-  el('#rfInfo').textContent = pool.length ? `No foco: ${pool.length}` : 'Sem itens no foco 🎉';
-  el('#rProg').textContent  = `${Reinforce.done}/${Reinforce.total}`;
+  function rRender(){
+    const pool = rBuildPool();
+    el('#rfInfo').textContent = pool.length ? `No foco: ${pool.length}` : 'Sem itens no foco 🎉';
 
-  if(Reinforce.done >= Reinforce.total || pool.length===0 || !RCurrent){
-    el('#rQuestion').textContent = pool.length ? 'Concluído! Reiniciando…' : 'Não há itens 🎉';
-    el('#rAnswer').value=''; el('#rCheck').disabled=true;
+    if(Reinforce.done >= Reinforce.total || pool.length===0){
+      el('#rQuestion').textContent = pool.length ? 'Concluído! Reiniciando…' : 'Não há itens 🎉';
+      el('#rAnswer').value=''; el('#rCheck').disabled=true;
+      el('#rProg').textContent = `${Reinforce.done}/${Reinforce.total}`;
+      rRenderAccepted(false, []);
+      el('#rHint').style.display='none';
+      return;
+    }
+
+    if(!RCurrent) RCurrent = rNext();     // só busca próxima quando precisa
+    if(!RCurrent){ rStartSession(); return; }
+
+    const dir=Reinforce.direction;
+    if(dir==='PT2ROMAJI'){ el('#rPrompt').textContent='Reforço — Tradução (PT-BR)'; el('#rQuestion').textContent=(parsePT(RCurrent.pt)[0]||RCurrent.pt); }
+    if(dir==='ROMAJI2PT'){ el('#rPrompt').textContent='Reforço — Romaji'; el('#rQuestion').textContent=RCurrent.romaji; }
+    if(dir==='HIRA2PT'){ el('#rPrompt').textContent='Reforço — Hiragana'; el('#rQuestion').textContent=RCurrent.kana||romajiToHiragana(RCurrent.romaji); }
+
+    el('#rAnswer').value=''; el('#rAnswer').classList.remove('correct','wrong');
     rRenderAccepted(false, []);
-    el('#rHint').style.display='none';
-    return;
-  }
-
-  const dir=Reinforce.direction;
-  if(dir==='PT2ROMAJI'){ el('#rPrompt').textContent='Reforço — Tradução (PT-BR)'; el('#rQuestion').textContent=(parsePT(RCurrent.pt)[0]||RCurrent.pt); }
-  if(dir==='ROMAJI2PT'){ el('#rPrompt').textContent='Reforço — Romaji'; el('#rQuestion').textContent=RCurrent.romaji; }
-  if(dir==='HIRA2PT'){ el('#rPrompt').textContent='Reforço — Hiragana'; el('#rQuestion').textContent=RCurrent.kana||romajiToHiragana(RCurrent.romaji); }
-
-  el('#rAnswer').value=''; el('#rAnswer').classList.remove('correct','wrong');
-  rRenderAccepted(false, []);
-  rSetInputMode();
-  el('#rCheck').disabled=true;
-
-  // dicas
-  const hint = Reinforce.showHints ? rHintFor(RCurrent) : '';
-  el('#rHint').textContent = hint;
-  el('#rHint').style.display = hint ? 'block' : 'none';
-
-  // auto-voz
-  if(Reinforce.autoSpeak){
-    if(dir==='ROMAJI2PT'){ const txt=(parsePT(RCurrent.pt)[0]||RCurrent.pt); speakPT(txt); }
-    else { const text=RCurrent.kana && isKana(RCurrent.kana) ? RCurrent.kana : RCurrent.romaji; speakJP(text); }
-  }
-}
-
-function rValFor(card, dir){ return dir==='PT2ROMAJI' ? card.romaji : (parsePT(card.pt)[0]||card.pt); }
-
-function rateCardReinforce(card, quality){
-  // quality: 0 again, 1 hard, 2 good, 3 easy
-  const DAY = 86400000;
-  if(quality===0){
-    card.err++; card.interval = 0; card.due = Date.now(); card.rf = true; card.rfLast = Date.now();
-    // reinjeta ~3 à frente
-    const pos = Math.min(Reinforce.idx + 3, Reinforce.order.length);
-    Reinforce.order.splice(pos, 0, card.id);
-    return;
-  }
-  // acertos
-  card.ok++;
-  if(quality===1){ // hard
-    card.ease = Math.max(1.3, (card.ease||2.5) - 0.05);
-    card.interval = Math.max(1, Math.round((card.interval||1) * 1.2));
-  }else if(quality===2){ // good
-    card.ease = Math.max(1.3, (card.ease||2.5) + 0.05);
-    card.interval = (card.interval===0) ? 1 : (card.interval===1 ? 3 : Math.round(card.interval * card.ease));
-  }else{ // easy
-    card.ease = Math.max(1.3, (card.ease||2.5) + 0.15);
-    card.interval = (card.interval===0) ? 3 : Math.round(Math.max(3, card.interval * 1.7));
-  }
-  card.due = Date.now() + card.interval * DAY;
-  if(quality>=2){ card.rf = false; card.rfLast = Date.now(); }
-}
-
-function rScore(showDetails=true){
-  if(!RCurrent) return;
-  const dir = Reinforce.direction;
-  const user = normBasic(el('#rAnswer').value);
-  let correct=false, details=[];
-
-  if (dir === 'PT2ROMAJI') {
-    correct = !!user && (lev(user, normBasic(RCurrent.romaji))<=1);
-    details = [RCurrent.romaji, 'PT: '+parsePT(RCurrent.pt).join(' / ')];
-  } else {
-    const acc = new Set(parsePT(RCurrent.pt));
-    correct = !!user && [...acc].some(t=>lev(user, t)<=1);
-    details = [...acc];
-  }
-
-  const input = el('#rAnswer');
-  input.classList.remove('correct','wrong');
-  input.classList.add(correct?'correct':'wrong');
-  if(showDetails) rRenderAccepted(correct, details);
-
-  ensureAudio().then(()=> playSFX(correct?'ok':'err', 280));
-
-  rateCardReinforce(RCurrent, correct ? 2 : 0); // Good ou Again
-  cacheDeck(window.CURRENT_UID, deck);
-  queueUpsert(RCurrent.id);
-
-  Reinforce.done++;
-  rAdvance();
-}
-
-// === Listeners UI (agora sem avançar indevidamente) ===
-els('input[name="rdir"]').forEach(r=>{
-  r.addEventListener('change',()=>{
-    Reinforce.direction=r.value;
     rSetInputMode();
-    rRenderUI(); // não avança
+    el('#rCheck').disabled=true;
+    el('#rProg').textContent = `${Reinforce.done}/${Reinforce.total}`;
+
+    const hint = Reinforce.showHints ? rHintFor(RCurrent) : '';
+    el('#rHint').textContent = hint;
+    el('#rHint').style.display = hint ? 'block' : 'none';
+
+    if(Reinforce.autoSpeak){
+      if(dir==='ROMAJI2PT'){ const txt=(parsePT(RCurrent.pt)[0]||RCurrent.pt); speakPT(txt); }
+      else { const text=RCurrent.kana && isKana(RCurrent.kana) ? RCurrent.kana : RCurrent.romaji; speakJP(text); }
+    }
+  }
+
+  function rValFor(card, dir){ return dir==='PT2ROMAJI' ? card.romaji : (parsePT(card.pt)[0]||card.pt); }
+
+  function rateCardReinforce(card, quality){
+    // quality: 0 again, 1 hard, 2 good, 3 easy
+    const DAY = 86400000;
+    if(quality===0){
+      card.err++; // erro forte
+      card.interval = 0;
+      card.due = Date.now();
+      card.rf = true;
+      card.rfLast = Date.now();
+      // coloca de novo daqui a 3 itens (se houver espaço)
+      const pos = Math.min(Reinforce.idx + 3, Reinforce.order.length);
+      Reinforce.order.splice(pos, 0, card.id);
+      return;
+    }
+    // acertos
+    card.ok++;
+    if(quality===1){ // hard
+      card.ease = Math.max(1.3, (card.ease||2.5) - 0.05);
+      card.interval = Math.max(1, Math.round((card.interval||1) * 1.2));
+    }else if(quality===2){ // good
+      card.ease = Math.max(1.3, (card.ease||2.5) + 0.05);
+      card.interval = (card.interval===0) ? 1 : (card.interval===1 ? 3 : Math.round(card.interval * card.ease));
+    }else{ // easy
+      card.ease = Math.max(1.3, (card.ease||2.5) + 0.15);
+      card.interval = (card.interval===0) ? 3 : Math.round(Math.max(3, card.interval * 1.7));
+    }
+    card.due = Date.now() + card.interval * DAY;
+    if(quality>=2){ card.rf = false; card.rfLast = Date.now(); }
+  }
+
+  function rScore({forceWrong=false, showDetails=true} = {}){
+    if(!RCurrent) return;
+    const dir = Reinforce.direction;
+    const user = normBasic(el('#rAnswer').value);
+    let correct=false, details=[];
+
+    if (dir === 'PT2ROMAJI') {
+      correct = !!user && (lev(user, normBasic(RCurrent.romaji))<=1);
+      details = [RCurrent.romaji, 'PT: '+parsePT(RCurrent.pt).join(' / ')];
+    } else {
+      const acc = new Set(parsePT(RCurrent.pt));
+      correct = !!user && [...acc].some(t=>lev(user, t)<=1);
+      details = [...acc];
+    }
+
+    if (forceWrong) correct = false;
+
+    const input = el('#rAnswer');
+    input.classList.remove('correct','wrong');
+    input.classList.add(correct?'correct':'wrong');
+
+    if(showDetails) rRenderAccepted(correct, details);
+
+    ensureAudio().then(()=> playSFX(correct?'ok':'err', 280));
+
+    if(correct) rateCardReinforce(RCurrent, 2); // Good
+    else        rateCardReinforce(RCurrent, 0); // Again (erro)
+
+    cacheDeck(window.CURRENT_UID, deck);
+    queueUpsert(RCurrent.id);
+
+    Reinforce.done++;
+    RCurrent = null;   // libera para a próxima só agora
+    rRender();
+  }
+
+  // listeners UI (REFORÇO)
+  els('input[name="rdir"]').forEach(r=>{
+    r.addEventListener('change',()=>{
+      Reinforce.direction=r.value;
+      rSetInputMode();
+      rRender();              // não avança
+    });
   });
-});
-el('#rAnswer').addEventListener('input', ()=> el('#rCheck').disabled = !el('#rAnswer').value.trim());
+  el('#rAnswer').addEventListener('input', ()=> el('#rCheck').disabled = !el('#rAnswer').value.trim());
 
-el('#rSpeakJP').addEventListener('click', ()=>{ const c=RCurrent; if(!c) return; const text=c.kana && isKana(c.kana) ? c.kana : c.romaji; speakJP(text); });
-el('#rSpeakPT').addEventListener('click', ()=>{ const c=RCurrent; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
+  el('#rSpeakJP').addEventListener('click', ()=>{ const c=RCurrent; if(!c) return; const text=c.kana && isKana(c.kana) ? c.kana : c.romaji; speakJP(text); });
+  el('#rSpeakPT').addEventListener('click', ()=>{ const c=RCurrent; if(!c) return; const txt=(parsePT(c.pt)[0]||c.pt); speakPT(txt); });
 
-el('#rCheck').addEventListener('click', ()=> rScore(true));
-el('#rAnswer').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); rScore(true); } });
+  el('#rCheck').addEventListener('click', ()=> rScore());
+  el('#rAnswer').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); rScore(); } });
 
-// “Mostrar” agora conta como AGAIN, sem passar por rScore()
-el('#rReveal').addEventListener('click', ()=>{
-  if(!RCurrent) return;
-  const dir = Reinforce.direction;
-  const val = rValFor(RCurrent, dir);
-  el('#rAnswer').value = val;
-  el('#rAnswer').classList.remove('correct','wrong'); el('#rAnswer').classList.add('wrong');
-  rRenderAccepted(false, [val]);
-  ensureAudio().then(()=> playSFX('err', 180));
-  rateCardReinforce(RCurrent, 0);
-  cacheDeck(window.CURRENT_UID, deck);
-  queueUpsert(RCurrent.id);
-  Reinforce.done++;
-  rAdvance();
-});
+  el('#rReveal').addEventListener('click', ()=>{
+    if(!RCurrent) return;
+    const dir = Reinforce.direction;
+    el('#rAnswer').value = rValFor(RCurrent, dir);
+    rScore({forceWrong:true, showDetails:false}); // Mostrar = erro
+  });
 
-el('#rSkip').addEventListener('click', ()=>{
-  if(!RCurrent) return;
-  Reinforce.order.push(RCurrent.id); // manda pro fim
-  Reinforce.done++;
-  rAdvance();
-});
+  el('#rSkip').addEventListener('click', ()=>{
+    if(!RCurrent) return;
+    Reinforce.order.push(RCurrent.id);
+    Reinforce.done++;
+    RCurrent = null;
+    rRender();
+  });
 
-el('#rLearned').addEventListener('click', ()=>{
-  if(!RCurrent) return;
-  RCurrent.rf = false; RCurrent.rfLast = Date.now();
-  cacheDeck(window.CURRENT_UID, deck);
-  queueUpsert(RCurrent.id);
-  Reinforce.done++;
-  toast('Removido do reforço!');
-  rAdvance();
-});
+  el('#rLearned').addEventListener('click', ()=>{
+    if(!RCurrent) return;
+    RCurrent.rf = false; RCurrent.rfLast = Date.now();
+    cacheDeck(window.CURRENT_UID, deck);
+    queueUpsert(RCurrent.id);
+    Reinforce.done++;
+    RCurrent = null;
+    toast('Removido do reforço!');
+    rRender();
+  });
 
-// rating buttons (apenas agenda e avança)
-el('#rAgain').addEventListener('click', ()=>{ if(!RCurrent) return; rateCardReinforce(RCurrent,0); cacheDeck(window.CURRENT_UID, deck); queueUpsert(RCurrent.id); Reinforce.done++; rAdvance(); });
-el('#rHard').addEventListener('click',  ()=>{ if(!RCurrent) return; rateCardReinforce(RCurrent,1); cacheDeck(window.CURRENT_UID, deck); queueUpsert(RCurrent.id); Reinforce.done++; rAdvance(); });
-el('#rGood').addEventListener('click',  ()=>{ if(!RCurrent) return; rateCardReinforce(RCurrent,2); cacheDeck(window.CURRENT_UID, deck); queueUpsert(RCurrent.id); Reinforce.done++; rAdvance(); });
-el('#rEasy').addEventListener('click',  ()=>{ if(!RCurrent) return; rateCardReinforce(RCurrent,3); cacheDeck(window.CURRENT_UID, deck); queueUpsert(RCurrent.id); Reinforce.done++; rAdvance(); });
+  // rating buttons
+  el('#rAgain').addEventListener('click', ()=>{
+    if(!RCurrent) return;
+    rateCardReinforce(RCurrent,0); cacheDeck(window.CURRENT_UID, deck); queueUpsert(RCurrent.id);
+    Reinforce.done++; RCurrent=null; rRender();
+  });
+  el('#rHard').addEventListener('click', ()=>{
+    if(!RCurrent) return;
+    rateCardReinforce(RCurrent,1); cacheDeck(window.CURRENT_UID, deck); queueUpsert(RCurrent.id);
+    Reinforce.done++; RCurrent=null; rRender();
+  });
+  el('#rGood').addEventListener('click', ()=>{
+    if(!RCurrent) return;
+    rateCardReinforce(RCurrent,2); cacheDeck(window.CURRENT_UID, deck); queueUpsert(RCurrent.id);
+    Reinforce.done++; RCurrent=null; rRender();
+  });
+  el('#rEasy').addEventListener('click', ()=>{
+    if(!RCurrent) return;
+    rateCardReinforce(RCurrent,3); cacheDeck(window.CURRENT_UID, deck); queueUpsert(RCurrent.id);
+    Reinforce.done++; RCurrent=null; rRender();
+  });
 
-// filtros e opções
-el('#rPool').addEventListener('change', ()=>{ Reinforce.pool = el('#rPool').value; rStartSession(); });
-el('#rCat').addEventListener('change',  ()=>{ Reinforce.cat  = el('#rCat').value;  rStartSession(); });
-el('#rLen').addEventListener('change',  ()=>{ rStartSession(); });
-el('#rAutoSpeak').addEventListener('change', ()=>{ Reinforce.autoSpeak = el('#rAutoSpeak').checked; rRenderUI(); });
-el('#rHints').addEventListener('change',     ()=>{ Reinforce.showHints = el('#rHints').checked;   rRenderUI(); });
+  // filtros e opções
+  el('#rPool').addEventListener('change', ()=>{ Reinforce.pool = el('#rPool').value; rStartSession(); });
+  el('#rCat').addEventListener('change', ()=>{ Reinforce.cat = el('#rCat').value; rStartSession(); });
+  el('#rLen').addEventListener('change', ()=>{ rStartSession(); });
+  el('#rAutoSpeak').addEventListener('change', ()=>{ Reinforce.autoSpeak = el('#rAutoSpeak').checked; });
+  el('#rHints').addEventListener('change', ()=>{ Reinforce.showHints = el('#rHints').checked; rRender(); });
 
-// bootstrap do reforço ao entrar na aba
-function startReinforceRound(){ rStartSession(); }
-
-
+  // bootstrap do reforço ao entrar na aba
+  function startReinforceRound(){ rStartSession(); }
 
   // ===== ADD / BULK =====
   function parseBulk(text){
@@ -1138,14 +1152,11 @@ function startReinforceRound(){ rStartSession(); }
       tr.title='Toque para remover';
       tr.addEventListener('click', () => {
         const uid = window.CURRENT_UID;
-        // 1) pendências
         Pending.deletions.add(c.id);
         Pending.tombs.add(normBasic(c.romaji));
         refreshPending();
-        // 2) remove local
         deck = deck.filter(x => x.id !== c.id);
         cacheDeck(uid, deck);
-        // 3) UI
         renderTable();
         refreshCategoriesUI();
         toast('Marcado para remover. Clique em Atualizar para enviar.');
@@ -1185,7 +1196,7 @@ function startReinforceRound(){ rStartSession(); }
           ok:0, err:0, ease:2.5, interval:0, due:now, rf:false, rfLast:0
         };
         deck.push(card);
-        queueUpsert(card.id); // marcar para enviar quando clicar em Atualizar
+        queueUpsert(card.id);
         have.add(r);
         added++;
       }
@@ -1229,40 +1240,30 @@ function startReinforceRound(){ rStartSession(); }
   })();
 
   // ===== SYNC (Atualizar / Descartar) =====
-  document.getElementById('btnSync').addEventListener('click', async (ev)=>{
-  const btn = ev.currentTarget;
-  const uid = window.CURRENT_UID;
-  if(!uid){ toast('Você precisa estar logado.'); return; }
+  document.getElementById('btnSync').addEventListener('click', async ()=>{
+    const uid = window.CURRENT_UID;
+    if(!uid){ toast('Você precisa estar logado.'); return; }
+    try{
+      const upsertList = deck.filter(c => Pending.upserts.has(String(c.id)));
+      if (upsertList.length) await upsertMany(uid, upsertList);
 
-  btn.disabled = true;
+      const delIds = [...Pending.deletions];
+      if (delIds.length) await deleteMany(uid, delIds);
 
-  const upsertList = deck.filter(c => Pending.upserts.has(String(c.id)));
-  const delIds     = [...Pending.deletions];
-  const tombs      = [...Pending.tombs];
+      const tombs = [...Pending.tombs];
+      if (tombs.length) await markDeletedRomajiMany(uid, tombs);
 
-  try{
-    if (upsertList.length) await upsertMany(uid, upsertList);
-    if (delIds.length)     await deleteMany(uid, delIds);
-    if (tombs.length)      await markDeletedRomajiMany(uid, tombs);
-
-    Pending.deletions.clear();
-    Pending.tombs.clear();
-    Pending.upserts.clear();
-    toast('Sincronizado com o servidor!');
-  }catch(e){
-    console.error(e);
-    if(e?.code === 'resource-exhausted'){
-      toast('Limite de cota do Firestore atingido. Suas mudanças ficaram salvas neste dispositivo; tente sincronizar mais tarde.');
-    }else{
-      toast('Erro ao sincronizar: ' + (e?.message || 'desconhecido'));
+      Pending.deletions.clear();
+      Pending.tombs.clear();
+      Pending.upserts.clear();
+      refreshPending();
+      try{ localStorage.removeItem('unsynced'); }catch(_){}
+      toast('Sincronizado com o servidor!');
+    }catch(e){
+      console.error(e);
+      toast('Erro ao sincronizar: ' + (e.code || e.message || 'desconhecido'));
     }
-  }finally{
-    refreshPending();
-    renderTable(); // refaz a tabela com os valores OK/ERR já atualizados localmente
-    btn.disabled = false;
-  }
-});
-
+  });
 
   document.getElementById('btnDiscard').addEventListener('click', ()=>{
     Pending.deletions.clear();
