@@ -595,7 +595,17 @@ const els = s => [...document.querySelectorAll(s)];   // <— CORRETO
     });
   }
   function filteredByCategory(list, cat){ const k = cat || State.catFilter; if(k==='todas') return list; return list.filter(c=>(c.cat||'geral')===k); }
-  function shuffle(a){ const arr=a.slice(); for(let i=arr.length-1;i>0;i++){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+  function shuffle(a){
+  // garante array
+  const arr = Array.isArray(a) ? a.slice() : [];
+  for (let i = arr.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+  }
+  return arr;
+}
 
   // ===== SRS =====
   function rateCard(card, correct){
@@ -620,31 +630,41 @@ const els = s => [...document.querySelectorAll(s)];   // <— CORRETO
     quiz:  { key:'todas', order:[], idx:0, last:null }
   };
   function buildOrder(cat){
-    const now = Date.now();
-    const list = filteredByCategory(deck, cat);
-    const due = list.filter(c => (c.due||0) <= now);
-    const notDue = list.filter(c => (c.due||0) >  now);
-    const order = [...due.sort((a,b)=>(a.due||0)-(b.due||0)), ...shuffle(notDue)];
-    return order.map(c=>c.id);
-  }
+  const now  = Date.now();
+  const list = Array.isArray(deck) ? filteredByCategory(deck, cat) : [];
+  const due    = list.filter(c => (c.due || 0) <= now);
+  const notDue = list.filter(c => (c.due || 0) >  now);
+
+  // due ordenado, notDue embaralhado com segurança
+  const ordered = [
+    ...due.sort((a,b) => (a.due||0) - (b.due||0)),
+    ...shuffle(notDue)
+  ];
+
+  // retorna sempre array de ids (ou [])
+  return ordered.map(c => c.id).filter(Boolean);
+}
   function rebuildCycle(kind, cat){
-    const order = shuffle(buildOrder(cat));
-    Cycles[kind] = { key:cat, order, idx:0, last: Cycles[kind]?.last || null };
-  }
-  function nextFromCycle(kind, cat){
-    const cy = Cycles[kind];
-    if (cy.key !== cat) rebuildCycle(kind, cat);
-    if (cy.order.length === 0) rebuildCycle(kind, cat);
-    if (cy.idx >= cy.order.length){
-      let order = shuffle(buildOrder(cat));
-      if (order.length > 1 && cy.last && order[0] === cy.last){ order.push(order.shift()); }
-      cy.order = order;
-      cy.idx = 0;
+  const order = shuffle(buildOrder(cat));
+  Cycles[kind] = { key:cat, order, idx:0, last: Cycles[kind]?.last || null };
+}
+
+function nextFromCycle(kind, cat){
+  const cy = Cycles[kind];
+  if (cy.key !== cat) rebuildCycle(kind, cat);
+  if (!Array.isArray(cy.order) || cy.order.length === 0) rebuildCycle(kind, cat);
+  if (cy.idx >= cy.order.length){
+    let order = buildOrder(cat);               // ← já vem seguro
+    if (order.length > 1 && cy.last && order[0] === cy.last){
+      order.push(order.shift());
     }
-    const id = cy.order[cy.idx++];
-    cy.last = id;
-    return deck.find(c=>c.id===id) || null;
+    cy.order = order;
+    cy.idx   = 0;
   }
+  const id = cy.order[cy.idx++];
+  cy.last = id;
+  return (Array.isArray(deck) ? deck.find(c => c.id === id) : null) || null;
+}
   function invalidateCycles(){
     Cycles.study.order = [];
     Cycles.quiz.order  = [];
@@ -846,35 +866,37 @@ const els = s => [...document.querySelectorAll(s)];   // <— CORRETO
   }
 
   function rBuildPool(){
-    const now = Date.now();
-    let list = filteredByCategory(deck, Reinforce.cat);
+  const now  = Date.now();
+  let list   = Array.isArray(deck) ? filteredByCategory(deck, Reinforce.cat) : [];
 
-    const isRF      = c => !!c.rf;
-    const isDue     = c => (c.due||0) <= now;
-    const isTrouble = c => (c.err||0) >= Math.max(2, (c.ok||0)); // mais erros que acertos (mín. 2)
+  const isRF      = c => !!c.rf;
+  const isDue     = c => (c.due||0) <= now;
+  const isTrouble = c => (c.err||0) >= Math.max(2, (c.ok||0));
 
-    if(Reinforce.pool === 'rf')       list = list.filter(isRF);
-    else if(Reinforce.pool === 'due') list = list.filter(isDue);
-    else if(Reinforce.pool === 'trouble') list = list.filter(isTrouble);
-    else { // mix
-      const set = new Set();
-      list.forEach(c => { if(isRF(c)||isDue(c)||isTrouble(c)) set.add(c.id); });
-      list = list.filter(c=>set.has(c.id));
-    }
-
-    return list;
+  if (Reinforce.pool === 'rf')         list = list.filter(isRF);
+  else if (Reinforce.pool === 'due')   list = list.filter(isDue);
+  else if (Reinforce.pool === 'trouble') list = list.filter(isTrouble);
+  else {
+    const set = new Set();
+    list.forEach(c => { if (isRF(c) || isDue(c) || isTrouble(c)) set.add(c.id); });
+    list = list.filter(c => set.has(c.id));
   }
+  return list; // sempre array
+}
 
   function rStartSession(){
-    const pool = rBuildPool();
-    Reinforce.order = shuffle(pool).map(c=>c.id);
-    Reinforce.idx = 0;
-    Reinforce.done = 0;
-    Reinforce.total = (el('#rLen').value==='all') ? Reinforce.order.length
-                   : Math.min(parseInt(el('#rLen').value||20,10), Reinforce.order.length);
-    RCurrent = null;            // não avance até pontuar
-    rRender();
-  }
+  const pool = rBuildPool();
+  const safePool = Array.isArray(pool) ? pool : [];
+  Reinforce.order = shuffle(safePool).map(c => c.id).filter(Boolean);
+  Reinforce.idx   = 0;
+  Reinforce.done  = 0;
+  Reinforce.total = (el('#rLen').value === 'all')
+    ? Reinforce.order.length
+    : Math.min(parseInt(el('#rLen').value || 20, 10), Reinforce.order.length);
+
+  RCurrent = null;
+  rRender();
+}
 
   function rNext(){
     if(Reinforce.done >= Reinforce.total || Reinforce.idx >= Reinforce.order.length){
