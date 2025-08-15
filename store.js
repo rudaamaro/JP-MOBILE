@@ -239,7 +239,7 @@ export async function migrateFromLocalStorage(uid){
 }
 
 // ===========================
-// Drenar filas (chamar no boot, ao ficar online e no botão “Atualizar”)
+// Drenar filas (boot/online/botão “Atualizar”)
 // ===========================
 export async function drainQueues(uid){
   const up = readLS(Q_UPSERT+uid, []);
@@ -248,6 +248,9 @@ export async function drainQueues(uid){
   if(up.length) await upsertMany(uid, up);
   if(del.length) await deleteMany(uid, del);
   if(tb.length)  await markDeletedRomajiMany(uid, tb);
-  const left = readLS(Q_UPSERT+uid, []).length + readLS(Q_DELETE+uid, []).length + readLS(Q_TOMBS+uid, []).length;
+  const left = readLS(Q_UPSERT+uid, []).length
+             + readLS(Q_DELETE+uid, []).length
+             + readLS(Q_TOMBS+uid, []).length;
   if(left===0) clearUnsynced();
+  return left; // <<< devolve quantos itens sobraram
 }
