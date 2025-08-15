@@ -324,16 +324,17 @@
 <script type="module">
 import { onAuthState, signOutUser } from './auth.js';
 import {
-  loadUserDeck,
-  saveUserDeck,
-  migrateFromLocalStorage,
-  getDeletedRomajiSet,
-  upsertMany,
-  cacheDeck,
-  deleteMany,
-  markDeletedRomajiMany
-} from './store.js';
-
++  loadUserDeck,
++  saveUserDeck,
++  migrateFromLocalStorage,
++  getDeletedRomajiSet,
++  upsertMany,
++  cacheDeck,
++  deleteMany,
++  markDeletedRomajiMany,
++  drainQueues
++} from './store.js';
+  
   // ===== CONFIG =====
   const DATA_URL = './anime_romaji.json';
 
@@ -453,6 +454,12 @@ import {
     if(kind==='ok') vibrateOk(); else vibrateErr();
   }
   window.addEventListener('pointerdown', ensureAudio, {once:true});
+
+  window.addEventListener('online', () => {
+  const uid = window.CURRENT_UID;
+  if(uid) drainQueues(uid).catch(()=>{ /* ignore */ });
+});
+
 
   // ===== TTS =====
   let voices = [];
@@ -1223,10 +1230,18 @@ import {
       });
 
       await migrateFromLocalStorage(uid);
-      deck = await loadUserDeck(uid);
+      try { await drainQueues(uid); } catch(_) { /* ok offline/quota */ }
+      try{
+        deck = await loadUserDeck(uid);
+      }catch(_){
+        // último recurso: cache local
+        deck = deck || [];
+      }
       if(!deck.length){
+        // seed local; sobe quando houver quota (fila + cache)
         deck = seed(defaultDeck);
-        await saveUserDeck(uid, deck); // seed inicial (uma vez)
+        try{ await saveUserDeck(uid, deck); }
+        catch(_) { /* cai na fila, mas mantém no cache */ }
       }
 
       await hydrateFromJson();
@@ -1253,6 +1268,9 @@ import {
       const tombs = [...Pending.tombs];
       if (tombs.length) await markDeletedRomajiMany(uid, tombs);
 
+      // tenta drenar o que eventualmente restou na fila (ex.: quota intermitente)
+      await drainQueues(uid);
+
       Pending.deletions.clear();
       Pending.tombs.clear();
       Pending.upserts.clear();
@@ -1262,6 +1280,8 @@ import {
     }catch(e){
       console.error(e);
       toast('Erro ao sincronizar: ' + (e.code || e.message || 'desconhecido'));
+            console.error(e);
+      toast('Erro ao sincronizar: ' + (e?.code || e?.message || 'desconhecido'));
     }
   });
 
