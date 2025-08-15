@@ -290,12 +290,15 @@ export async function migrateFromLocalStorage(uid){
 // (Opcional) tentar drenar as filas
 // ===========================
 export async function drainQueues(uid){
-  const up = readLS(Q_UPSERT+uid, []);
-  const del = readLS(Q_DELETE+uid, []);
-  const tb = readLS(Q_TOMBS+uid, []);
+  const up = JSON.parse(localStorage.getItem('romajiDeck_q_upserts_'+uid) || '[]');
+  const del = JSON.parse(localStorage.getItem('romajiDeck_q_deletes_'+uid) || '[]');
+  const tb  = JSON.parse(localStorage.getItem('romajiDeck_q_tombs_'+uid)  || '[]');
   if(up.length) await upsertMany(uid, up);
   if(del.length) await deleteMany(uid, del);
   if(tb.length)  await markDeletedRomajiMany(uid, tb);
-  const left = readLS(Q_UPSERT+uid, []).length + readLS(Q_DELETE+uid, []).length + readLS(Q_TOMBS+uid, []).length;
-  if(left===0) try{ localStorage.removeItem('unsynced'); }catch(_){}
+  const left =
+    (JSON.parse(localStorage.getItem('romajiDeck_q_upserts_'+uid) || '[]').length) +
+    (JSON.parse(localStorage.getItem('romajiDeck_q_deletes_'+uid) || '[]').length) +
+    (JSON.parse(localStorage.getItem('romajiDeck_q_tombs_'+uid)  || '[]').length);
+  if(left===0) try{ localStorage.removeItem('unsynced'); }catch(_){ }
 }
