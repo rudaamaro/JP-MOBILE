@@ -319,26 +319,19 @@
 </div>
 
 <script type="module">
-import { onAuthState, signOutUser } from './auth.js';
-import {
-  loadUserDeck,
-  saveUserDeck,
-  migrateFromLocalStorage,
-  getDeletedRomajiSet,
-  upsertMany,
-  cacheDeck,
-  deleteMany,
-  markDeletedRomajiMany,
-  drainQueues
-} from './store.js';
-
-  // ---- anti-duplo init (opcional, mas útil) ----
+   // ---- anti-duplo init (opcional, mas útil) ----
 if (window.__JPPT_INIT__) {
   console.warn('index init duplicado – ignorando');
   throw new Error('Double init'); // interrompe esta execução
 }
 window.__JPPT_INIT__ = true;
   
+  import { onAuthState, signOutUser } from './auth.js';
+  import {
+    loadUserDeck, saveUserDeck, migrateFromLocalStorage, getDeletedRomajiSet,
+    upsertMany, cacheDeck, deleteMany, markDeletedRomajiMany, drainQueues
+  } from './store.js';
+
   // ===== CONFIG =====
   const DATA_URL = './anime_romaji.json';
 
