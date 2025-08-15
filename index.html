@@ -332,6 +332,13 @@ import {
   markDeletedRomajiMany,
   drainQueues
 } from './store.js';
+
+  // ---- anti-duplo init (opcional, mas útil) ----
+if (window.__JPPT_INIT__) {
+  console.warn('index init duplicado – ignorando');
+  throw new Error('Double init'); // interrompe esta execução
+}
+window.__JPPT_INIT__ = true;
   
   // ===== CONFIG =====
   const DATA_URL = './anime_romaji.json';
