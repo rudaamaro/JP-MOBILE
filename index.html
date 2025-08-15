@@ -1257,48 +1257,52 @@ import {
   })();
 
   // ===== SYNC (Atualizar / Descartar) =====
-  document.getElementById('btnSync').addEventListener('click', async ()=>{
-    const uid = window.CURRENT_UID;
-    if(!uid){ toast('Você precisa estar logado.'); return; }
-    try{
-      const upsertList = deck.filter(c => Pending.upserts.has(String(c.id)));
-      if (upsertList.length) await upsertMany(uid, upsertList);
+document.getElementById('btnSync').addEventListener('click', async () => {
+  const uid = window.CURRENT_UID;
+  if (!uid) { toast('Você precisa estar logado.'); return; }
 
-      const delIds = [...Pending.deletions];
-      if (delIds.length) await deleteMany(uid, delIds);
+  try {
+    // 1) Upserts (itens alterados/criados)
+    const upsertList = deck.filter(c => Pending.upserts.has(String(c.id)));
+    if (upsertList.length) await upsertMany(uid, upsertList);
 
-      const tombs = [...Pending.tombs];
-      if (tombs.length) await markDeletedRomajiMany(uid, tombs);
+    // 2) Deleções
+    const delIds = [...Pending.deletions];
+    if (delIds.length) await deleteMany(uid, delIds);
 
-      // tenta drenar o que eventualmente restou na fila (ex.: quota intermitente)
-      await drainQueues(uid);
+    // 3) Tombstones (para não reimportar do JSON)
+    const tombs = [...Pending.tombs];
+    if (tombs.length) await markDeletedRomajiMany(uid, tombs);
 
-      Pending.deletions.clear();
-      Pending.tombs.clear();
-      Pending.upserts.clear();
-      refreshPending();
-      try{ localStorage.removeItem('unsynced'); }catch(_){}
-      toast('Sincronizado com o servidor!');
-    }catch(e){
-      console.error(e);
-      toast('Erro ao sincronizar: ' + (e.code || e.message || 'desconhecido'));
-            console.error(e);
-      toast('Erro ao sincronizar: ' + (e?.code || e?.message || 'desconhecido'));
-    }
-  });
+    // 4) Tenta drenar o que restou nas filas locais (ex.: quota/sem rede)
+    await drainQueues(uid);
 
-  document.getElementById('btnDiscard').addEventListener('click', ()=>{
+    // 5) Limpa pendências locais
     Pending.deletions.clear();
     Pending.tombs.clear();
     Pending.upserts.clear();
     refreshPending();
-    toast('Alterações pendentes descartadas.');
-  });
+    try { localStorage.removeItem('unsynced'); } catch {}
 
-  // ===== PWA (opcional, falha segura) =====
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('./sw.js').catch(()=>{ /* ok se não existir */ });
+    toast('Sincronizado com o servidor!');
+  } catch (e) {
+    console.error(e);
+    toast('Erro ao sincronizar: ' + (e?.code || e?.message || 'desconhecido'));
   }
+});
+
+document.getElementById('btnDiscard').addEventListener('click', () => {
+  Pending.deletions.clear();
+  Pending.tombs.clear();
+  Pending.upserts.clear();
+  refreshPending();
+  toast('Alterações pendentes descartadas.');
+});
+
+// ===== PWA (opcional, falha segura) =====
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => { /* ok se não existir */ });
+}
 </script>
 
 <!--
