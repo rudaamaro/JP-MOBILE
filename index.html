@@ -1230,25 +1230,27 @@ import {
       });
 
       await migrateFromLocalStorage(uid);
-      try { await drainQueues(uid); } catch(_) { /* ok offline/quota */ }
-      try{
-        deck = await loadUserDeck(uid);
-      }catch(_){
-        // último recurso: cache local
-        deck = deck || [];
-      }
-      if(!deck.length){
-        // seed local; sobe quando houver quota (fila + cache)
-        deck = seed(defaultDeck);
-        try{ await saveUserDeck(uid, deck); }
-        catch(_) { /* cai na fila, mas mantém no cache */ }
-      }
 
+      // tenta drenar filas; se quota/offline, segue em frente com cache + filas
+      try { await drainQueues(uid); } catch (_) {}
+      
+      // loadUserDeck já faz: (a) ler Firestore quando possível,
+      // (b) se houver 'unsynced' no localStorage, mescla cache + filas pendentes.
+      // Não precisa de try/catch em volta.
+      deck = await loadUserDeck(uid);
+      
+      // seed inicial local (sobe quando tiver quota — via fila + cache)
+      if (!deck.length) {
+        deck = seed(defaultDeck);
+        try { await saveUserDeck(uid, deck); } catch (_) {}
+      }
+      
       await hydrateFromJson();
       refreshCategoriesUI();
       State.current = nextFromCycle('study', State.catFilter);
       renderQuestion();
-      Quiz.cat='todas'; startQuizRound();
+      Quiz.cat = 'todas';
+      startQuizRound();
       startReinforceRound();
       refreshPending();
     });
